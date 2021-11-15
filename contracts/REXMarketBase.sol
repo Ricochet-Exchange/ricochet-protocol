@@ -1,25 +1,19 @@
 contract REXMarketBase {
 
-  struct SubsidyPool {
+  struct OutputPool {
       ISuperToken token;
+      uint128 feeRate;           // Fee taken by the DAO on each output distribution
       uint256 emissionRate;      // Rate to emit tokens if there's a balance, used for subsidies
   }
 
-  struct LiquidityPool {
-    ISuperToken inputToken;
-    ISuperToken outputToken;
-    uint128 feeRate;
-  }
-
   struct Market {
-    LiquidityPool poolA;
-    LiquidityPool poolB;
+    ISuperToken inputToken;
     uint256 lastDistributionAt;                   // The last time a distribution was made
     uint256 rateTolerance;                        // The percentage to deviate from the oracle scaled to 1e6
     address owner;                                // The owner of the market (reciever of fees)
     mapping(address => uint256) oracleRequestIds; // Maps tokens to their oracle request ID
-    mapping(uint32 => SubsidyPool) subsidyPools;  // Maps IDA indexes to their distributed Supertokens
-    uint8 numSubsidyPools;                        // Indexes outputPools and outputPoolFees
+    mapping(uint32 => OutputPool) outputPools;   // Maps IDA indexes to their distributed Supertokens
+    uint8 numOutputPools;                        // Indexes outputPools and outputPoolFees
   }
 
   ISuperfluid host;                     // Superfluid host contract
@@ -29,47 +23,228 @@ contract REXMarketBase {
   ITellor oracle;                       // Address of deployed simple oracle for input//output token
   Market market;
 
+  constructor(ISuperfluid _host, IConstantFlowAgreementV1 _cfa, IInstantDistributionAgreementV1 _ida) public {
+    host = _host;
+    cfa = _cfa;
+    ida = _ida;
+  }
+
+// Market initialization methods
+
+  function initializeMarket(
+    ISuperToken _inputToken,
+    uint256 _rateTolerance,
+    address _owner) public onlyOwner {
+
+    market.inputToken = _inputToken;
+    market.rateTolerance = _rateTolerance;
+    market.owner = _owner;
+  }
+
+  function initializeOracle(ITellor _oracle, uint256 _inputTokenRequestId) public onlyOwner {
+    require(market.inputToken != address(0), "!inputTokenSet");
+    oracle = _oracle;
+    market.oracleRequestIds[market.inputToken] = _inputTokenRequestId;
+  }
+
+  function addOutputPool(ISuperToken _token, uint128 _feeRate, uint256 _emissionRate, uint256 _requestId) public onlyOwner {
+    // TODO: There's probably a maxiumum number of pools before the distribute method
+    //       will run out of gas, can't have like 20 pools and distribute to all
+    require(_requestId != 0, "!validReqId");
+    OutputPool newPool = new OutputPool(_token, _feeRate, _emissionRate);
+    market.outputPools[market.numOutputPools] = newPool;
+    _createIndex(market.numOutputPools, _token);
+    market.numOutputPools++;
+    market.oracleRequestIds[_token] = _requestId;
+  }
+
 // Custom functionality that needs to be overrided by contract extending the base
 
   // Converts input token to output token
-  function distribute() public virtual;
+  function distribute() public virtual {  }
 
   // Harvests rewards if any
-  function harvest() public virtual;
+  function harvest() public virtual {  }
 
 // Standardized functionality for all REX Markets
 
-  function afterAgreementCreated(...,bytes calldata _agreementData,...) {
+  function afterAgreementCreated(
+    ISuperToken _superToken,
+    address _agreementClass,
+    bytes32 ,//_agreementId,
+    bytes calldata _agreementData,
+    bytes calldata ,//_cbdata,
+    bytes calldata _ctx
+  )
+    external override
+    onlyHost
+    onlyExpected(_superToken, _agreementClass)
+    returns (bytes memory newCtx)
+  {
       (address shareholder,
-       int96 shareholderFlowRate) = _getShareholderInfo(_agreementData)
+       int96 flowRate) = _getShareholderInfo(_agreementData);
 
       harvest();
       distribute();
-      _createNewShareholder(shareholder, shareholderFlowRate);
+      _updateShareholder(shareholder, flowRate);
   }
 
-  function afterAgreementUpdated(...,bytes calldata _agreementData,...) {
+  function afterAgreementUpdated(
+    ISuperToken _superToken,
+    address _agreementClass,
+    bytes32 ,//_agreementId,
+    bytes calldata _agreementData,
+    bytes calldata ,//_cbdata,
+    bytes calldata _ctx
+  )
+    external override
+    onlyHost
+    onlyExpected(_superToken, _agreementClass)
+    returns (bytes memory newCtx)
+  {
       (address shareholder,
-       int96 shareholderFlowRate) = _getShareholderInfo(_agreementData)
+       int96 flowRate) = _getShareholderInfo(_agreementData);
 
       harvest();
       distribute();
-      _updateShareholder(shareholder, shareholderFlowRate);
+      _updateShareholder(shareholder, flowRate);
   }
 
-  function afterAgreementTerminated(...,bytes calldata _agreementData,...) {
-      (address shareholder, ) = _getShareholderInfo(_agreementData)
+  function afterAgreementTerminated(
+    ISuperToken _superToken,
+    address _agreementClass,
+    bytes32 ,//_agreementId,
+    bytes calldata _agreementData,
+    bytes calldata ,//_cbdata,
+    bytes calldata _ctx
+  )
+    external override
+    onlyHost
+    returns (bytes memory newCtx)
+  {
+      (address shareholder, ) = _getShareholderInfo(_agreementData);
 
-      claim(); // Claim fees for contract owner on agreement termination
-      _deleteShareholder(shareholder);
+      _updateShareholder(shareholder, 0);
   }
 
   function _createNewShareholder(address shareholder, int96 shareholderFlowRate) { }
 
-  function _updateShareholder(address shareholder, int96 shareholderFlowRate) { }
+  function _updateShareholder(bytes memory ctx, address shareholder, int96 shareholderFlowRate) internal returns (bytes memory newCtx) {
+    // TODO: We need to make sure this for-loop won't run out of gas, do this we can set a limit on numOutputPools
+    // We need to go through all the output tokens and update their IDA shares
+    for (uint256 index = 0; index < market.numOutputPools; index++) {
+      newCtx = _updateSubscriptionWithContext(newCtx, index, shareholder, uint128(uint(int(shareholderFlowRate))), market.outputPools[index].token);
+    }
+  }
 
   function _deleteShareholder(address shareholder) { }
 
-  function _getShareholderInfo(bytes calldata _agreementData) { }
+  function _getShareholderInfo(bytes calldata _agreementData) internal view returns(address shareholder, int96 flowRate) {
+    (shareholder, ) = abi.decode(_agreementData, (address, address));
+    (, flowRate, , ) = cfa.getFlow(market.inputToken, shareholder, address(this));
+  }
+
+// Modifiers
+
+  /// @dev Restricts calls to only from SuperFluid host
+  modifier onlyHost() {
+      require(msg.sender == address(host), "!host");
+      _;
+  }
+
+  /// @dev Accept only input token for CFA, output and subsidy tokens for IDA
+  modifier onlyExpected(ISuperToken superToken, address agreementClass) {
+    if (_isCFAv1(agreementClass)) {
+      require(_isInputToken(superToken), "!inputAccepted");
+    } else if (_isIDAv1(agreementClass)) {
+      require(_isOutputToken(superToken), "!outputAccepted");
+    }
+    _;
+  }
+
+// Boolean Helpers
+
+  /// @dev Is `superToken` address an input token?
+  /// @param superToken token address
+  /// @return bool - is `superToken` address an input token
+  function _isInputToken(ISuperToken _superToken) internal view returns (bool) {
+    return address(_superToken) == address(market.inputToken);
+  }
+
+  /// @dev Is `superToken` address an output token?
+  /// @param superToken token address
+  /// @return bool - is `superToken` address an output token
+  function _isOutputToken(ISuperToken _superToken) internal view returns (bool) {
+    if (market.oracleRequestIds[_superToken] != 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /// @dev Is provided agreement address an CFA?
+  /// @param agreementClass agreement address
+  /// @return bool - is provided address an CFA
+  function _isCFAv1(address _agreementClass) internal view returns (bool) {
+      return ISuperAgreement(_agreementClass).agreementType()
+          == keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1");
+  }
+
+  /// @dev Is provided agreement address an IDA?
+  /// @param agreementClass agreement address
+  /// @return bool - is provided address an IDA
+  function _isIDAv1(address _agreementClass) internal view returns (bool) {
+      return ISuperAgreement(_agreementClass).agreementType()
+          == keccak256("org.superfluid-finance.agreements.InstantDistributionAgreement.v1");
+  }
+
+// Superfluid Agreement Management Methods
+
+  /// @dev Create new IDA index for `distToken`
+  /// @param index IDA index ID
+  /// @param distToken token address
+  function _createIndex(uint256 index, ISuperToken distToken) internal {
+    self.host.callAgreement(
+       self.ida,
+       abi.encodeWithSelector(
+           self.ida.createIndex.selector,
+           distToken,
+           index,
+           new bytes(0) // placeholder ctx
+       ),
+       new bytes(0) // user data
+     );
+  }
+
+  /// @dev Same as _updateSubscription but uses provided SuperFluid context data
+  /// @param ctx SuperFluid context data
+  /// @param index IDA index ID
+  /// @param subscriber is subscriber address
+  /// @param shares is distribution shares count
+  /// @param distToken is distribution token address
+  /// @return newCtx updated SuperFluid context data
+  function _updateSubscriptionWithContext(
+    bytes memory ctx,
+    uint256 index,
+    address subscriber,
+    uint128 shares,
+    ISuperToken distToken)
+    internal returns (bytes memory newCtx)  {
+
+    newCtx = ctx;
+    (newCtx, ) = self.host.callAgreementWithContext(
+      self.ida,
+      abi.encodeWithSelector(
+        self.ida.updateSubscription.selector,
+        distToken,
+        index,
+        subscriber,
+        shares / 1e9,  // Number of shares is proportional to their rate
+        new bytes(0)
+      ),
+      new bytes(0), // user data
+      newCtx
+    );
+  }
 
 }
