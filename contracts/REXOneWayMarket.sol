@@ -1,8 +1,6 @@
 contract REXOneWayMarket is REXMarketBase {
 
   constructor(
-    address _token1,
-    uint256 _poolId,
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
     IInstantDistributionAgreementV1 _ida
@@ -12,19 +10,15 @@ contract REXOneWayMarket is REXMarketBase {
 
   }
 
+  function updateOraclePrices
+
   function distribute(bytes memory ctx) external returns (bytes memory newCtx) {
     newCtx = ctx;
 
-    // TODO: Move this to another function to reduce gas spend on distribute
-    // Get the exchange rate as inputToken per outputToken
-    bool _didGet;
-    uint _timestamp;
-    uint _value;
-   (_didGet, _value, _timestamp) = _getCurrentValue(market.oracleRequestIds[market.inputToken]);
-   require(_didGet, "!getCurrentValue");
-   require(_timestamp >= block.timestamp - 3600, "!currentValue");
+   require(market.oracles[market.outputPools[0].token] >= block.timestamp - 3600, "!currentValue");
 
    _swap(self, ISuperToken(market.inputToken).balanceOf(address(this)), _value, block.timestamp + 3600);
+
    // market.outputPools[0] MUST be the output token of the swap
    uint256 outputBalance = market.outputPools[0].token.balanceOf(address(this));
    (uint256 actualAmount,) = self.ida.calculateDistribution(
