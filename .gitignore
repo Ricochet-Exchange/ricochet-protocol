@@ -1,5 +1,7 @@
-__pycache__
-.history
-.hypothesis/
-build/
-reports/
+artifacts
+cache
+node_modules
+
+*__pycache__
+logs
+*/.env
