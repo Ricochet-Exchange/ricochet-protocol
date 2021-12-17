@@ -64,6 +64,13 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   ITellor oracle;                       // Address of deployed simple oracle for input//output token
   Market market;
 
+  // TODO: Emit these events where appropriate
+  /// @dev Distribution event. Emitted on each token distribution operation.
+  /// @param totalAmount is total distributed amount
+  /// @param feeCollected is fee amount collected during distribution
+  /// @param token is distributed token address
+  event Distribution(uint256 totalAmount, uint256 feeCollected, address token);
+
   constructor(address _owner, ISuperfluid _host, IConstantFlowAgreementV1 _cfa, IInstantDistributionAgreementV1 _ida) public {
     host = _host;
     cfa = _cfa;
@@ -217,6 +224,43 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   function _getShareholderInfo(bytes calldata _agreementData) internal view returns(address shareholder, int96 flowRate) {
     (shareholder, ) = abi.decode(_agreementData, (address, address));
     (, flowRate, , ) = cfa.getFlow(market.inputToken, shareholder, address(this));
+  }
+
+  /// @dev Distributes `distAmount` amount of `distToken` token among all IDA index subscribers
+  /// @param index IDA index ID
+  /// @param distAmount amount to distribute
+  /// @param distToken distribute token address
+  /// @param ctx SuperFluid context data
+  /// @return newCtx updated SuperFluid context data
+  function _idaDistribute(uint32 index, uint128 distAmount, ISuperToken distToken, bytes memory ctx) internal returns (bytes memory newCtx) {
+    newCtx = ctx;
+    if (newCtx.length == 0) { // No context provided
+      host.callAgreement(
+        ida,
+        abi.encodeWithSelector(
+            ida.distribute.selector,
+            distToken,
+            index,
+            distAmount,
+            new bytes(0) // placeholder ctx
+        ),
+        new bytes(0) // user data
+      );
+    } else {
+      require(host.isCtxValid(newCtx) || newCtx.length == 0, "!distribute");
+      (newCtx, ) = host.callAgreementWithContext(
+        ida,
+        abi.encodeWithSelector(
+            ida.distribute.selector,
+            distToken,
+            index,
+            distAmount,
+            new bytes(0) // placeholder ctx
+        ),
+        new bytes(0), // user data
+        newCtx
+      );
+    }
   }
 
 // Modifiers
