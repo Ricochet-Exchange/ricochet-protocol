@@ -3,6 +3,7 @@ require('@nomiclabs/hardhat-web3');
 require('@nomiclabs/hardhat-ethers');
 require('@openzeppelin/hardhat-upgrades');
 require('hardhat-contract-sizer');
+require("hardhat-gas-reporter");
 require('@nomiclabs/hardhat-etherscan');
 require('solidity-coverage');
 require('dotenv').config();
@@ -27,9 +28,9 @@ module.exports = {
     hardhat: {
       forking: {
         url: process.env.POLYGON_NODE_URL,
-        accounts: [process.env.MATIC_PRIVATE_KEY],
+        accounts: [process.env.POLYGON_PRIVATE_KEY],
         enabled: true,
-        // blockNumber: 22877930
+        blockNumber: 22877930
       },
     },
     polygon: {

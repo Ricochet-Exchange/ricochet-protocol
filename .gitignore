@@ -6,3 +6,8 @@ node_modules
 
 *__pycache__
 logs
+
+
+coverage
+coverage.json
+typechain
