@@ -27,9 +27,9 @@ module.exports = {
     hardhat: {
       forking: {
         url: process.env.POLYGON_NODE_URL,
-        accounts: [process.env.MATIC_PRIVATE_KEY],
+        accounts: [process.env.POLYGON_PRIVATE_KEY],
         enabled: true,
-        // blockNumber: 22877930
+        blockNumber: 22877930
       },
     },
     polygon: {
