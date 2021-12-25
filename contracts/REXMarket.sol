@@ -583,6 +583,15 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     }
 
+    // Referral functionss
+    function checkAffiliate(bytes memory _ctx) internal {
+        ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx); 
+		// Decode userData
+        (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
+
+        safeRegisterUser(decompiledContext.msgSender, affiliateId);
+    }
+
     function afterAgreementCreated(
         ISuperToken _superToken,
         address _agreementClass,
@@ -598,6 +607,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             return _ctx;
 
         _newCtx = _ctx;
+        
+        checkAffiliate(_newCtx);
 
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx);
