@@ -5,15 +5,24 @@ import './REXMarket.sol';
 
 contract REXOneWayMarket is REXMarket {
 
+  constant uint256 OUTPUT_INDEX = 0;
+
+    // REX One Way Market Contracts
+    // - Swaps the accumulated input tokens for output token
+    // - Option to add subsidy tokens (can't be the same as the output token)
+
   constructor(
-    // TODO: Make 1 output pool as part of construction
+    ISuperToken _outputToken,
+    uint128 _feeRate,
+    uint256 _emissionRate,
+    uint256 _requestId,
     address _owner,
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
     IInstantDistributionAgreementV1 _ida
   ) public REXMarket(_owner, _host, _cfa, _ida) {
 
-    // TODO
+    addOutputPool(_outputToken, _feeRate, _emissionRate, _requestId);
 
   }
 
@@ -21,12 +30,12 @@ contract REXOneWayMarket is REXMarket {
 
     newCtx = ctx;
 
-    require(market.oracles[market.outputPools[0].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
+    require(market.oracles[market.outputPools[OUTPUT_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
 
-    _swap(market.inputToken, market.outputPools[0].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 3600);
+    _swap(market.inputToken, market.outputPools[OUTPUT_INDEX].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 3600);
 
     // market.outputPools[0] MUST be the output token of the swap
-    uint256 outputBalance = market.outputPools[0].token.balanceOf(address(this));
+    uint256 outputBalance = market.outputPools[OUTPUT_INDEX].token.balanceOf(address(this));
     (uint256 actualAmount,) = ida.calculateDistribution(
         market.outputPools[0].token,
         address(this),
@@ -36,16 +45,18 @@ contract REXOneWayMarket is REXMarket {
     if (actualAmount == 0) { return newCtx; }
 
     // Calculate the fee for making the distribution
-    uint256 feeCollected = actualAmount * market.outputPools[0].feeRate / 1e6;
+    uint256 feeCollected = actualAmount * market.outputPools[OUTPUT_INDEX].feeRate / 1e6;
     uint256 distAmount = actualAmount - feeCollected;
 
-    // Make the distribution
-    newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[0].token, newCtx);
-    emit Distribution(distAmount, feeCollected, address(market.outputPools[0].token));
+    // Make the distribution for output pool 0
+    newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[OUTPUT_INDEX].token, newCtx);
+    emit Distribution(distAmount, feeCollected, address(market.outputPools[OUTPUT_INDEX].token));
 
+    // Go through the other OutputPools and trigger distributions
     for( uint32 index = 1; index < market.numOutputPools; index++) {
       outputBalance = market.outputPools[index].token.balanceOf(address(this));
       if (outputBalance > 0) {
+        // Should oneway market only support subsidy tokens?
         if (market.outputPools[index].feeRate != 0) {
           feeCollected = outputBalance * market.outputPools[index].feeRate / 1e6;
           distAmount = outputBalance - feeCollected;

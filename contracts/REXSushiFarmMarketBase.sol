@@ -1,9 +1,13 @@
+// SPDX-License-Identifier: AGPLv3
+pragma solidity ^0.8.0;
+
 contract REXSushiFarmMarketBase is REXMarketBase {
 
   // Token addresses
   address public constant sushi = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2;
   address public constant sushix = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2; // TODO
   address public constant maticx = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2; // TODO
+  address public constant slp = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2;
   uint256 public constant sushixRequestId = 60; // TODO
   uint256 public constant maticxRequestId = 60; // TODO
   address public constant sushiRouter = 0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506;
@@ -23,6 +27,8 @@ contract REXSushiFarmMarketBase is REXMarketBase {
     IInstantDistributionAgreementV1 _ida
   ) public REXMarketBase(_host, _cfa, _ida) {
 
+    // TODO: The rexLP token should get created here
+
     poolId = _poolId;
     token1 = _token1;
 
@@ -32,10 +38,87 @@ contract REXSushiFarmMarketBase is REXMarketBase {
   }
 
   // Converts input token to output token
-  function distribute() public virtual {  }
+  function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
+    newCtx = ctx;
+
+    require(market.oracles[market.outputPools[0].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
+
+    _swapAndDeposit(market.inputToken, market.outputPools[0].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 3600);
+
+    // market.outputPools[0] MUST be the output token of the swap
+    uint256 outputBalance = market.outputPools[0].token.balanceOf(address(this));
+    (uint256 actualAmount,) = ida.calculateDistribution(
+        market.outputPools[0].token,
+        address(this),
+        0,
+        outputBalance);
+    // Return if there's not anything to actually distribute
+    if (actualAmount == 0) { return newCtx; }
+
+    // Calculate the fee for making the distribution
+    uint256 feeCollected = actualAmount * market.outputPools[0].feeRate / 1e6;
+    uint256 distAmount = actualAmount - feeCollected;
+
+    // Make the distribution for output pool 0
+    newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[0].token, newCtx);
+    emit Distribution(distAmount, feeCollected, address(market.outputPools[0].token));
+
+    // Go through the other OutputPools and trigger distributions
+    for( uint32 index = 1; index < market.numOutputPools; index++) {
+      outputBalance = market.outputPools[index].token.balanceOf(address(this));
+      if (outputBalance > 0) {
+        // Should oneway market only support subsidy tokens?
+        if (market.outputPools[index].feeRate != 0) {
+          feeCollected = outputBalance * market.outputPools[index].feeRate / 1e6;
+          distAmount = outputBalance - feeCollected;
+          newCtx = _idaDistribute(index, uint128(distAmount), market.outputPools[index].token, newCtx);
+          emit Distribution(distAmount, feeCollected, address(market.outputPools[index].token));
+          // TODO: ERC20 transfer fee
+        } else {
+          distAmount = (block.timestamp - market.lastDistributionAt) * market.outputPools[index].emissionRate;
+          if (distAmount < outputBalance) {
+            newCtx = _idaDistribute(index, uint128(distAmount), market.outputPools[index].token, newCtx);
+            emit Distribution(distAmount, 0, address(market.outputPools[index].token));
+          }
+        }
+      }
+    }
+
+
+  }
 
   // Harvests rewards if any
-  function harvest() public virtual {  }
+  function harvest(bytes memory ctx) public override returns (bytes memory ctx) {
+
+    // Get SUSHI and MATIC reward
+    // Try to harvest from minichef, catch and continue iff there's no sushi
+    try MiniChef(masterChef).withdrawAndHarvest(poolId, 0, address(this)) {
+    } catch Error(string memory reason) {
+      // If no sushi, withdraw errors with boringERC20Error
+      require(keccak256(bytes(reason)) == keccak256(bytes("BoringERC20: Transfer failed")), "!boringERC20Error");
+      return;
+    }
+
+    for (uint i = 1; i <= 2; i++) {
+      uint256 tokens = IERC20(market.outputPools[i].token.getUnderlyingToken()).balanceOf(address(this));
+
+      // Calculate the fee
+      uint256 feeCollected = tokens * market.outputPools[i].feeRate / 1e6;
+      tokens = tokens - feeCollected;
+
+      // Upgrade and take a fee
+      if (tokens > 0) {
+        // Special case for handling native MATIC
+        if (maticx == market.outputPools[i].token) {
+          IWMATIC(market.outputPools[i].token.getUnderlyingToken()).withdraw(matics);
+          IMATICx(address(self.maticxToken)).upgradeByETH{value: matics}();
+        } else {
+          market.outputPools[i].token.upgrade(tokens);
+        }
+        market.outputPools[i].token.transfer(self.owner, feeCollected);
+      }
+    }
+  }
 
   // Credit: Pickle.finance
   function _swapAndDeposit(
@@ -48,7 +131,7 @@ contract REXSushiFarmMarketBase is REXMarketBase {
     ERC20 pairToken = ERC20(token1);
 
     // Downgrade all the input supertokens
-    self.inputToken.downgrade(market.inputToken.balanceOf(address(this)));
+    market.inputToken.downgrade(market.inputToken.balanceOf(address(this)));
 
     // Swap half of input tokens to pair tokens
     uint256 _inTokenBalance = inputToken.balanceOf(address(this));
@@ -63,7 +146,7 @@ contract REXSushiFarmMarketBase is REXMarketBase {
       pairToken.safeApprove(address(sushiRouter), 0);
       pairToken.safeApprove(address(sushiRouter), _pairTokenBalance);
       console.log("addLiquidity");
-      (uint amountA, uint amountB, uint liquidity) = self.sushiRouter.addLiquidity(
+      (uint amountA, uint amountB, uint liquidity) = router.addLiquidity(
           address(inputToken),
           address(pairToken),
           _inTokenBalance,
@@ -73,9 +156,6 @@ contract REXSushiFarmMarketBase is REXMarketBase {
           address(this),
           block.timestamp + 60
       );
-      console.log("added liquidity", liquidity);
-      console.log("SLP test", self.slpToken.balanceOf(0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA));
-      console.log("SLP", address(self.slpToken));
       uint256 slpBalance = self.slpToken.balanceOf(address(this));
       console.log("This many SLP tokens", slpBalance);
       // Deposit the SLP tokens recieved into MiniChef
@@ -123,41 +203,6 @@ contract REXSushiFarmMarketBase is REXMarketBase {
         );
 
         // TODO: Check that the output matches the exchange rate
-    }
-
-    function _harvest(StreamExchangeStorage.StreamExchange storage self) internal {
-      // Get SUSHI and MATIC reward
-      // Try to harvest from minichef, catch and continue iff there's no sushi
-      try self.miniChef.withdrawAndHarvest(self.pid, 0, address(this)) {
-      } catch Error(string memory reason) {
-        require(keccak256(bytes(reason)) == keccak256(bytes("BoringERC20: Transfer failed")), "!boringERC20Error");
-        return;
-      }
-
-      // Upgrade SUSHI and MATIC if any
-      uint256 sushis = IERC20(self.sushixToken.getUnderlyingToken()).balanceOf(address(this));
-      uint256 matics = IERC20(self.maticxToken.getUnderlyingToken()).balanceOf(address(this));
-
-      // Calculate the fee for MATIC
-      uint256 feeCollected = matics * self.harvestFeeRate / 1e6;
-      matics = matics - feeCollected;
-
-      // Upgrade and take a fee
-      IWMATIC(self.maticxToken.getUnderlyingToken()).withdraw(matics);
-      if (matics > 0) {
-        IMATICx(address(self.maticxToken)).upgradeByETH{value: matics}();
-        // TODO: Move this into IDA shares to reduce gas
-        self.maticxToken.transfer(self.owner, feeCollected);
-      }
-
-      // Calculate the fee
-      feeCollected = sushis * self.harvestFeeRate / 1e6;
-      sushis = sushis - feeCollected;
-      if (sushis > 0) {
-        self.sushixToken.upgrade(sushis);
-        // TODO: Move this into IDA shares to reduce gas
-        self.sushixToken.transfer(self.owner, feeCollected);
-      }
     }
 
 }
