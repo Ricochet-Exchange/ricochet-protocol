@@ -3,19 +3,10 @@ require('@nomiclabs/hardhat-web3');
 require('@nomiclabs/hardhat-ethers');
 require('@openzeppelin/hardhat-upgrades');
 require('hardhat-contract-sizer');
+require("hardhat-gas-reporter");
 require('@nomiclabs/hardhat-etherscan');
 require('solidity-coverage');
 require('dotenv').config();
-
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task('accounts', 'Prints the list of accounts', async () => {
-  const accounts = await ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(account.address);
-  }
-});
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -25,7 +16,7 @@ task('accounts', 'Prints the list of accounts', async () => {
  */
 module.exports = {
   solidity: {
-    version: '0.8.3',
+    version: '0.8.4',
     settings: {
       optimizer: {
         enabled: true,
@@ -33,34 +24,29 @@ module.exports = {
       }
     }
   },
-  mocha: {
-    timeout: 1e6,
-  },
   networks: {
-    polygon: {
-      url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: [process.env.MATIC_PRIVATE_KEY],
-      gas: 2000000,
-      gasPrice: 50000000000,
-    },
-    // kovan: {
-    //   url: "https://kovan.infura.io/v3/" + process.env.INFURA_KEY,
-    //   accounts: [process.env.PRIVATE_KEY],
-    //   gas: 2000000,
-    //   gasPrice: 2000000000
-    // },
     hardhat: {
       forking: {
-        url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-        accounts: [process.env.MATIC_PRIVATE_KEY],
-        // blockNumber: 19403280
+        url: process.env.POLYGON_NODE_URL,
+        accounts: [process.env.POLYGON_PRIVATE_KEY],
+        enabled: true,
+        blockNumber: 22877930
       },
     },
+    polygon: {
+      url: process.env.POLYGON_NODE_URL,
+      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      blockGasLimit: 20000000,
+      gasPrice: 35000000000 // 35 Gwei
+    }
+  },
+  mocha: {
+    timeout: 0,
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: process.env.POLYSCAN_API_KEY,
+    apiKey: process.env.POLYGONSCAN_API_KEY,
   },
   contractSizer: {
     alphaSort: true,
