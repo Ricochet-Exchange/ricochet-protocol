@@ -422,11 +422,30 @@ describe("RexMarket", function() {
         aliceBalances.ric.push((await ric.balanceOf(u.alice.address)).toString());
         bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
     }
-
-    it("should deploy contracts", async () => {
+    it("make sure uninvested sum is streamed back to the streamer / investor / swapper", async () => {
         // Always add the following line of code in all test cases (waffle fixture)
         await loadFixture(deployContracts);
 
-        console.log("Contracts deployed !");
+        // start flow of 1000 USDC from admin address
+        console.log("balance start", await usdcx.balanceOf(admin.address));
+
+        await web3tx(
+            sf.host.batchCall,
+            "Admin starting a flow"
+        )(createBatchCall("1000", "100", usdcx.address), { from: admin.address });
+
+
+        await increaseTime(getSeconds(30));
+        console.log("balance after 30 seconds", await usdcx.balanceOf(admin.address));
+
+        await sf.cfa.deleteFlow({
+            superToken: USDCx.address,
+            sender: admin.address,
+            receiver: app.address,
+            by: admin.address
+        });
+        console.log("balance afterwards seconds", await usdcx.balanceOf(admin.address));
+
+
     });
 });

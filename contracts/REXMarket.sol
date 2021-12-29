@@ -195,6 +195,31 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     newCtx = _updateShareholder(newCtx, shareholder, flowRate);
   }
 
+    // internal helper function to get the amount that needs to be returned back to the user
+
+      function calcUserUninvested(
+        uint256 _prevUpdateTimestamp,
+        uint256 _flowRate,
+        uint256 _lastDistributedAt
+    ) internal view returns (uint256) {
+        uint256 _userUninvestedSum = 0;
+        uint256 _userPrevUpdateTimestamp = _prevUpdateTimestamp;
+
+        // solhint-disable not-rely-on-time
+        (_userPrevUpdateTimestamp > _lastDistributedAt)
+            ? _userUninvestedSum +=
+                _flowRate *
+                (block.timestamp - _userPrevUpdateTimestamp)
+            : _userUninvestedSum =
+            _flowRate *
+            (block.timestamp - _lastDistributedAt);
+        // solhint-enable not-rely-on-time
+
+        // console.log("Uninvested amount is: %s", _userUninvestedSum);
+
+        return _userUninvestedSum;
+    }
+
   function afterAgreementTerminated(
     ISuperToken _superToken,
     address _agreementClass,
@@ -210,6 +235,12 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     newCtx = _ctx;
     (address shareholder, ) = _getShareholderInfo(_agreementData);
     newCtx = _updateShareholder(newCtx, shareholder, 0);
+      int96 flowRateMain; uint256 timestamp; uint256 uinvestAmount;
+
+    // refund the unswapped amount back to the person who started the stream
+    (timestamp, flowRateMain, , ) = cfa.getFlow(market.inputToken, shareholder, address(this));
+    uinvestAmount = calcUserUninvested(timestamp, uint256(uint96(flowRateMain)), market.lastDistributionAt);
+    market.inputToken.transferFrom(address(this), shareholder, uinvestAmount);
   }
 
   function _updateShareholder(bytes memory ctx, address shareholder, int96 shareholderFlowRate) internal returns (bytes memory newCtx) {

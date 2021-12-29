@@ -5,7 +5,7 @@ import './REXMarket.sol';
 
 contract REXOneWayMarket is REXMarket {
 
-  constant uint256 OUTPUT_INDEX = 0;
+  uint32 constant OUTPUT_INDEX = 0;
 
     // REX One Way Market Contracts
     // - Swaps the accumulated input tokens for output token
