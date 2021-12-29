@@ -60,7 +60,6 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   ISuperfluid host;                     // Superfluid host contract
   IConstantFlowAgreementV1 cfa;         // The stored constant flow agreement class address
   IInstantDistributionAgreementV1 ida;  // The stored instant dist. agreement class address
-  IUniswapV2Router02 router;            // Address of uniswap compatible router
   ITellor oracle;                       // Address of deployed simple oracle for input//output token
   Market market;
 
@@ -109,6 +108,7 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     OracleInfo memory newOracle = OracleInfo(_requestId, 0, 0);
     // TODO: Check oracle and set init price, initialy set to 0s
     market.oracles[market.inputToken] = newOracle;
+    updateTokenPrice(_token);
   }
 
 // Custom functionality that needs to be overrided by contract extending the base
