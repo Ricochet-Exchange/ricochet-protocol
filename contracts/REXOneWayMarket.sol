@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+
 import './REXMarket.sol';
 
 contract REXOneWayMarket is REXMarket {
 
-  constant uint256 OUTPUT_INDEX = 0;
+  uint32 constant OUTPUT_INDEX = 0;
+  IUniswapV2Router02 router;
 
     // REX One Way Market Contracts
     // - Swaps the accumulated input tokens for output token
@@ -24,6 +27,22 @@ contract REXOneWayMarket is REXMarket {
 
     addOutputPool(_outputToken, _feeRate, _emissionRate, _requestId);
 
+  }
+
+  function initializeMarket(
+    IUniswapV2Router02 _router,
+    ISuperToken _inputToken,
+    uint256 _rateTolerance,
+    ITellor _tellor,
+    uint256 _inputTokenRequestId) public onlyOwner initializer {
+
+    router = _router;
+    REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId);
+
+  }
+
+  function setRouter(address _router) public onlyOwner {
+    router = IUniswapV2Router02(_router);
   }
 
   function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
