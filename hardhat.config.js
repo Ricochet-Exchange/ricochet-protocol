@@ -4,6 +4,7 @@ require('@nomiclabs/hardhat-ethers');
 require('@openzeppelin/hardhat-upgrades');
 require('hardhat-contract-sizer');
 require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-solhint");
 require('@nomiclabs/hardhat-etherscan');
 require('solidity-coverage');
 require('dotenv').config();
