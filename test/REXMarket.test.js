@@ -130,6 +130,8 @@ describe("RexMarket", function() {
     ) {
         // Do approvals
         // Already approved?
+
+        console.log("admin address", u.admin.address);
         console.log('Approving subscriptions...');
 
         for (let tokenIndex = 0; tokenIndex < tokens.length; ++tokenIndex) {
@@ -427,25 +429,16 @@ describe("RexMarket", function() {
         await loadFixture(deployContracts);
 
         // start flow of 1000 USDC from admin address
-        console.log("balance start", await usdcx.balanceOf(admin.address));
+        console.log("balance start", (await usdcx.balanceOf(u.admin.address)).toString());
 
-        await web3tx(
-            sf.host.batchCall,
-            "Admin starting a flow"
-        )(createBatchCall("1000", "100", usdcx.address), { from: admin.address });
-
-
+        inflowRate = '2592000000'; // 1000 usdc per month, 1000*24*30*60*60
+        await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+        
         await increaseTime(getSeconds(30));
-        console.log("balance after 30 seconds", await usdcx.balanceOf(admin.address));
+        console.log("balance after 30 days", (await usdcx.balanceOf(u.admin.address)).toString());
 
-        await sf.cfa.deleteFlow({
-            superToken: USDCx.address,
-            sender: admin.address,
-            receiver: app.address,
-            by: admin.address
-        });
-        console.log("balance afterwards seconds", await usdcx.balanceOf(admin.address));
-
+        await u.admin.flow({flowRate: "0", recipient: u.app});
+        console.log("balance afterwards days", (await usdcx.balanceOf(u.admin.address)).toString());
 
     });
 });
