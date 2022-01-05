@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 
-import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; //"@superfluid-finance/ethereum-monorepo/packages/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 import {IInstantDistributionAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
 import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./tellor/ITellor.sol";
-
+import "hardhat/console.sol"; 
 contract REXMarket is Ownable, SuperAppBase, Initializable {
 
   // REX Market Base Contract
@@ -163,7 +163,6 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     returns (bytes memory newCtx)
   {
     newCtx = _ctx;
-
     (address shareholder,
      int96 flowRate) = _getShareholderInfo(_agreementData);
 
@@ -195,12 +194,35 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     newCtx = _updateShareholder(newCtx, shareholder, flowRate);
   }
 
-  function afterAgreementTerminated(
+  // We need before agreement to get the uninvested amount using the flowRate before update
+  function beforeAgreementTerminated(
     ISuperToken _superToken,
     address _agreementClass,
+    bytes32, //_agreementId,
+    bytes calldata _agreementData,
+    bytes calldata _ctx
+  )
+    external
+    override
+    view
+    onlyExpected(_superToken, _agreementClass)
+    onlyHost
+    returns (bytes memory cbdata)
+  {
+      (address shareholder, ) = _getShareholderInfo(_agreementData);
+
+      (uint256 timestamp,int96 flowRateMain, , ) = cfa.getFlow(market.inputToken, shareholder, address(this));
+      uint256 uinvestAmount = _calcUserUninvested(timestamp, uint256(uint96(flowRateMain)), market.lastDistributionAt);
+      cbdata = abi.encode(uinvestAmount);
+
+  }
+
+  function afterAgreementTerminated(
+    ISuperToken , //_superToken
+    address , //_agreementClass
     bytes32 ,//_agreementId,
     bytes calldata _agreementData,
-    bytes calldata ,//_cbdata,
+    bytes calldata _cbdata,//_cbdata,
     bytes calldata _ctx
   )
     external override
@@ -209,6 +231,9 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   {
     newCtx = _ctx;
     (address shareholder, ) = _getShareholderInfo(_agreementData);
+    uint256 uninvestAmount = abi.decode(_cbdata,(uint256));
+    // Refund the unswapped amount back to the person who started the stream
+    market.inputToken.transferFrom(address(this), shareholder, uninvestAmount);
     newCtx = _updateShareholder(newCtx, shareholder, 0);
   }
 
@@ -262,6 +287,28 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
       );
     }
   }
+
+  // internal helper function to get the amount that needs to be returned back to the user
+  function _calcUserUninvested(
+        uint256 _prevUpdateTimestamp,
+        uint256 _flowRate,
+        uint256 _lastDistributedAt
+    ) internal view returns (uint256) {
+        uint256 _userUninvestedSum;
+
+        // solhint-disable not-rely-on-time
+        (_prevUpdateTimestamp > _lastDistributedAt)
+            ? _userUninvestedSum +=
+                _flowRate *
+                (block.timestamp - _prevUpdateTimestamp)
+            : _userUninvestedSum =
+            _flowRate *
+            (block.timestamp - _lastDistributedAt);
+        // solhint-enable not-rely-on-time
+
+        // console.log("Uninvested amount is: %s", _userUninvestedSum);
+        return _userUninvestedSum;
+    }
 
 // Modifiers
 
