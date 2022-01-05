@@ -59,6 +59,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.0",
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
+    "@superfluid-finance/sdk-core": "^0.1.0",
     "@swc/core": "^1.2.126",
     "@swc/helpers": "^0.3.2",
     "@truffle/abi-utils": "^0.2.3",
