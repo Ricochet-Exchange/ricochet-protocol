@@ -4,10 +4,10 @@ import web3tx from "@decentral.ee/web3-helpers";
 import { loadFixture } from "ethereum-waffle";
 import { Framework } from "@superfluid-finance/sdk-core";
 import SuperfluidGovernanceBase from "@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json";
-import { TellorPlayground, ERC20Token } from "../typechain"
+import { TellorPlayground, ISuperToken } from "../typechain"
 // import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
 // import { web3tx, wad4human } from "@decentral.ee/web3-helpers";
-import { impersonateAccounts } from "./helpers";
+import { getSeconds, impersonateAccounts, increaseTime } from "./helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import HttpService from "./HttpService";
 // const { defaultAbiCoder } = require("ethers/lib/utils");
@@ -62,17 +62,17 @@ async function createSFRegistrationKey(sf: any, deployer: any) {
 
 describe("RexMarket", function () {
     let sf: any;
-    let dai: ERC20Token;
-    let daix: ERC20Token;
-    let ethx: ERC20Token;
-    let wbtc: ERC20Token;
-    let wbtcx: ERC20Token;
-    let usd: ERC20Token;
-    let usdcx: ERC20Token;
-    let ric: ERC20Token;
-    let usdc: ERC20Token;
-    let eth: ERC20Token;
-    let weth: ERC20Token;
+    let dai: ISuperToken;
+    let daix: ISuperToken;
+    let ethx: ISuperToken;
+    let wbtc: ISuperToken;
+    let wbtcx: ISuperToken;
+    let usd: ISuperToken;
+    let usdcx: ISuperToken;
+    let ric: ISuperToken;
+    let usdc: ISuperToken;
+    let eth: ISuperToken;
+    let weth: ISuperToken;
     let app: any;
     let tp: any;
     let tpInstance: TellorPlayground;
@@ -138,7 +138,7 @@ describe("RexMarket", function () {
         // Do approvals
         // Already approved?
 
-        console.log("admin address", u.admin.address);
+        console.log("admin address", admin.address);
         console.log('Approving subscriptions...');
 
         for (let tokenIndex = 0; tokenIndex < tokens.length; ++tokenIndex) {
@@ -216,10 +216,10 @@ describe("RexMarket", function () {
         // ==============
         // Setup tokens
 
-        ric = await ethers.getContractAt('ERC20', RIC_TOKEN_ADDRESS, owner);
-        weth = await ethers.getContractAt('ERC20', await ethx.getUnderlyingToken());
-        wbtc = await ethers.getContractAt('ERC20', await wbtcx.getUnderlyingToken());
-        usdc = await ethers.getContractAt('ERC20', await usdcx.getUnderlyingToken());
+        ric = await ethers.getContractAt("ISuperToken", RIC_TOKEN_ADDRESS, owner);
+        weth = await ethers.getContractAt("ISuperToken", await ethx.getUnderlyingToken());
+        wbtc = await ethers.getContractAt("ISuperToken", await wbtcx.getUnderlyingToken());
+        usdc = await ethers.getContractAt("ISuperToken", await usdcx.getUnderlyingToken());
     });
 
     // Use this function in a similar way to `beforeEach` function but with waffle fixture
@@ -230,7 +230,7 @@ describe("RexMarket", function () {
         // Include this in REXMarket deployment constructor code
         const registrationKey = await createSFRegistrationKey(sf, admin.address);
 
-        let REXMarketFactory = await ethers.getContractFactory('REXMarket', owner);
+        let REXMarketFactory = await ethers.getContractFactory("REXMarket", owner);
         app = await REXMarketFactory.deploy(
             owner.address,
             sf.host.address,
@@ -444,16 +444,16 @@ describe("RexMarket", function () {
         await loadFixture(deployContracts);
 
         // start flow of 1000 USDC from admin address
-        console.log("balance start", (await usdcx.balanceOf(u.admin.address)).toString());
+        console.log("balance start", (await usdcx.balanceOf(admin.address)).toString());
 
-        inflowRate = '2592000000'; // 1000 usdc per month, 1000*24*30*60*60
-        await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+        let inflowRate = "2592000000"; // 1000 usdc per month, 1000*24*30*60*60
+        await admin.flow({ flowRate: inflowRate, recipient: app });
         
         await increaseTime(getSeconds(30));
-        console.log("balance after 30 days", (await usdcx.balanceOf(u.admin.address)).toString());
+        console.log("balance after 30 days", (await usdcx.balanceOf(admin.address)).toString());
 
-        await u.admin.flow({flowRate: "0", recipient: u.app});
-        console.log("balance afterwards days", (await usdcx.balanceOf(u.admin.address)).toString());
+        await admin.flow({flowRate: "0", recipient: app});
+        console.log("balance afterwards days", (await usdcx.balanceOf(admin.address)).toString());
 
     });
 });
