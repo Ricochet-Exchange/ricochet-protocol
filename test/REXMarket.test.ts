@@ -1,26 +1,35 @@
-const { expect } = require("chai");
-const { ethers, waffle } = require("hardhat");
-const { provider, loadFixture } = waffle;
-const { parseUnits } = require("@ethersproject/units");
-const SuperfluidSDK = require("@superfluid-finance/js-sdk");
-const SuperfluidGovernanceBase = require('@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json');
-const TellorPlayground = require('usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json');
-const axios = require('axios').default;
-const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
-const {
-    getBigNumber,
-    getTimeStamp,
-    getTimeStampNow,
-    getDate,
-    getSeconds,
-    increaseTime,
-    impersonateAccounts
-} = require("../misc/helpers");
-const { defaultAbiCoder } = require("ethers/lib/utils");
-const { constants } = require("ethers");
+import { ethers } from "hardhat";
+import web3 from "web3";
+import web3tx from "@decentral.ee/web3-helpers";
+import { loadFixture } from "ethereum-waffle";
+import { Framework } from "@superfluid-finance/sdk-core";
+import SuperfluidGovernanceBase from "@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json";
+import { TellorPlayground, ERC20Token } from "../typechain"
+// import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
+// import { web3tx, wad4human } from "@decentral.ee/web3-helpers";
+import { impersonateAccounts } from "./helpers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import HttpService from "./HttpService";
+// const { defaultAbiCoder } = require("ethers/lib/utils");
 
-async function createSFRegistrationKey(sf, deployer) {
+// Source: https://github.com/superfluid-finance/protocol-monorepo/tree/dev/packages/sdk-core
+// ethers.js + hardhat provider initialization (in testing environment w/ hardhat-ethers)
+async function createSFFramework() {
+    const RESOLVER_ADDRESS = `testKey-${Date.now()}`;
+    const [deployer] = await ethers.getSigners();
+    const ethersProvider = deployer.provider;
+    const ethersjsSf = await Framework.create({
+        networkName: "matic",
+        dataMode: "WEB3_ONLY",
+        resolverAddress: RESOLVER_ADDRESS,
+        protocolReleaseVersion: "test",
+        provider: ethers.getDefaultProvider(),
+    });
+}
+
+async function createSFRegistrationKey(sf: any, deployer: any) {
     const registrationKey = `testKey-${Date.now()}`;
+    // const appKey = ethers.utils.solidityKeccak256(["string"], ["KEEPER_ROLE"]);
     const appKey = web3.utils.sha3(
         web3.eth.abi.encodeParameters(
             ['string', 'address', 'string'],
@@ -51,32 +60,31 @@ async function createSFRegistrationKey(sf, deployer) {
     return registrationKey;
 }
 
-describe("RexMarket", function() {
-    const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Spender'];
-
-    let sf;
-    let dai;
-    let daix;
-    let ethx;
-    let wbtc;
-    let wbtcx;
-    let usd;
-    let usdcx;
-    let ric;
-    let usdc;
-    let eth;
-    let weth;
-    let app;
-    let tp; // Tellor playground
+describe("RexMarket", function () {
+    let sf: any;
+    let dai: ERC20Token;
+    let daix: ERC20Token;
+    let ethx: ERC20Token;
+    let wbtc: ERC20Token;
+    let wbtcx: ERC20Token;
+    let usd: ERC20Token;
+    let usdcx: ERC20Token;
+    let ric: ERC20Token;
+    let usdc: ERC20Token;
+    let eth: ERC20Token;
+    let weth: ERC20Token;
+    let app: any;
+    let tp: any;
+    let tpInstance: TellorPlayground;
     let usingTellor;
     let sr; // Mock Sushi Router
-    let owner;
-    let alice;
-    let bob;
-    let carl;
-    let spender;
-    const u = {}; // object with all users
-    const aliases = {};
+    let admin: SignerWithAddress;
+    let owner: SignerWithAddress;
+    let alice: SignerWithAddress;
+    let bob: SignerWithAddress;
+    let carl: SignerWithAddress;
+    let spender: SignerWithAddress;
+
     const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
     const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
     const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
@@ -84,7 +92,7 @@ describe("RexMarket", function() {
     const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
     const TELLOR_REQUEST_ID = 60;
 
-    // random address from polygonscan that have a lot of usdcx
+    // random addresses from polygonscan that have a lot of usdcx
     const USDCX_SOURCE_ADDRESS = '0xA08f80dc1759b12fdC40A4dc64562b322C418E1f';
     const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
     const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
@@ -93,39 +101,38 @@ describe("RexMarket", function() {
     const BOB_ADDRESS = '0x00Ce20EC71942B41F50fF566287B811bbef46DC8';
     const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
     const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
-    let oraclePrice;
+    let oraclePrice: number;
 
     const appBalances = {
-        ethx: [],
-        wbtcx: [],
-        daix: [],
-        usdcx: [],
-        ric: [],
+        ethx: [""],
+        wbtcx: [""],
+        usdcx: [""],
+        ric: [""],
     };
     const ownerBalances = {
-        ethx: [],
-        wbtcx: [],
-        daix: [],
-        usdcx: [],
-        ric: [],
+        ethx: [""],
+        wbtcx: [""],
+        daix: [""],
+        usdcx: [""],
+        ric: [""],
     };
     const aliceBalances = {
-        ethx: [],
-        wbtcx: [],
-        daix: [],
-        usdcx: [],
-        ric: [],
+        ethx: [""],
+        wbtcx: [""],
+        daix: [""],
+        usdcx: [""],
+        ric: [""],
     };
     const bobBalances = {
-        ethx: [],
-        wbtcx: [],
-        daix: [],
-        usdcx: [],
-        ric: [],
+        ethx: [""],
+        wbtcx: [""],
+        daix: [""],
+        usdcx: [""],
+        ric: [""],
     };
 
     async function approveSubscriptions(
-        users = [u.alice.address, u.bob.address, u.admin.address],
+        users = [alice.address, bob.address, admin.address],
         tokens = [wbtcx.address, ricAddress],
     ) {
         // Do approvals
@@ -162,6 +169,8 @@ describe("RexMarket", function() {
         // ==============
         // impersonate accounts, set balances and get signers
 
+        [admin, owner, alice, bob, carl, spender] = await ethers.getSigners();
+
         const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, USDCX_SOURCE_ADDRESS];
 
         const accounts = [owner, alice, bob, carl, spender] = await impersonateAccounts(accountAddrs);
@@ -183,22 +192,24 @@ describe("RexMarket", function() {
         usdcx = sf.tokens.USDCx;
 
         // ==============
-        // Init SF users
-
-        for (let i = 0; i < names.length; i += 1) {
-            u[names[i].toLowerCase()] = sf.user({
-                address: accounts[i]._address || accounts[i].address,
-                token: usdcx.address,
-            });
-            u[names[i].toLowerCase()].alias = names[i];
-            aliases[u[names[i].toLowerCase()].address] = names[i];
-        }
-
+        // Init SF users    // JR --> I think this init section is not needed
+        /*
+                for (let i = 0; i < users.length; i += 1) {
+                    users[i].toLowerCase() = sf.user({
+                        address: accounts[i]._address || accounts[i].address,
+                        token: usdcx.address,
+                    });
+                    users[i].toLowerCase() = names[i];
+                    aliases[u[names[i].toLowerCase()].address] = names[i];
+                }
+        */
         // ==============
         // NOTE: Assume the oracle is up to date
         // Deploy Tellor Oracle contracts
 
-        tp = await ethers.getContractAt(TellorPlayground.abi, TELLOR_ORACLE_ADDRESS, owner);
+        tp = await ethers.getContractFactory(""); // getContractAt(tp.abi, TELLOR_ORACLE_ADDRESS, owner);
+        tpInstance = await tp.deploy();
+        await tpInstance.deployed();
 
         // ==============
         // Setup tokens
@@ -213,11 +224,11 @@ describe("RexMarket", function() {
     async function deployContracts() {
         // ==============
         // Deploy REXMarket contract
-        
-        // Include this in REXMarket deployment constructor code
-        const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
 
-        REXMarketFactory = await ethers.getContractFactory('REXMarket', owner);
+        // Include this in REXMarket deployment constructor code
+        const registrationKey = await createSFRegistrationKey(sf, admin.address);
+
+        let REXMarketFactory = await ethers.getContractFactory('REXMarket', owner);
         app = await REXMarketFactory.deploy(
             owner.address,
             sf.host.address,
@@ -225,19 +236,22 @@ describe("RexMarket", function() {
             sf.agreements.ida.address
         );
 
-        u.app = sf.user({
+        app = sf.user({
             address: app.address,
             token: wbtcx.address,
         });
 
-        u.app.alias = 'App';
+        app.alias = 'App';
 
         // ==============
         // Get actual price
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd');
-        oraclePrice = parseInt(response.data['wrapped-bitcoin'].usd * 1.02 * 1000000).toString();
-        console.log('oraclePrice', oraclePrice);
-        await tp.submitValue(60, oraclePrice);
+        // this endpoint returns a number    // JR
+        const url = "https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd";
+        let httpService = new HttpService();
+        const response = await httpService.get(url);
+        oraclePrice = response.data['wrapped-bitcoin'].usd * 1.02 * 1000000;
+        console.log('=== oraclePrice: ' + oraclePrice.toString());
+        await tp.submitValue(60, ethers.BigNumber.from(oraclePrice));
     }
 
     // async function deployContracts() {
@@ -298,19 +312,19 @@ describe("RexMarket", function() {
     //     await tp.submitValue(60, oraclePrice);
     // }
 
-    async function checkBalance(user) {
-        console.log('Balance of ', user.alias);
+    async function checkBalance(user: SignerWithAddress) {
+        console.log('Balance of ', user);
         console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
         console.log('wbtcx: ', (await wbtcx.balanceOf(user.address)).toString());
     }
 
-    async function checkBalances(accounts) {
+    async function checkBalances(accounts: any[]) {
         for (let i = 0; i < accounts.length; ++i) {
             await checkBalance(accounts[i]);
         }
     }
 
-    async function upgrade(accounts) {
+    async function upgrade(accounts: any[]) {
         for (let i = 0; i < accounts.length; ++i) {
             await web3tx(
                 usdcx.upgrade,
@@ -332,21 +346,22 @@ describe("RexMarket", function() {
     async function logUsers() {
         let string = 'user\t\ttokens\t\tnetflow\n';
         let p = 0;
-        for (const [, user] of Object.entries(u)) {
-            if (await hasFlows(user)) {
-                p++;
-                string += `${user.alias}\t\t${wad4human(
-                    await usdcx.balanceOf(user.address),
-                )}\t\t${wad4human((await user.details()).cfa.netFlow)}
+        let [, user] = await ethers.getSigners();
+        // for (const [, user] of Object.entries(u)) {
+        if (await hasFlows(user)) {
+            p++;
+            string += `${user}\t\t${wad4human(
+                await usdcx.balanceOf(user.address),
+            )}\t\t${wad4human((await user.details()).cfa.netFlow)}
                 `;
-            }
         }
+        // }
         if (p == 0) return console.warn('no users with flows');
         console.log('User logs:');
         console.log(string);
     }
 
-    async function hasFlows(user) {
+    async function hasFlows(user: any) {
         const {
             inFlows,
             outFlows,
@@ -355,21 +370,21 @@ describe("RexMarket", function() {
     }
 
     async function appStatus() {
-        const isApp = await sf.host.isApp(u.app.address);
+        const isApp = await sf.host.isApp(app.address);
         const isJailed = await sf.host.isAppJailed(app.address);
         !isApp && console.error('App is not an App');
         isJailed && console.error('app is Jailed');
-        await checkBalance(u.app);
+        await checkBalance(app);
         await checkOwner();
     }
 
     async function checkOwner() {
-        const owner = await u.admin.address;
-        console.log('Contract Owner: ', aliases[owner], ' = ', owner);
+        const owner = admin.address;
+        console.log('Contract Owner: ', owner);
         return owner.toString();
     }
 
-    async function subscribe(user) {
+    async function subscribe(user: SignerWithAddress) {
         // Alice approves a subscription to the app
         console.log(sf.host.callAgreement);
         console.log(sf.agreements.ida.address);
@@ -390,7 +405,7 @@ describe("RexMarket", function() {
         );
     }
 
-    async function delta(account, balances) {
+    async function delta(account: any, balances: any) {
         const len = balances.wbtcx.length;
         const changeInOutToken = balances.wbtcx[len - 1] - balances.wbtcx[len - 2];
         const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
@@ -403,24 +418,24 @@ describe("RexMarket", function() {
 
     async function takeMeasurements() {
         appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
-        ownerBalances.ethx.push((await ethx.balanceOf(u.admin.address)).toString());
-        aliceBalances.ethx.push((await ethx.balanceOf(u.alice.address)).toString());
-        bobBalances.ethx.push((await ethx.balanceOf(u.bob.address)).toString());
+        ownerBalances.ethx.push((await ethx.balanceOf(admin.address)).toString());
+        aliceBalances.ethx.push((await ethx.balanceOf(alice.address)).toString());
+        bobBalances.ethx.push((await ethx.balanceOf(bob.address)).toString());
 
         appBalances.wbtcx.push((await wbtcx.balanceOf(app.address)).toString());
-        ownerBalances.wbtcx.push((await wbtcx.balanceOf(u.admin.address)).toString());
-        aliceBalances.wbtcx.push((await wbtcx.balanceOf(u.alice.address)).toString());
-        bobBalances.wbtcx.push((await wbtcx.balanceOf(u.bob.address)).toString());
+        ownerBalances.wbtcx.push((await wbtcx.balanceOf(admin.address)).toString());
+        aliceBalances.wbtcx.push((await wbtcx.balanceOf(alice.address)).toString());
+        bobBalances.wbtcx.push((await wbtcx.balanceOf(bob.address)).toString());
 
         appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
-        ownerBalances.usdcx.push((await usdcx.balanceOf(u.admin.address)).toString());
-        aliceBalances.usdcx.push((await usdcx.balanceOf(u.alice.address)).toString());
-        bobBalances.usdcx.push((await usdcx.balanceOf(u.bob.address)).toString());
+        ownerBalances.usdcx.push((await usdcx.balanceOf(admin.address)).toString());
+        aliceBalances.usdcx.push((await usdcx.balanceOf(alice.address)).toString());
+        bobBalances.usdcx.push((await usdcx.balanceOf(bob.address)).toString());
 
         appBalances.ric.push((await ric.balanceOf(app.address)).toString());
-        ownerBalances.ric.push((await ric.balanceOf(u.admin.address)).toString());
-        aliceBalances.ric.push((await ric.balanceOf(u.alice.address)).toString());
-        bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
+        ownerBalances.ric.push((await ric.balanceOf(admin.address)).toString());
+        aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
+        bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
     }
 
     it("should deploy contracts", async () => {
