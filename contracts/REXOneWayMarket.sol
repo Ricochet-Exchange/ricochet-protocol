@@ -6,10 +6,8 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import './REXMarket.sol';
 
 contract REXOneWayMarket is REXMarket {
-
   uint32 constant OUTPUT_INDEX = 0;
   IUniswapV2Router02 router;
-
     // REX One Way Market Contracts
     // - Swaps the accumulated input tokens for output token
     // - Option to add subsidy tokens (can't be the same as the output token)

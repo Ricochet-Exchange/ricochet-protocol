@@ -137,6 +137,8 @@ describe("RexMarket", function () {
     ) {
         // Do approvals
         // Already approved?
+
+        console.log("admin address", u.admin.address);
         console.log('Approving subscriptions...');
 
         for (let tokenIndex = 0; tokenIndex < tokens.length; ++tokenIndex) {
@@ -437,11 +439,21 @@ describe("RexMarket", function () {
         aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
         bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
     }
-
-    it("should deploy contracts", async () => {
+    it("make sure uninvested sum is streamed back to the streamer / investor / swapper", async () => {
         // Always add the following line of code in all test cases (waffle fixture)
         await loadFixture(deployContracts);
 
-        console.log("Contracts deployed !");
+        // start flow of 1000 USDC from admin address
+        console.log("balance start", (await usdcx.balanceOf(u.admin.address)).toString());
+
+        inflowRate = '2592000000'; // 1000 usdc per month, 1000*24*30*60*60
+        await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+        
+        await increaseTime(getSeconds(30));
+        console.log("balance after 30 days", (await usdcx.balanceOf(u.admin.address)).toString());
+
+        await u.admin.flow({flowRate: "0", recipient: u.app});
+        console.log("balance afterwards days", (await usdcx.balanceOf(u.admin.address)).toString());
+
     });
 });
