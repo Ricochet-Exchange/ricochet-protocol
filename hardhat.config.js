@@ -7,7 +7,9 @@ require("hardhat-gas-reporter");
 require('@nomiclabs/hardhat-etherscan');
 require('solidity-coverage');
 require('dotenv').config();
-
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-waffle";
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 

@@ -240,64 +240,6 @@ describe("RexMarket", function() {
         await tp.submitValue(60, oraclePrice);
     }
 
-    // async function deployContracts() {
-    //     // ==============
-    //     // Deploy Stream Exchange
-
-    //     const StreamExchangeHelper = await ethers.getContractFactory('StreamExchangeHelper');
-    //     const sed = await StreamExchangeHelper.deploy();
-
-    //     const StreamExchange = await ethers.getContractFactory('StreamExchange', {
-    //         libraries: {
-    //             StreamExchangeHelper: sed.address,
-    //         },
-    //         signer: owner,
-    //     });
-
-    //     const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
-
-    //     // NOTE: To attach to existing SE
-    //     // let se = await StreamExchange.attach(STREAM_EXCHANGE_ADDRESS);
-
-    //     // console.log('Deploy params:');
-    //     // console.log('SF HOST', sf.host.address);
-    //     // console.log('SF CFA', sf.agreements.cfa.address);
-    //     // console.log('SF IDA', sf.agreements.ida.address);
-    //     // console.log('USDCx', usdcx.address);
-    //     // console.log('WBTCx', wbtcx.address);
-    //     // console.log('SF Registration Key', registrationKey);
-
-    //     console.log('Deploying StreamExchange...');
-    //     app = await StreamExchange.deploy(sf.host.address,
-    //         sf.agreements.cfa.address,
-    //         sf.agreements.ida.address,
-    //         usdcx.address,
-    //         wbtcx.address,
-    //         RIC_TOKEN_ADDRESS,
-    //         SUSHISWAP_ROUTER_ADDRESS, // sr.address,
-    //         TELLOR_ORACLE_ADDRESS,
-    //         TELLOR_REQUEST_ID,
-    //         registrationKey);
-
-    //     console.log('Deployed');
-    //     // console.log(await ric.balanceOf(u.admin.address));
-    //     // await ric.transfer(app.address, "1000000000000000000000000")
-
-    //     u.app = sf.user({
-    //         address: app.address,
-    //         token: wbtcx.address,
-    //     });
-
-    //     u.app.alias = 'App';
-
-    //     // ==============
-    //     // Get actual price
-    //     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd');
-    //     oraclePrice = parseInt(response.data['wrapped-bitcoin'].usd * 1.02 * 1000000).toString();
-    //     console.log('oraclePrice', oraclePrice);
-    //     await tp.submitValue(60, oraclePrice);
-    // }
-
     async function checkBalance(user) {
         console.log('Balance of ', user.alias);
         console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
