@@ -12,7 +12,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./tellor/ITellor.sol";
-import "hardhat/console.sol"; 
+import "hardhat/console.sol";
+
 contract REXMarket is Ownable, SuperAppBase, Initializable {
 
   // REX Market Base Contract
@@ -70,11 +71,28 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   /// @param token is distributed token address
   event Distribution(uint256 totalAmount, uint256 feeCollected, address token);
 
-  constructor(address _owner, ISuperfluid _host, IConstantFlowAgreementV1 _cfa, IInstantDistributionAgreementV1 _ida) public {
+  constructor(address _owner,
+    ISuperfluid _host,
+    IConstantFlowAgreementV1 _cfa,
+    IInstantDistributionAgreementV1 _ida,
+    string memory _registrationKey
+  ) public {
     host = _host;
     cfa = _cfa;
     ida = _ida;
     transferOwnership(_owner);
+
+    uint256 configWord =
+        SuperAppDefinitions.APP_LEVEL_FINAL |
+        SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP |
+        SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
+        SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
+
+    if(bytes(_registrationKey).length > 0) {
+        host.registerAppWithKey(configWord, _registrationKey);
+    } else {
+        host.registerApp(configWord);
+    }
   }
 
 // Market initialization methods
@@ -83,8 +101,9 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperToken _inputToken,
     uint256 _rateTolerance,
     ITellor _tellor,
-    uint256 _inputTokenRequestId) public onlyOwner initializer {
+    uint256 _inputTokenRequestId) public virtual onlyOwner {
 
+    require(address(market.inputToken) == address(0), "Already initialized");
     market.inputToken = _inputToken;
     market.rateTolerance = _rateTolerance;
     oracle = _tellor;
@@ -101,13 +120,14 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     // NOTE: Careful how many output pools, theres a loop over these pools
     require(_requestId != 0, "!validReqId");
     require(market.oracles[_token].requestId == 0, "!unique");
+    //
     OutputPool memory newPool = OutputPool(_token, _feeRate, _emissionRate);
     market.outputPools[market.numOutputPools] = newPool;
     _createIndex(market.numOutputPools, _token);
     market.numOutputPools++;
     OracleInfo memory newOracle = OracleInfo(_requestId, 0, 0);
     // TODO: Check oracle and set init price, initialy set to 0s
-    market.oracles[market.inputToken] = newOracle;
+    market.oracles[_token] = newOracle;
     updateTokenPrice(_token);
   }
 
@@ -162,11 +182,13 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     onlyExpected(_superToken, _agreementClass)
     returns (bytes memory newCtx)
   {
+    if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass)) return _ctx;
     newCtx = _ctx;
     (address shareholder,
      int96 flowRate) = _getShareholderInfo(_agreementData);
 
-    newCtx = harvest(newCtx);
+    // newCtx = harvest(newCtx);
+
     newCtx = distribute(newCtx);
     newCtx = _updateShareholder(newCtx, shareholder, flowRate);
   }
@@ -369,6 +391,31 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
        ),
        new bytes(0) // user data
      );
+  }
+
+  /// @dev Set new `shares` share for `subscriber` address in IDA with `index` index
+  /// @param index IDA index ID
+  /// @param subscriber is subscriber address
+  /// @param shares is distribution shares count
+  /// @param distToken is distribution token address
+  function _updateSubscription(
+      uint256 index,
+      address subscriber,
+      uint128 shares,
+      ISuperToken distToken) internal {
+    host.callAgreement(
+       ida,
+       abi.encodeWithSelector(
+           ida.updateSubscription.selector,
+           distToken,
+           index,
+           // one share for the to get it started
+           subscriber,
+           shares / 1e9,
+           new bytes(0) // placeholder ctx
+       ),
+       new bytes(0) // user data
+   );
   }
 
   /// @dev Same as _updateSubscription but uses provided SuperFluid context data
