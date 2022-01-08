@@ -90,16 +90,22 @@ contract REXSushiFarmMarket is REXMarket {
     return address(rexToken);
   }
 
+  /// @dev Get SushiSwap router address
+  /// @return SushiSwap router address
+  function getRouter() external view returns (address) {
+    return address(router);
+  }
+
   // Converts input token to output token
   function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
-    console.log("distribute1");
+
     newCtx = ctx;
 
     // TODO: This should check the oracle's updated for inputToken and pairToken
     require(market.oracles[market.inputToken].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
 
     _swapAndDeposit(ISuperToken(market.inputToken).balanceOf(address(this)),  block.timestamp + 3600);
-    console.log("distribute2");
+
 
     // market.outputPools[0] MUST be the output token of the swap
     uint256 outputBalance = market.outputPools[0].token.balanceOf(address(this));
@@ -109,7 +115,7 @@ contract REXSushiFarmMarket is REXMarket {
         0,
         outputBalance);
     // Return if there's not anything to actually distribute
-    console.log("distribute3");
+
     if (actualAmount == 0) { return newCtx; }
 
     // Calculate the fee for making the distribution
@@ -118,12 +124,13 @@ contract REXSushiFarmMarket is REXMarket {
 
     // Make the distribution for output pool 0
     newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[0].token, newCtx);
+    market.outputPools[0].token.transfer(owner(), feeCollected);
     emit Distribution(distAmount, feeCollected, address(market.outputPools[0].token));
-    console.log("distribute4");
+
 
     // Go through the other OutputPools and trigger distributions
     for( uint32 index = 1; index < market.numOutputPools; index++) {
-      console.log("distribute5");
+
       outputBalance = market.outputPools[index].token.balanceOf(address(this));
       if (outputBalance > 0) {
         // Should oneway market only support subsidy tokens?
@@ -131,8 +138,8 @@ contract REXSushiFarmMarket is REXMarket {
           feeCollected = outputBalance * market.outputPools[index].feeRate / 1e6;
           distAmount = outputBalance - feeCollected;
           newCtx = _idaDistribute(index, uint128(distAmount), market.outputPools[index].token, newCtx);
+          market.outputPools[index].token.transfer(owner(), feeCollected);
           emit Distribution(distAmount, feeCollected, address(market.outputPools[index].token));
-          // TODO: ERC20 transfer fee
         } else {
           distAmount = (block.timestamp - market.lastDistributionAt) * market.outputPools[index].emissionRate;
           if (distAmount < outputBalance) {
@@ -148,7 +155,7 @@ contract REXSushiFarmMarket is REXMarket {
 
   // Harvests rewards if any
   function harvest(bytes memory ctx) public override returns (bytes memory newCtx) {
-    console.log("harvest1");
+
     newCtx = ctx;
     // Get SUSHI and MATIC reward
     // Try to harvest from minichef, catch and continue iff there's no sushi
@@ -158,11 +165,11 @@ contract REXSushiFarmMarket is REXMarket {
       require(keccak256(bytes(reason)) == keccak256(bytes("BoringERC20: Transfer failed")), "!boringERC20Error");
       return newCtx;
     }
-    console.log("harvest2");
+
 
     for (uint32 i = 1; i <= 2; i++) {
       uint256 tokens = ERC20(market.outputPools[i].token.getUnderlyingToken()).balanceOf(address(this));
-      console.log("harvest3");
+
 
       // Calculate the fee
       uint256 feeCollected = tokens * market.outputPools[i].feeRate / 1e6;
@@ -175,16 +182,10 @@ contract REXSushiFarmMarket is REXMarket {
           IWMATIC(market.outputPools[i].token.getUnderlyingToken()).withdraw(tokens);
           IMATICx(address(maticx)).upgradeByETH{value: tokens}();
         } else {
-          console.log("harvest4");
           market.outputPools[i].token.upgrade(tokens);
         }
-        // TODO: This should be done in IDA, maybe?
-        console.log("harvest5");
-
-        market.outputPools[i].token.transfer(owner(), feeCollected);
       }
     }
-    console.log("harvest4");
     return newCtx;
   }
 
@@ -194,30 +195,30 @@ contract REXSushiFarmMarket is REXMarket {
     uint256 deadline
   ) public returns(uint) {
 
-    console.log("swap1");
+
 
     ERC20 _inputToken = ERC20(market.inputToken.getUnderlyingToken());
     ERC20 _pairToken = ERC20(pairToken);
 
     // Downgrade all the input supertokens
     market.inputToken.downgrade(market.inputToken.balanceOf(address(this)));
-    console.log("swap2");
+
     // Swap half of input tokens to pair tokens
     uint256 inTokenBalance = _inputToken.balanceOf(address(this));
     uint256 minOutputAmount = inTokenBalance * market.oracles[market.inputToken].usdPrice / market.oracles[ISuperToken(pairToken)].usdPrice;
-    console.log("swap3");
+
 
     if (inTokenBalance > 0) {
       _swapSushiswap(address(_inputToken), address(_pairToken), inTokenBalance / 2, minOutputAmount);
     }
 
-    console.log("swap4");
+
 
     // Adds liquidity for inputToken/pairToken
     inTokenBalance = _inputToken.balanceOf(address(this));
     uint256 _pairTokenBalance = _pairToken.balanceOf(address(this));
     if (inTokenBalance > 0 && _pairTokenBalance > 0) {
-      console.log("swap5");
+
       // TODO: Move approvals to the constructor
       _pairToken.approve(address(router), _pairTokenBalance);
       (uint amountA, uint amountB, uint liquidity) = router.addLiquidity(
@@ -230,18 +231,18 @@ contract REXSushiFarmMarket is REXMarket {
           address(this),
           block.timestamp + 60
       );
-      console.log("swap6");
+
       uint256 slpBalance = ERC20(rexToken.getUnderlyingToken()).balanceOf(address(this));
       // Deposit the SLP tokens recieved into MiniChef
       // TODO: Unlimited approvals in the constructor
       ERC20(rexToken.getUnderlyingToken()).approve(address(masterChef), slpBalance);
-      console.log("swap7");
-      console.log("slpBalance", slpBalance);
-      console.log("poolId", poolId);
+
+
+
       masterChef.deposit(poolId, slpBalance, address(this));
-      console.log("swap8");
+
       rexToken.mintTo(address(this), slpBalance, new bytes(0));
-      console.log("swap9");
+
 
     }
 

@@ -145,12 +145,12 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   // Oracle Functions
 
   function updateTokenPrice(ISuperToken _token) public {
-    console.log("token", address(_token));
+
     (bool ifRetrieve,
     uint256 value,
     uint256 timestampRetrieved) = getCurrentValue(market.oracles[_token].requestId);
-    console.log("rid", market.oracles[_token].requestId);
-    console.log("timestampRetrieved", timestampRetrieved);
+
+
     require(ifRetrieve, "!getCurrentValue");
     require(timestampRetrieved >= block.timestamp - 3600, "!currentValue");
     market.oracles[_token].usdPrice = value;
@@ -187,7 +187,7 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     returns (bytes memory newCtx)
   {
     if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass)) return _ctx;
-    console.log("inside after agreement1");
+
 
     newCtx = _ctx;
 
@@ -206,10 +206,10 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     (address shareholder, int96 flowRate) = _getShareholderInfo(_agreementData);
 
-    console.log("inside after agreement4");
+
 
     newCtx = _updateShareholder(newCtx, shareholder, flowRate);
-    console.log("inside after agreement5");
+
 
   }
 
@@ -375,7 +375,6 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
             (block.timestamp - _lastDistributedAt);
         // solhint-enable not-rely-on-time
 
-        // console.log("Uninvested amount is: %s", _userUninvestedSum);
         return _userUninvestedSum;
     }
 
@@ -406,8 +405,8 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
 
 
   function _isOutputToken(ISuperToken _superToken) internal view returns (bool) {
-    console.log("_isOutputToken", address(_superToken));
-    console.log("market.oracles[_superToken].requestId", market.oracles[_superToken].requestId );
+
+
     if (market.oracles[_superToken].requestId != 0) {
       return true;
     } else {
@@ -430,7 +429,7 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
 // Superfluid Agreement Management Methods
 
   function _createIndex(uint256 index, ISuperToken distToken) internal {
-    console.log("Create index", index);
+
     console.log(address(distToken));
     host.callAgreement(
        ida,
@@ -498,6 +497,83 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
       new bytes(0), // user data
       newCtx
     );
+  }
+
+// Getters
+
+  /// @dev Get input token address
+  /// @return input token address
+  function getInputToken() external view returns (ISuperToken) {
+   return market.inputToken;
+  }
+
+  /// @dev Get output token address
+  /// @return output token address
+  function getOuputPool(uint32 index) external view returns (OutputPool memory) {
+   return market.outputPools[index];
+  }
+
+  /// @dev Get output token address
+  /// @return output token address
+  function getOracleInfo(ISuperToken token) external view returns (OracleInfo memory) {
+   return market.oracles[token];
+  }
+
+  /// @dev Get total input flow rate
+  /// @return input flow rate
+  function getTotalInflow() external view returns (int96) {
+    return cfa.getNetFlow(market.inputToken, address(this));
+  }
+
+  /// @dev Get last distribution timestamp
+  /// @return last distribution timestamp
+  function getLastDistributionAt() external view returns (uint256) {
+    return market.lastDistributionAt;
+  }
+
+  /// @dev Get Tellor Oracle address
+  /// @return Tellor Oracle address
+  function getTellorOracle() external view returns (address) {
+    return address(oracle);
+  }
+
+// Emergency Admin Methods
+
+  /// @dev Is app jailed in SuperFluid protocol
+  /// @return is app jailed in SuperFluid protocol
+  function isAppJailed() external view returns (bool) {
+   return host.isAppJailed(this);
+  }
+
+  /// @dev Allows anyone to close any stream if the app is jailed.
+  /// @param streamer is stream source (streamer) address
+  function emergencyCloseStream(address streamer) public onlyOwner {
+    // Allows anyone to close any stream if the app is jailed
+    bool isJailed = host.isAppJailed(ISuperApp(address(this)));
+    require(isJailed, "!jailed");
+    host.callAgreement(
+        cfa,
+        abi.encodeWithSelector(
+            cfa.deleteFlow.selector,
+            market.inputToken,
+            streamer,
+            address(this),
+            new bytes(0) // placeholder
+        ),
+        "0x"
+    );
+  }
+
+  /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
+  function emergencyDrain() public onlyOwner {
+    require(cfa.getNetFlow(market.inputToken, address(this)) == 0, "!zeroStreamers");
+    market.inputToken.transfer(owner(), market.inputToken.balanceOf(address(this)));
+
+    // Go through the other OutputPools and trigger distributions
+    for( uint32 index = 0; index < market.numOutputPools; index++) {
+      market.outputPools[index].token.transfer(owner(), market.outputPools[index].token.balanceOf(address(this)));
+    }
+
   }
 
 }

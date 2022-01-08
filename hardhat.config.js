@@ -27,13 +27,13 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: `https://polygon-mainnet.infura.io/v3/2b9bbe1f8fc742e38062b09a2e40a3e6`,
+        url: process.env.POLYGON_NODE_URL,
         accounts: [process.env.POLYGON_PRIVATE_KEY],
-        enabled: true 
+        enabled: true
       },
     },
     polygon: {
-      url: `https://polygon-mainnet.infura.io/v3/2b9bbe1f8fc742e38062b09a2e40a3e6`,
+      url: process.env.POLYGON_NODE_URL,
       accounts: [process.env.POLYGON_PRIVATE_KEY],
       blockGasLimit: 20000000,
       gasPrice: 35000000000 // 35 Gwei
