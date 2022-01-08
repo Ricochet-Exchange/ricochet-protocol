@@ -6,9 +6,10 @@ import "@nomiclabs/hardhat-web3";
 
 import SuperfluidGovernanceBase  from '@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json';
 import TellorPlayground from 'usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json';
-import RexMarket from 'path to rexmarket ABI';
-import RexOneWayMarket from 'path to rex one way market ABI';
-import RexSushiMarket from 'path to sushi market ABI'
+
+// import RexMarket from 'path to rexmarket ABI';
+// import RexOneWayMarket from 'path to rex one way market ABI';
+// import RexSushiMarket from 'path to sushi market ABI'
 
 // NOTE: It is essential to pass in a Deployer into the contracts for initialization
 // This is because when we are testing the emit, the passed in contract expects a
