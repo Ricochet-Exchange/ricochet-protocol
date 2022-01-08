@@ -20,8 +20,9 @@ contract REXOneWayMarket is REXMarket {
     address _owner,
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
-    IInstantDistributionAgreementV1 _ida
-  ) public REXMarket(_owner, _host, _cfa, _ida) {
+    IInstantDistributionAgreementV1 _ida,
+    string memory _registrationKey
+  ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey) {
 
     addOutputPool(_outputToken, _feeRate, _emissionRate, _requestId);
 
