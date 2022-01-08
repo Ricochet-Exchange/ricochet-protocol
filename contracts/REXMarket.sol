@@ -63,6 +63,7 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   IInstantDistributionAgreementV1 ida;  // The stored instant dist. agreement class address
   ITellor oracle;                       // Address of deployed simple oracle for input//output token
   Market market;
+  uint32 PRIMARY_OUTPUT_INDEX = 0;
 
   // TODO: Emit these events where appropriate
   /// @dev Distribution event. Emitted on each token distribution operation.
@@ -88,6 +89,7 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
         SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
         SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
 
+    console.log(_registrationKey);
     if(bytes(_registrationKey).length > 0) {
         host.registerAppWithKey(configWord, _registrationKey);
     } else {
@@ -108,8 +110,8 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     market.rateTolerance = _rateTolerance;
     oracle = _tellor;
     OracleInfo memory newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
-    // TODO: Check oracle and set init price, initialy set to 0s
     market.oracles[market.inputToken] = newOracle;
+    updateTokenPrice(_inputToken);
   }
 
   function addOutputPool(
@@ -126,7 +128,6 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     _createIndex(market.numOutputPools, _token);
     market.numOutputPools++;
     OracleInfo memory newOracle = OracleInfo(_requestId, 0, 0);
-    // TODO: Check oracle and set init price, initialy set to 0s
     market.oracles[_token] = newOracle;
     updateTokenPrice(_token);
   }
@@ -144,9 +145,12 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
   // Oracle Functions
 
   function updateTokenPrice(ISuperToken _token) public {
+    console.log("token", address(_token));
     (bool ifRetrieve,
     uint256 value,
     uint256 timestampRetrieved) = getCurrentValue(market.oracles[_token].requestId);
+    console.log("rid", market.oracles[_token].requestId);
+    console.log("timestampRetrieved", timestampRetrieved);
     require(ifRetrieve, "!getCurrentValue");
     require(timestampRetrieved >= block.timestamp - 3600, "!currentValue");
     market.oracles[_token].usdPrice = value;
@@ -183,14 +187,30 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     returns (bytes memory newCtx)
   {
     if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass)) return _ctx;
+    console.log("inside after agreement1");
+
     newCtx = _ctx;
-    (address shareholder,
-     int96 flowRate) = _getShareholderInfo(_agreementData);
 
-    // newCtx = harvest(newCtx);
+    // NOTE: This section be moved to a method: if(shouldDistribute()) { ... }
+    (, , uint128 totalUnitsApproved, uint128 totalUnitsPending) = ida.getIndex(
+                                                                         market.outputPools[PRIMARY_OUTPUT_INDEX].token,
+                                                                         address(this),
+                                                                         PRIMARY_OUTPUT_INDEX);
+    // Check balance and account for
+    uint256 balance = ISuperToken(market.inputToken).balanceOf(address(this)) /
+                      (10 ** (18 - ERC20(market.inputToken.getUnderlyingToken()).decimals()));
 
-    newCtx = distribute(newCtx);
+    if (totalUnitsApproved + totalUnitsPending > 0 && balance > 0) {
+      newCtx = distribute(newCtx);
+    }
+
+    (address shareholder, int96 flowRate) = _getShareholderInfo(_agreementData);
+
+    console.log("inside after agreement4");
+
     newCtx = _updateShareholder(newCtx, shareholder, flowRate);
+    console.log("inside after agreement5");
+
   }
 
   function afterAgreementUpdated(
@@ -259,9 +279,36 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
     newCtx = _updateShareholder(newCtx, shareholder, 0);
   }
 
+  /// @dev Get flow rate for `streamer`
+  /// @param streamer is streamer address
+  /// @return requesterFlowRate `streamer` flow rate
+  function getStreamRate(address streamer) external view returns (int96 requesterFlowRate) {
+    (, requesterFlowRate, , ) = cfa.getFlow(market.inputToken, streamer, address(this));
+  }
+
+  /// @dev Get `streamer` IDA subscription info for token with index `index`
+  /// @param index is token index in IDA
+  /// @param streamer is streamer address
+  /// @return exist Does the subscription exist?
+  /// @return approved Is the subscription approved?
+  /// @return units Units of the suscription.
+  /// @return pendingDistribution Pending amount of tokens to be distributed for unapproved subscription.
+  function getIDAShares(uint32 index, address streamer) external view returns (bool exist,
+                bool approved,
+                uint128 units,
+                uint256 pendingDistribution) {
+
+    (exist, approved, units, pendingDistribution) = ida.getSubscription(
+                                                                  market.outputPools[index].token,
+                                                                  address(this),
+                                                                  index,
+                                                                  streamer);
+  }
+
   function _updateShareholder(bytes memory ctx, address shareholder, int96 shareholderFlowRate) internal returns (bytes memory newCtx) {
     // TODO: We need to make sure this for-loop won't run out of gas, do this we can set a limit on numOutputPools
     // We need to go through all the output tokens and update their IDA shares
+    newCtx = ctx;
     for (uint32 index = 0; index < market.numOutputPools; index++) {
       newCtx = _updateSubscriptionWithContext(newCtx, index, shareholder, uint128(uint(int(shareholderFlowRate))), market.outputPools[index].token);
       // TODO: Update the fee taken by the DAO
@@ -359,6 +406,8 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
 
 
   function _isOutputToken(ISuperToken _superToken) internal view returns (bool) {
+    console.log("_isOutputToken", address(_superToken));
+    console.log("market.oracles[_superToken].requestId", market.oracles[_superToken].requestId );
     if (market.oracles[_superToken].requestId != 0) {
       return true;
     } else {
@@ -381,6 +430,8 @@ contract REXMarket is Ownable, SuperAppBase, Initializable {
 // Superfluid Agreement Management Methods
 
   function _createIndex(uint256 index, ISuperToken distToken) internal {
+    console.log("Create index", index);
+    console.log(address(distToken));
     host.callAgreement(
        ida,
        abi.encodeWithSelector(
