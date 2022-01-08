@@ -1,15 +1,14 @@
-require('@nomiclabs/hardhat-waffle');
-require('@nomiclabs/hardhat-web3');
-require('@nomiclabs/hardhat-ethers');
-require('@openzeppelin/hardhat-upgrades');
-require('hardhat-contract-sizer');
-require("hardhat-gas-reporter");
-require('@nomiclabs/hardhat-etherscan');
-require('solidity-coverage');
+import '@nomiclabs/hardhat-waffle';
+import '@nomiclabs/hardhat-web3';
+import '@nomiclabs/hardhat-ethers';
+import '@openzeppelin/hardhat-upgrades';
+import 'hardhat-contract-sizer';
+import "hardhat-gas-reporter";
+import '@nomiclabs/hardhat-etherscan';
+import 'solidity-coverage';
 require('dotenv').config();
-import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-web3";
-import "@nomiclabs/hardhat-waffle";
+
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
