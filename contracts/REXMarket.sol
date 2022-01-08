@@ -57,12 +57,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint8 numOutputPools; // Indexes outputPools and outputPoolFees
     }
 
-    // We are assuming these variable won't be directly used by the inheriting contracts
     ISuperfluid private host; // Superfluid host contract
     IConstantFlowAgreementV1 private cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 private ida; // The stored instant dist. agreement class address
     ITellor private oracle; // Address of deployed simple oracle for input//output token
     Market private market;
+    uint32 private constant PRIMARY_OUTPUT_INDEX = 0;
 
     // TODO: Emit these events where appropriate
     /// @dev Distribution event. Emitted on each token distribution operation.
@@ -92,6 +92,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
             SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
 
+        console.log(_registrationKey);
         if (bytes(_registrationKey).length > 0) {
             host.registerAppWithKey(configWord, _registrationKey);
         } else {
@@ -115,8 +116,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.rateTolerance = _rateTolerance;
         oracle = _tellor;
         OracleInfo memory newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
-        // TODO: Check oracle and set init price, initialy set to 0s
         market.oracles[market.inputToken] = newOracle;
+        updateTokenPrice(_inputToken);
     }
 
     function addOutputPool(
@@ -134,7 +135,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
         OracleInfo memory newOracle = OracleInfo(_requestId, 0, 0);
-        // TODO: Check oracle and set init price, initialy set to 0s
         market.oracles[_token] = newOracle;
         updateTokenPrice(_token);
     }
@@ -145,24 +145,27 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function distribute(bytes memory _ctx)
         public
         virtual
-        returns (bytes memory _newCtx);
+        returns (bytes memory newCtx);
 
     // Harvests rewards if any
     function harvest(bytes memory _ctx)
         public
         virtual
-        returns (bytes memory _newCtx);
+        returns (bytes memory newCtx);
 
     // Standardized functionality for all REX Markets
 
     // Oracle Functions
 
     function updateTokenPrice(ISuperToken _token) public {
+        console.log("token", address(_token));
         (
             bool ifRetrieve,
             uint256 value,
             uint256 timestampRetrieved
         ) = getCurrentValue(market.oracles[_token].requestId);
+        console.log("rid", market.oracles[_token].requestId);
+        console.log("timestampRetrieved", timestampRetrieved);
         require(ifRetrieve, "!getCurrentValue");
         require(timestampRetrieved >= block.timestamp - 3600, "!currentValue");
         market.oracles[_token].usdPrice = value;
@@ -178,16 +181,15 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256 _timestampRetrieved
         )
     {
-        uint256 count = oracle.getNewValueCountbyRequestId(_requestId);
-        uint256 time = oracle.getTimestampbyRequestIDandIndex(
+        uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
+        _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
             _requestId,
-            count - 1
+            _count - 1
         );
-        uint256 value = oracle.retrieveData(_requestId, time);
+        _value = oracle.retrieveData(_requestId, _timestampRetrieved);
 
-        if (value > 0) return (true, value, time);
-        
-        return (false, 0, time);
+        if (_value > 0) return (true, _value, _timestampRetrieved);
+        return (false, 0, _timestampRetrieved);
     }
 
     // Superfluid Functions
@@ -204,19 +206,41 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         override
         onlyHost
         onlyExpected(_superToken, _agreementClass)
-        returns (bytes memory newCtx)
+        returns (bytes memory _newCtx)
     {
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-        newCtx = _ctx;
+        console.log("inside after agreement1");
+
+        _newCtx = _ctx;
+
+        // NOTE: This section be moved to a method: if(shouldDistribute()) { ... }
+        (, , uint128 totalUnitsApproved, uint128 totalUnitsPending) = ida
+            .getIndex(
+                market.outputPools[PRIMARY_OUTPUT_INDEX].token,
+                address(this),
+                PRIMARY_OUTPUT_INDEX
+            );
+        // Check balance and account for
+        uint256 balance = ISuperToken(market.inputToken).balanceOf(
+            address(this)
+        ) /
+            (10 **
+                (18 -
+                    ERC20(market.inputToken.getUnderlyingToken()).decimals()));
+
+        if (totalUnitsApproved + totalUnitsPending > 0 && balance > 0) {
+            _newCtx = distribute(_newCtx);
+        }
+
         (address shareholder, int96 flowRate) = _getShareholderInfo(
             _agreementData
         );
 
-        // newCtx = harvest(newCtx);
+        console.log("inside after agreement4");
 
-        newCtx = distribute(newCtx);
-        newCtx = _updateShareholder(newCtx, shareholder, flowRate);
+        _newCtx = _updateShareholder(_newCtx, shareholder, flowRate);
+        console.log("inside after agreement5");
     }
 
     function afterAgreementUpdated(
@@ -231,17 +255,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         override
         onlyHost
         onlyExpected(_superToken, _agreementClass)
-        returns (bytes memory newCtx)
+        returns (bytes memory _newCtx)
     {
-        newCtx = _ctx;
+        _newCtx = _ctx;
 
         (address shareholder, int96 flowRate) = _getShareholderInfo(
             _agreementData
         );
-        
-        newCtx = harvest(newCtx);
-        newCtx = distribute(newCtx);
-        newCtx = _updateShareholder(newCtx, shareholder, flowRate);
+
+        _newCtx = harvest(_newCtx);
+        _newCtx = distribute(_newCtx);
+        _newCtx = _updateShareholder(_newCtx, shareholder, flowRate);
     }
 
     // We need before agreement to get the uninvested amount using the flowRate before update
@@ -257,7 +281,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         override
         onlyExpected(_superToken, _agreementClass)
         onlyHost
-        returns (bytes memory cbdata)
+        returns (bytes memory _cbdata)
     {
         (address shareholder, ) = _getShareholderInfo(_agreementData);
 
@@ -271,28 +295,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256(uint96(flowRateMain)),
             market.lastDistributionAt
         );
-        cbdata = abi.encode(uinvestAmount);
-    }
-
-    function _updateShareholder(
-        bytes memory _ctx,
-        address _shareholder,
-        int96 _shareholderFlowRate
-    ) internal returns (bytes memory newCtx) {
-        newCtx = _ctx;
-
-        // TODO: We need to make sure this for-loop won't run out of gas, do this we can set a limit on numOutputPools
-        // We need to go through all the output tokens and update their IDA shares
-        for (uint32 index = 0; index < market.numOutputPools; index++) {
-            newCtx = _updateSubscriptionWithContext(
-                newCtx,
-                index,
-                _shareholder,
-                uint128(uint256(int256(_shareholderFlowRate))),
-                market.outputPools[index].token
-            );
-            // TODO: Update the fee taken by the DAO
-        }
+        _cbdata = abi.encode(uinvestAmount);
     }
 
     function afterAgreementTerminated(
@@ -302,8 +305,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata _cbdata, //_cbdata,
         bytes calldata _ctx
-    ) external override onlyHost returns (bytes memory newCtx) {
-        newCtx = _ctx;
+    ) external override onlyHost returns (bytes memory _newCtx) {
+        _newCtx = _ctx;
         (address shareholder, ) = _getShareholderInfo(_agreementData);
         uint256 uninvestAmount = abi.decode(_cbdata, (uint256));
         // Refund the unswapped amount back to the person who started the stream
@@ -312,64 +315,124 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             shareholder,
             uninvestAmount
         );
-        newCtx = _updateShareholder(newCtx, shareholder, 0);
+        _newCtx = _updateShareholder(_newCtx, shareholder, 0);
+    }
+
+    /// @dev Get flow rate for `_streamer`
+    /// @param _streamer is streamer address
+    /// @return _requesterFlowRate `_streamer` flow rate
+    function getStreamRate(address _streamer)
+        external
+        view
+        returns (int96 _requesterFlowRate)
+    {
+        (, _requesterFlowRate, , ) = cfa.getFlow(
+            market.inputToken,
+            _streamer,
+            address(this)
+        );
+    }
+
+    /// @dev Get `_streamer` IDA subscription info for token with index `_index`
+    /// @param _index is token index in IDA
+    /// @param _streamer is streamer address
+    /// @return _exist Does the subscription exist?
+    /// @return _approved Is the subscription approved?
+    /// @return _units Units of the suscription.
+    /// @return _pendingDistribution Pending amount of tokens to be distributed for unapproved subscription.
+    function getIDAShares(uint32 _index, address _streamer)
+        external
+        view
+        returns (
+            bool _exist,
+            bool _approved,
+            uint128 _units,
+            uint256 _pendingDistribution
+        )
+    {
+        (_exist, _approved, _units, _pendingDistribution) = ida.getSubscription(
+            market.outputPools[_index].token,
+            address(this),
+            _index,
+            _streamer
+        );
+    }
+
+    function _updateShareholder(
+        bytes memory _ctx,
+        address _shareholder,
+        int96 _shareholderFlowRate
+    ) internal returns (bytes memory _newCtx) {
+        // TODO: We need to make sure this for-loop won't run out of gas, do this we can set a limit on numOutputPools
+        // We need to go through all the output tokens and update their IDA shares
+        _newCtx = _ctx;
+        for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
+            _newCtx = _updateSubscriptionWithContext(
+                _newCtx,
+                _index,
+                _shareholder,
+                uint128(uint256(int256(_shareholderFlowRate))),
+                market.outputPools[_index].token
+            );
+            // TODO: Update the fee taken by the DAO
+        }
     }
 
     function _getShareholderInfo(bytes calldata _agreementData)
         internal
         view
-        returns (address shareholder, int96 flowRate)
+        returns (address _shareholder, int96 _flowRate)
     {
-        (shareholder, ) = abi.decode(_agreementData, (address, address));
-        (, flowRate, , ) = cfa.getFlow(
+        (_shareholder, ) = abi.decode(_agreementData, (address, address));
+        (, _flowRate, , ) = cfa.getFlow(
             market.inputToken,
-            shareholder,
+            _shareholder,
             address(this)
         );
     }
 
-    /// @dev Distributes `distAmount` amount of `distToken` token among all IDA index subscribers
-    /// @param index IDA index ID
-    /// @param distAmount amount to distribute
-    /// @param distToken distribute token address
-    /// @param ctx SuperFluid context data
-    /// @return newCtx updated SuperFluid context data
+    /// @dev Distributes `_distAmount` amount of `_distToken` token among all IDA index subscribers
+    /// @param _index IDA index ID
+    /// @param _distAmount amount to distribute
+    /// @param _distToken distribute token address
+    /// @param _ctx SuperFluid context data
+    /// @return _newCtx updated SuperFluid context data
     function _idaDistribute(
-        uint32 index,
-        uint128 distAmount,
-        ISuperToken distToken,
-        bytes memory ctx
-    ) internal returns (bytes memory newCtx) {
-        newCtx = ctx;
-        if (newCtx.length == 0) {
+        uint32 _index,
+        uint128 _distAmount,
+        ISuperToken _distToken,
+        bytes memory _ctx
+    ) internal returns (bytes memory _newCtx) {
+        _newCtx = _ctx;
+        if (_newCtx.length == 0) {
             // No context provided
             host.callAgreement(
                 ida,
                 abi.encodeWithSelector(
                     ida.distribute.selector,
-                    distToken,
-                    index,
-                    distAmount,
+                    _distToken,
+                    _index,
+                    _distAmount,
                     new bytes(0) // placeholder ctx
                 ),
                 new bytes(0) // user data
             );
         } else {
             require(
-                host.isCtxValid(newCtx) || newCtx.length == 0,
+                host.isCtxValid(_newCtx) || _newCtx.length == 0,
                 "!distribute"
             );
-            (newCtx, ) = host.callAgreementWithContext(
+            (_newCtx, ) = host.callAgreementWithContext(
                 ida,
                 abi.encodeWithSelector(
                     ida.distribute.selector,
-                    distToken,
-                    index,
-                    distAmount,
+                    _distToken,
+                    _index,
+                    _distAmount,
                     new bytes(0) // placeholder ctx
                 ),
                 new bytes(0), // user data
-                newCtx
+                _newCtx
             );
         }
     }
@@ -379,21 +442,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint256 _prevUpdateTimestamp,
         uint256 _flowRate,
         uint256 _lastDistributedAt
-    ) internal view returns (uint256) {
-        uint256 _userUninvestedSum;
-
-        // solhint-disable not-rely-on-time
-        (_prevUpdateTimestamp > _lastDistributedAt)
-            ? _userUninvestedSum +=
-                _flowRate *
-                (block.timestamp - _prevUpdateTimestamp)
-            : _userUninvestedSum =
+    ) internal view returns (uint256 _uninvestedAmount) {
+        _uninvestedAmount =
             _flowRate *
-            (block.timestamp - _lastDistributedAt);
-        // solhint-enable not-rely-on-time
+            (block.timestamp -
+                (
+                    (_prevUpdateTimestamp > _lastDistributedAt)
+                        ? _prevUpdateTimestamp
+                        : _lastDistributedAt
+                ));
 
         // console.log("Uninvested amount is: %s", _userUninvestedSum);
-        return _userUninvestedSum;
     }
 
     // Modifiers
@@ -405,11 +464,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     /// @dev Accept only input token for CFA, output and subsidy tokens for IDA
-    modifier onlyExpected(ISuperToken superToken, address agreementClass) {
-        if (_isCFAv1(agreementClass)) {
-            require(_isInputToken(superToken), "!inputAccepted");
-        } else if (_isIDAv1(agreementClass)) {
-            require(_isOutputToken(superToken), "!outputAccepted");
+    modifier onlyExpected(ISuperToken _superToken, address _agreementClass) {
+        if (_isCFAv1(_agreementClass)) {
+            require(_isInputToken(_superToken), "!inputAccepted");
+        } else if (_isIDAv1(_agreementClass)) {
+            require(_isOutputToken(_superToken), "!outputAccepted");
         }
         _;
     }
@@ -429,6 +488,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         view
         returns (bool)
     {
+        console.log("_isOutputToken", address(_superToken));
+        console.log(
+            "market.oracles[_superToken].requestId",
+            market.oracles[_superToken].requestId
+        );
         if (market.oracles[_superToken].requestId != 0) {
             return true;
         } else {
@@ -455,6 +519,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
+        console.log("Create index", index);
+        console.log(address(distToken));
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
