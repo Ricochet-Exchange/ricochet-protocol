@@ -471,20 +471,24 @@ describe('REXSushiFarmMarket', () => {
   }
 
   describe('REXSushiFarmMarket', async () => {
-    xit('should be correctly configured', async () => {
+    it('should be correctly configured', async () => {
       expect(await app.isAppJailed()).to.equal(false);
       expect(await app.getInputToken()).to.equal(usdcx.address);
-      expect(await app.getOuputToken()).to.equal(slpx.address);
-      expect(await app.getOuputIndexId()).to.equal(0);
-      expect(await app.getSubsidyToken()).to.equal(ric.address);
-      expect(await app.getSubsidyIndexId()).to.equal(1);
-      expect(await app.getSubsidyRate()).to.equal('400000000000000000');
-      expect(await app.getTotalInflow()).to.equal(0);
-      expect(await app.getSushiRouter()).to.equal(SUSHISWAP_ROUTER_ADDRESS);
-      expect(await app.getTellorOracle()).to.equal(TELLOR_ORACLE_ADDRESS);
-      expect(await app.getRequestId()).to.equal(60);
+      expect(await app.getOuputPool(0)).to.equal(`${slpx.address},20000,0`);
+      expect(await app.getOuputPool(1)).to.equal(`${sushix.address},200000,0`);
+      expect(await app.getOuputPool(2)).to.equal(`${maticx.address},200000,0`);
+
+      // TODO: Verify these work
+      // expect(await app.getOracleInfo(ETH_ADDRESS)).to.equal(`1,${oraclePrice},0`);
+      // expect(await app.getOracleInfo(usdcx.address)).to.equal(`78,${},0`);
+      // expect(await app.getOracleInfo(matix.address)).to.equal(`6,20000,0`);
+      // expect(await app.getOracleInfo(sushix.address)).to.equal(`80,20000,0`);
+
       expect(await app.getOwner()).to.equal(u.admin.address);
-      expect(await app.getFeeRate()).to.equal(20000);
+      expect(await app.getTotalInflow()).to.equal(0);
+      expect(await app.getRouter()).to.equal(SUSHISWAP_ROUTER_ADDRESS);
+      expect(await app.getOracle()).to.equal(TELLOR_ORACLE_ADDRESS);
+
     });
 
     xit('should create a stream exchange with the correct parameters', async () => {
@@ -527,7 +531,7 @@ describe('REXSushiFarmMarket', () => {
       expect(await app.getStreamRate(u.bob.address)).to.equal('0');
     });
 
-    it('should distribute tokens to streamers', async () => {
+    xit('should distribute tokens to streamers', async () => {
       // await approveSubscriptions([u.alice.address, u.bob.address]);
 
       console.log('Transfer alice');
@@ -596,8 +600,8 @@ describe('REXSushiFarmMarket', () => {
       console.log(deltaBob)
 
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaOwner.sushix / (deltaAlice.sushix + deltaBob.sushix + deltaOwner.sushix)).to.be.within(0.1,0.12)
-      expect(deltaOwner.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaOwner.maticx)).to.be.within(0.1,0.12)
+      expect(deltaOwner.sushix / (deltaAlice.sushix + deltaBob.sushix + deltaOwner.sushix)).to.be.within(0.2,0.200001)
+      expect(deltaOwner.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaOwner.maticx)).to.be.within(0.2,0.200001)
       expect(deltaOwner.slpx / (deltaAlice.slpx + deltaBob.slpx + deltaOwner.slpx)).to.within(0.02, 0.020001)
       expect(deltaAlice.sushix * 2).to.be.within(deltaBob.sushix * 0.999, deltaBob.sushix * 1.001)
       expect(deltaAlice.maticx * 2).to.be.within(deltaBob.maticx * 0.999, deltaBob.maticx * 1.001)
