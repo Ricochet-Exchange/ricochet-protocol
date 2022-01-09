@@ -102,7 +102,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
-    function emergencyCloseStream(address streamer) external virtual onlyOwner {
+    function emergencyCloseStream(address streamer) external virtual {
         // Allows anyone to close any stream if the app is jailed
         bool isJailed = host.isAppJailed(ISuperApp(address(this)));
 
