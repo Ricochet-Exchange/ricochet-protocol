@@ -154,7 +154,7 @@ contract REXSushiFarmMarket is REXMarket {
   }
 
   // Harvests rewards if any
-  function harvest(bytes memory ctx) public override returns (bytes memory newCtx) {
+  function harvest(bytes memory ctx) public returns (bytes memory newCtx) {
 
     newCtx = ctx;
     // Get SUSHI and MATIC reward

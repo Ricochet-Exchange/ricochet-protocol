@@ -2,10 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import './REXMarket.sol';
 
 contract REXOneWayMarket is REXMarket {
+  using SafeERC20 for ERC20;
+
   uint32 constant OUTPUT_INDEX = 0;
   IUniswapV2Router02 router;
     // REX One Way Market Contracts
@@ -13,10 +16,6 @@ contract REXOneWayMarket is REXMarket {
     // - Option to add subsidy tokens (can't be the same as the output token)
 
   constructor(
-    ISuperToken _outputToken,
-    uint128 _feeRate,
-    uint256 _emissionRate,
-    uint256 _requestId,
     address _owner,
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
@@ -24,19 +23,41 @@ contract REXOneWayMarket is REXMarket {
     string memory _registrationKey
   ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey) {
 
-    addOutputPool(_outputToken, _feeRate, _emissionRate, _requestId);
-
   }
 
-  function initializeMarket(
+  function initializeOneWayMarket(
     IUniswapV2Router02 _router,
+    ITellor _tellor,
     ISuperToken _inputToken,
     uint256 _rateTolerance,
-    ITellor _tellor,
-    uint256 _inputTokenRequestId) public onlyOwner initializer {
+    uint256 _inputTokenRequestId,
+    ISuperToken _outputToken,
+    uint128 _feeRate,
+    uint256 _ouptutTokenRequestId) public onlyOwner initializer {
 
     router = _router;
     REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId);
+    addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId);
+
+    // Approvals
+    // Unlimited approve for sushiswap
+    ERC20(market.inputToken.getUnderlyingToken()).safeIncreaseAllowance(
+        address(router),
+        2**256 - 1
+    );
+    // ERC20(market.outputPools[0].token.getUnderlyingToken()).safeIncreaseAllowance(
+    //     address(router),
+    //     2**256 - 1
+    // );
+    // and Supertoken upgrades
+    ERC20(market.inputToken.getUnderlyingToken()).safeIncreaseAllowance(
+        address(market.inputToken),
+        2**256 - 1
+    );
+    ERC20(market.outputPools[OUTPUT_INDEX].token.getUnderlyingToken()).safeIncreaseAllowance(
+        address(market.outputPools[OUTPUT_INDEX].token),
+        2**256 - 1
+    );
 
   }
 
@@ -66,9 +87,17 @@ contract REXOneWayMarket is REXMarket {
     uint256 feeCollected = actualAmount * market.outputPools[OUTPUT_INDEX].feeRate / 1e6;
     uint256 distAmount = actualAmount - feeCollected;
 
+    console.log("ouptutBalance", outputBalance);
+    console.log("actualAmount", actualAmount);
+    console.log("feesCollected", feeCollected);
+    console.log("distAmount", distAmount);
+
     // Make the distribution for output pool 0
     newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[OUTPUT_INDEX].token, newCtx);
     emit Distribution(distAmount, feeCollected, address(market.outputPools[OUTPUT_INDEX].token));
+
+    // Take the fee
+    ISuperToken(market.outputPools[OUTPUT_INDEX].token).transfer(owner(), feeCollected);
 
     // Go through the other OutputPools and trigger distributions
     for( uint32 index = 1; index < market.numOutputPools; index++) {

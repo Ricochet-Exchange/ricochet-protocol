@@ -204,12 +204,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         virtual
         returns (bytes memory _newCtx);
 
-    // Harvests rewards if any
-    function harvest(bytes memory _ctx)
-        public
-        virtual
-        returns (bytes memory _newCtx);
-
     // Market initialization methods
 
     function initializeMarket(
@@ -270,7 +264,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         require(_ifRetrieve, "!getCurrentValue");
         require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
-        
+
         market.oracles[_token].usdPrice = _value;
         market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
     }
@@ -624,7 +618,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData
         );
 
-        _newCtx = harvest(_newCtx);
         _newCtx = distribute(_newCtx);
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate);
     }
