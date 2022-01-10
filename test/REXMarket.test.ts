@@ -1,70 +1,69 @@
-import { ContractType, setup } from "./../misc/setup";
+import { setup } from "./../misc/setup";
 import { common } from "./../misc/common";
-import { waffle } from "hardhat";
+import { waffle, ethers } from "hardhat";
 import { expect } from "chai";
-import { web3tx } from "@decentral.ee/web3-helpers";
+import axios from "axios";
+import SuperfluidSDK from "@superfluid-finance/js-sdk";
 
-
-
-import {
-  getSeconds,
-  increaseTime,
-  impersonateAccounts,
-} from "./../misc/helpers";
+import { getSeconds, increaseTime } from "./../misc/helpers";
 const { loadFixture } = waffle;
 
-let sf, superT, u, deployRexMarket,app;
+let sf: SuperfluidSDK.Framework,
+  superT: any,
+  u: any,
+  app: any,
+  tokenss: any,
+  sfRegistrationKey: any,
+  tp: any;
 
 describe("RexMarket", function () {
   before(async () => {
-    const {
-      superfluid,
-      users,
-      tokens,
-      superTokens,
-      contracts,
-      addresses,
-      deployContracts,
-    } = await setup();
+    const { superfluid, users, tokens, superTokens, contracts, addresses } =
+      await setup();
+    const { createSFRegistrationKey } = await common();
     u = users;
     sf = superfluid;
     superT = superTokens;
+    tokenss = tokens;
+    sfRegistrationKey = createSFRegistrationKey;
   });
 
   async function deployContracts() {
-    // ==============
-    // Deploy REXMarket contract
+    const registrationKey = await sfRegistrationKey(sf, u.admin.address);
 
-    // Include this in REXMarket deployment constructor code
-    const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
-
-    const REXMarketFactory = await ethers.getContractFactory('REXMarket', u.admin.address);
+    const REXMarketFactory = await ethers.getContractFactory(
+      "REXMarket",
+      u.admin.address
+    );
     app = await REXMarketFactory.deploy(
-        u.admin.address,
-        sf.host.address,
-        sf.agreements.cfa.address,
-        sf.agreements.ida.address
+      u.admin.address,
+      (sf.host as any).address,
+      (sf.agreements.cfa as any)?.address,
+      (sf.agreements.ida as any)?.address
     );
 
     u.app = sf.user({
-        address: app.address,
-        token: wbtcx.address,
+      address: app.address,
+      token: superT.wbtcx.address,
     });
 
-    u.app.alias = 'App';
+    u.app.alias = "App";
 
-    // ==============
-    // Get actual price
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd');
-    oraclePrice = parseInt(response.data['wrapped-bitcoin'].usd * 1.02 * 1000000).toString();
-    console.log('oraclePrice', oraclePrice);
+    const response = await axios.get(
+      "https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd"
+    );
+    let oraclePrice = (
+      parseInt(response.data["wrapped-bitcoin"].usd, 10) *
+      1.02 *
+      1000000
+    ).toString();
+    console.log("oraclePrice", oraclePrice);
     await tp.submitValue(60, oraclePrice);
-}
-
+  }
 
   it("make sure uninvested sum is streamed back to the streamer / investor / swapper", async () => {
     // Always add the following line of code in all test cases (waffle fixture)
-    await loadFixture(deployRexMarket);
+    await loadFixture(deployContracts);
 
     // start flow of 1000 USDC from admin address
     console.log(

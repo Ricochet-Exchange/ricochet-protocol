@@ -1,12 +1,10 @@
 import { ethers } from "hardhat";
 import { impersonateAccounts } from "./helpers";
 import SuperfluidSDK from "@superfluid-finance/js-sdk";
-import { web3tx } from "@decentral.ee/web3-helpers";
 import { waffle } from "hardhat";
-
-import SuperfluidGovernanceBase from "@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json";
-import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
 const { provider, loadFixture } = waffle;
+
+const TellorPlayground = require('usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json');
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
@@ -26,18 +24,33 @@ const SF_RESOLVER = "0xE0cc76334405EE8b39213E620587d815967af39C";
 const RIC_TOKEN_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
 const PROVIDER = provider;
 
-export enum ContractType {
-  REXMarket = "REXMarket",
-  RexOneWayMarket = "RexOneWayMarket",
-  RexSushiFarmMarket = "RexSushiFarmMarket",
+interface ISuperToken {
+  ethx: any;
+  usdcx: any;
+  wbtcx: any;
+  daix: any;
+}
+
+interface IUser {
+  address: string;
+  token: string;
+  options?: any;
+  alias?:string;
 }
 
 export const setup = async () => {
-  const users: any = {};
+  const users: { [key: string]: IUser } = {};
   const tokens: any = {};
-  const superTokens: any = {};
+
+  const superTokens: ISuperToken = {
+    ethx: "0",
+    usdcx: "0",
+    wbtcx: "0",
+    daix: "0",
+  };
+
   const contracts: any = {};
-  const addresses: any = [
+  const addresses: string[] = [
     OWNER_ADDRESS,
     ALICE_ADDRESS,
     CARL_ADDRESS,
@@ -72,18 +85,18 @@ export const setup = async () => {
 
   // Declare all users for transactions (usdcx)
   for (let i = 0; i < names.length; i += 1) {
-    users[names[i].toLowerCase()] = superfluid.user({
+    users[names[i]] = superfluid.user({
       address: accounts[i].address,
       token: superTokens.usdcx.address,
     });
-    users[names[i].toLowerCase()].alias = names[i];
+    users[names[i]].alias = names[i];
   }
 
   // Decalare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
     "ERC20",
     RIC_TOKEN_ADDRESS,
-    users.admin
+    accounts[0]
   );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
@@ -98,33 +111,6 @@ export const setup = async () => {
     await superTokens.usdcx.getUnderlyingToken()
   );
 
-  async function deployContracts(contract: ContractType) {
-    switch (contract) {
-      case ContractType.REXMarket:
-        const REXMarketFactory = await ethers.getContractFactory(
-          "REXMarket",
-          users.owner
-        );
-        const app = await REXMarketFactory.deploy(
-          users.owner.address,
-          superfluid.host.address,
-          superfluid.agreements.cfa.address,
-          superfluid.agreements.ida.address
-        );
-        return app;
-        break;
-
-      case ContractType.RexOneWayMarket:
-        break;
-
-      case ContractType.RexSushiFarmMarket:
-        break;
-
-      default:
-        break;
-    }
-  }
-
   return {
     superfluid,
     users,
@@ -132,6 +118,5 @@ export const setup = async () => {
     superTokens,
     contracts,
     addresses,
-    deployContracts,
   };
 };

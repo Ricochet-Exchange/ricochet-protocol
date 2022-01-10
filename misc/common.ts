@@ -3,6 +3,11 @@ import { impersonateAccounts } from "./helpers";
 import SuperfluidSDK from "@superfluid-finance/js-sdk";
 import "@nomiclabs/hardhat-web3";
 import { setup } from "./setup";
+import { parseUnits } from "@ethersproject/units";
+//const { parseUnits } = require("@ethersproject/units");
+
+const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
+const SuperfluidGovernanceBase = require('@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json');
 
 export const common = async () => {
   const {
@@ -12,9 +17,7 @@ export const common = async () => {
     superTokens,
     contracts,
     addresses,
-    getContract,
-    deployContracts,
-  } = await setup();
+    } = await setup();
 
   const appBalances = {
     ethx: [],
@@ -61,13 +64,13 @@ export const common = async () => {
 
   async function upgrade(accounts) {
     for (let i = 0; i < accounts.length; ++i) {
-      await web3tx(usdcx.upgrade, `${accounts[i].alias} upgrades many USDCx`)(
+      await web3tx(superTokens.usdcx.upgrade, `${accounts[i].alias} upgrades many USDCx`)(
         parseUnits("100000000", 18),
         {
           from: accounts[i].address,
         }
       );
-      await web3tx(daix.upgrade, `${accounts[i].alias} upgrades many DAIx`)(
+      await web3tx(superTokens.daix.upgrade, `${accounts[i].alias} upgrades many DAIx`)(
         parseUnits("100000000", 18),
         {
           from: accounts[i].address,

@@ -1,19 +1,19 @@
-const { network, ethers } = require("hardhat");
-const { hexValue } = require("@ethersproject/bytes");
-const { parseEther } = require("@ethersproject/units");
+import {parseEther} from "@ethersproject/units";
+import { hexValue } from "@ethersproject/bytes";
+import { network, ethers } from "hardhat";
+import BigNumber from 'bignumber.js'
 
+export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
-const getBigNumber = (number) => ethers.BigNumber.from(number);
+export const getTimeStamp = (date: number) => Math.floor(date / 1000);
 
-const getTimeStamp = (date) => Math.floor(date / 1000);
+export const getTimeStampNow = () => Math.floor(Date.now() / 1000);
 
-const getTimeStampNow = () => Math.floor(Date.now() / 1000);
+export const getDate = (timestamp: number) => new Date(timestamp * 1000).toDateString();
 
-const getDate = (timestamp) => new Date(timestamp * 1000).toDateString();
+export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to seconds
 
-const getSeconds = (days) => 3600 * 24 * days; // Changes days to seconds
-
-const impersonateAccounts = async (accounts) => {
+export const impersonateAccounts = async (accounts: any) => {
     let signers = [];
 
     for (let i = 0; i < accounts.length; ++i) {
@@ -33,23 +33,23 @@ const impersonateAccounts = async (accounts) => {
     return signers;
 }
 
-const currentBlockTimestamp = async () => {
+export const currentBlockTimestamp = async () => {
     const currentBlockNumber = await ethers.provider.getBlockNumber();
     return (await ethers.provider.getBlock(currentBlockNumber)).timestamp;
 };
 
-const increaseTime = async (seconds) => {
+export const increaseTime = async (seconds: number) => {
     await network.provider.send("evm_increaseTime", [seconds]);
     await network.provider.send("evm_mine");
 };
 
-const setNextBlockTimestamp = async (timestamp) => {
+export const setNextBlockTimestamp = async (timestamp: number) => {
     await network.provider.send("evm_setNextBlockTimestamp", [timestamp])
     await network.provider.send("evm_mine")
 };
 
 // Function for converting amount from larger unit (like eth) to smaller unit (like wei)
-function convertTo(amount, decimals) {
+export function convertTo(amount: string, decimals: string) {
     return new BigNumber(amount)
         .times('1e' + decimals)
         .integerValue()
@@ -57,22 +57,9 @@ function convertTo(amount, decimals) {
 }
 
 // Function for converting amount from smaller unit (like wei) to larger unit (like ether)
-function convertFrom(amount, decimals) {
+export function convertFrom(amount: string, decimals: string) {
     return new BigNumber(amount)
         .div('1e' + decimals)
         .toString(10);
 }
 
-module.exports = {
-    getBigNumber,
-    getTimeStamp,
-    getTimeStampNow,
-    getDate,
-    getSeconds,
-    increaseTime,
-    currentBlockTimestamp,
-    setNextBlockTimestamp,
-    convertTo,
-    convertFrom,
-    impersonateAccounts
-}
