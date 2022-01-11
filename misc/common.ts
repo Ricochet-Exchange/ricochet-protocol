@@ -1,46 +1,39 @@
 import { ethers } from "hardhat";
-import { impersonateAccounts } from "./helpers";
-import SuperfluidSDK from "@superfluid-finance/js-sdk";
-import "@nomiclabs/hardhat-web3";
-import { setup } from "./setup";
 import { parseUnits } from "@ethersproject/units";
-//const { parseUnits } = require("@ethersproject/units");
+
+import { setup , IUser, ISuperToken} from "./setup";
+import { impersonateAccounts } from "./helpers";
+
 
 const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
-const SuperfluidGovernanceBase = require('@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json');
+const SuperfluidGovernanceBase = require("@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json");
 
 export const common = async () => {
-  const {
-    superfluid,
-    users,
-    tokens,
-    superTokens,
-    contracts,
-    addresses,
-    } = await setup();
+  const { superfluid, users, tokens, superTokens, contracts, addresses } =
+    await setup();
 
-  const appBalances = {
+  const appBalances : { [key: string] : string[]} = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const ownerBalances = {
+  const ownerBalances : { [key: string] : string[]}= {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const aliceBalances = {
+  const aliceBalances : { [key: string] : string[]} = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const bobBalances = {
+  const bobBalances : { [key: string] : string[]} = {
     ethx: [],
     wbtcx: [],
     daix: [],
@@ -48,7 +41,7 @@ export const common = async () => {
     ric: [],
   };
 
-  async function checkBalance(users) {
+  async function checkBalance(users: any) {
     for (let i = 0; i < users.length; ++i) {
       console.log("Balance of ", users[i].alias);
       console.log(
@@ -62,36 +55,35 @@ export const common = async () => {
     }
   }
 
-  async function upgrade(accounts) {
+  async function upgrade(accounts: any) {
     for (let i = 0; i < accounts.length; ++i) {
-      await web3tx(superTokens.usdcx.upgrade, `${accounts[i].alias} upgrades many USDCx`)(
-        parseUnits("100000000", 18),
-        {
-          from: accounts[i].address,
-        }
-      );
-      await web3tx(superTokens.daix.upgrade, `${accounts[i].alias} upgrades many DAIx`)(
-        parseUnits("100000000", 18),
-        {
-          from: accounts[i].address,
-        }
-      );
+      await web3tx(
+        superTokens.usdcx.upgrade,
+        `${accounts[i].alias} upgrades many USDCx`
+      )(parseUnits("100000000", 18), {
+        from: accounts[i].address,
+      });
+      await web3tx(
+        superTokens.daix.upgrade,
+        `${accounts[i].alias} upgrades many DAIx`
+      )(parseUnits("100000000", 18), {
+        from: accounts[i].address,
+      });
 
       await checkBalance(accounts[i]);
     }
   }
 
-  // add downgrade function as well
 
   async function logUsers() {
     let string = "user\t\ttokens\t\tnetflow\n";
     let p = 0;
-    for (const [, user] of Object.entries(u)) {
+    for (const [, user] of Object.entries(users)) {
       if (await hasFlows(user)) {
         p++;
         string += `${user.alias}\t\t${wad4human(
-          await usdcx.balanceOf(user.address)
-        )}\t\t${wad4human((await user.details()).cfa.netFlow)}
+          await superTokens.usdcx.balanceOf(user.address as any)
+        )}\t\t${wad4human((await (user as any).details()).cfa.netFlow)}
             `;
       }
     }
@@ -100,93 +92,100 @@ export const common = async () => {
     console.log(string);
   }
 
-  async function hasFlows(user) {
+  async function hasFlows(user: any) {
     const { inFlows, outFlows } = (await user.details()).cfa.flows;
     return inFlows.length + outFlows.length > 0;
   }
 
-  async function subscribe(user) {
-    // Alice approves a subscription to the app
-    console.log(superfluid.host.callAgreement);
-    console.log(superfluid.agreements.ida.address);
-    console.log(usdcx.address);
-    console.log(app.address);
-    await web3tx(
-      superfluid.host.callAgreement,
-      "user approves subscription to the app"
-    )(
-      superfluid.agreements.ida.address,
-      superfluid.agreements.ida.contract.methods
-        .approveSubscription(ethx.address, app.address, 0, "0x")
-        .encodeABI(),
-      "0x", // user data
-      {
-        from: user,
-      }
-    );
-  }
+  // Need to migrate this to superfluid sdk 
+  
+  // async function subscribe(user:any) {
+  //   // Alice approves a subscription to the app
+  //   console.log(superfluid.host.hostContract.callAgreement);
+  //   console.log(superfluid.idaV1.host.hostContract.address);
+  //   console.log(superTokens.usdcx.address);
+  //   console.log(u.app.address);
+  //   await web3tx(
+  //     (superfluid.host as any).callAgreement,
+  //     "user approves subscription to the app"
+  //   )(
+  //     (superfluid.idaV1.host.hostContract.address,
+  //     (superfluid.agreements as any).ida.contract.methods
+  //       .approveSubscription(superTokens.ethx.address, app.address, 0, "0x")
+  //       .encodeABI(),
+  //     "0x", // user data
+  //     {
+  //       from: user,
+  //     }
+  //   );
+  // }
 
-  async function updateBalances() {
-    appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
-    ownerBalances.ethx.push((await ethx.balanceOf(u.admin.address)).toString());
-    aliceBalances.ethx.push((await ethx.balanceOf(u.alice.address)).toString());
-    bobBalances.ethx.push((await ethx.balanceOf(u.bob.address)).toString());
+  // async function updateBalances() {
+  //   appBalances.ethx.push((await superTokens.ethx.balanceOf(app.address)).toString());
+  //   ownerBalances.ethx.push((await superTokens.ethx.balanceOf(users.admin.address)).toString());
+  //   aliceBalances.ethx.push((await superTokens.ethx.balanceOf(users.alice.address)).toString());
+  //   bobBalances.ethx.push((await superTokens.ethx.balanceOf(users.bob.address)).toString());
 
-    appBalances.wbtcx.push((await wbtcx.balanceOf(app.address)).toString());
-    ownerBalances.wbtcx.push(
-      (await wbtcx.balanceOf(u.admin.address)).toString()
-    );
-    aliceBalances.wbtcx.push(
-      (await wbtcx.balanceOf(u.alice.address)).toString()
-    );
-    bobBalances.wbtcx.push((await wbtcx.balanceOf(u.bob.address)).toString());
+  //   appBalances.wbtcx.push((await superTokens.wbtcx.balanceOf(app.address)).toString());
+  //   ownerBalances.wbtcx.push(
+  //     (await superTokens.wbtcx.balanceOf(users.admin.address)).toString()
+  //   );
+  //   aliceBalances.wbtcx.push(
+  //     (await superTokens.wbtcx.balanceOf(users.alice.address)).toString()
+  //   );
+  //   bobBalances.wbtcx.push((await superTokens.wbtcx.balanceOf(users.bob.address)).toString());
 
-    appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
-    ownerBalances.usdcx.push(
-      (await usdcx.balanceOf(u.admin.address)).toString()
-    );
-    aliceBalances.usdcx.push(
-      (await usdcx.balanceOf(u.alice.address)).toString()
-    );
-    bobBalances.usdcx.push((await usdcx.balanceOf(u.bob.address)).toString());
+  //   appBalances.usdcx.push((await superTokens.usdcx.balanceOf(app.address)).toString());
+  //   ownerBalances.usdcx.push(
+  //     (await superTokens.usdcx.balanceOf(users.admin.address)).toString()
+  //   );
+  //   aliceBalances.usdcx.push(
+  //     (await superTokens.usdcx.balanceOf(users.alice.address)).toString()
+  //   );
+  //   bobBalances.usdcx.push((await superTokens.usdcx.balanceOf(users.bob.address)).toString());
 
-    appBalances.ric.push((await ric.balanceOf(app.address)).toString());
-    ownerBalances.ric.push((await ric.balanceOf(u.admin.address)).toString());
-    aliceBalances.ric.push((await ric.balanceOf(u.alice.address)).toString());
-    bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
-  }
+  //   appBalances.ric.push((await tokens.ric.balanceOf(app.address)).toString());
+  //   ownerBalances.ric.push((await tokens.ric.balanceOf(users.admin.address)).toString());
+  //   aliceBalances.ric.push((await tokens.ric.balanceOf(users.alice.address)).toString());
+  //   bobBalances.ric.push((await tokens.ric.balanceOf(users.bob.address)).toString());
+  // }
 
-  async function createSFRegistrationKey(sf, deployer) {
+  async function createSFRegistrationKey(deployerAddr: string) {
     const registrationKey = `testKey-${Date.now()}`;
-    const appKey = web3.utils.sha3(
-        web3.eth.abi.encodeParameters(
-            ['string', 'address', 'string'],
-            [
-                'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
-                deployer,
-                registrationKey,
-            ],
-        ),
+    const encodedKey = ethers.utils.solidityKeccak256(
+      ["string", "address", "string"],
+      [
+        "org.superfluid-finance.superfluid.appWhiteListing.registrationKey",
+        deployerAddr,
+        registrationKey,
+      ]
     );
 
-    const governance = await sf.host.getGovernance.call();
-    console.log(`SF Governance: ${governance}`);
+    const hostABI = [
+      "function getGovernance() external view returns (address)",
+    ];
 
-    const sfGovernanceRO = await ethers
-        .getContractAt(SuperfluidGovernanceBase.abi, governance);
+    const host = await ethers.getContractAt(hostABI, addresses[5]);
+    const governance = await host.getGovernance();
 
-    // let govOwner = await sfGovernanceRO.owner();
-    // console.log("Address of govOwner: ", govOwner);
-    const [govOwner] = await impersonateAccounts([await sfGovernanceRO.owner()]);
-    console.log("Address of govOwner: ", govOwner.address);
+    const sfGovernanceRO = await ethers.getContractAt(
+      SuperfluidGovernanceBase.abi,
+      governance
+    );
 
-    const sfGovernance = await ethers
-        .getContractAt(SuperfluidGovernanceBase.abi, governance, govOwner);
+    const govOwner = await sfGovernanceRO.owner();
+    const [govOwnerSigner] = await impersonateAccounts([govOwner]);
 
-    await sfGovernance.whiteListNewApp(sf.host.address, appKey);
+    const sfGovernance = await ethers.getContractAt(
+      SuperfluidGovernanceBase.abi,
+      governance,
+      govOwnerSigner
+    );
+
+    await sfGovernance.whiteListNewApp(addresses[5], encodedKey);
 
     return registrationKey;
-}
+  }
 
-    return { createSFRegistrationKey };
+  return { createSFRegistrationKey };
 };

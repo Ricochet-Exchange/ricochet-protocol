@@ -1,10 +1,10 @@
 import { ethers } from "hardhat";
 import { impersonateAccounts } from "./helpers";
-import SuperfluidSDK from "@superfluid-finance/js-sdk";
+import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { waffle } from "hardhat";
 const { provider, loadFixture } = waffle;
 
-const TellorPlayground = require('usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json');
+const TellorPlayground = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json");
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
@@ -24,30 +24,23 @@ const SF_RESOLVER = "0xE0cc76334405EE8b39213E620587d815967af39C";
 const RIC_TOKEN_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
 const PROVIDER = provider;
 
-interface ISuperToken {
-  ethx: any;
-  usdcx: any;
-  wbtcx: any;
-  daix: any;
+export interface ISuperToken {
+  ethx: SuperToken;
+  usdcx: SuperToken;
+  wbtcx: SuperToken;
+  daix: SuperToken;
 }
 
-interface IUser {
+export interface IUser {
   address: string;
   token: string;
   options?: any;
-  alias?:string;
+  alias?: string;
 }
 
 export const setup = async () => {
   const users: { [key: string]: IUser } = {};
-  const tokens: any = {};
-
-  const superTokens: ISuperToken = {
-    ethx: "0",
-    usdcx: "0",
-    wbtcx: "0",
-    daix: "0",
-  };
+  const tokens: {[key: string]: any} = {};
 
   const contracts: any = {};
   const addresses: string[] = [
@@ -56,6 +49,7 @@ export const setup = async () => {
     CARL_ADDRESS,
     BOB_ADDRESS,
     RIC_TOKEN_ADDRESS,
+    SF_RESOLVER,
   ];
 
   const accountAddrs = [
@@ -64,32 +58,41 @@ export const setup = async () => {
     BOB_ADDRESS,
     CARL_ADDRESS,
     USDCX_SOURCE_ADDRESS,
+    SF_RESOLVER,
   ];
   const accounts = await impersonateAccounts(accountAddrs);
   const names = ["admin", "alice", "bob", "carl", "spender"];
 
   // Initialize superfluid sdk
-  const superfluid = new SuperfluidSDK.Framework({
-    ethers: PROVIDER,
+  const superfluid = await Framework.create({
+    provider: PROVIDER,
     resolverAddress: SF_RESOLVER,
-    tokens: ["WBTC", "DAI", "USDC", "ETH"],
-    version: "v1",
+    networkName: "matic",
   });
-  await superfluid.initialize();
 
   // Declare supertokens as ERC 20 contraxts
-  superTokens.ethx = superfluid.tokens.ETHx;
-  superTokens.wbtcx = superfluid.tokens.WBTCx;
-  superTokens.daix = superfluid.tokens.DAIx;
-  superTokens.usdcx = superfluid.tokens.USDCx;
+  const superTokens: ISuperToken = {
+    ethx: await superfluid.loadSuperToken(
+      "0xCAa7349CEA390F89641fe306D93591f87595dc1F"
+    ),
+    usdcx: await superfluid.loadSuperToken(
+      "0xCAa7349CEA390F89641fe306D93591f87595dc1F"
+    ),
+    wbtcx: await superfluid.loadSuperToken(
+      "0xCAa7349CEA390F89641fe306D93591f87595dc1F"
+    ),
+    daix: await superfluid.loadSuperToken(
+      "0xCAa7349CEA390F89641fe306D93591f87595dc1F"
+    ),
+  };
 
   // Declare all users for transactions (usdcx)
   for (let i = 0; i < names.length; i += 1) {
-    users[names[i]] = superfluid.user({
+    users[names[i]] = {
       address: accounts[i].address,
       token: superTokens.usdcx.address,
-    });
-    users[names[i]].alias = names[i];
+      alias: names[i],
+    };
   }
 
   // Decalare ERC 20 tokens
@@ -100,15 +103,15 @@ export const setup = async () => {
   );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
-    await superTokens.ethx.getUnderlyingToken()
+    await superTokens.ethx.underlyingToken.address
   );
   tokens.wbtc = await ethers.getContractAt(
     "ERC20",
-    await superTokens.wbtcx.getUnderlyingToken()
+    await superTokens.wbtcx.underlyingToken.address
   );
   tokens.usdc = await ethers.getContractAt(
     "ERC20",
-    await superTokens.usdcx.getUnderlyingToken()
+    await superTokens.usdcx.underlyingToken.address
   );
 
   return {

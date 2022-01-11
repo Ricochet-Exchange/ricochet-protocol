@@ -3,12 +3,12 @@ import { common } from "./../misc/common";
 import { waffle, ethers } from "hardhat";
 import { expect } from "chai";
 import axios from "axios";
-import SuperfluidSDK from "@superfluid-finance/js-sdk";
+import {Framework} from "@superfluid-finance/sdk-core";
 
 import { getSeconds, increaseTime } from "./../misc/helpers";
 const { loadFixture } = waffle;
 
-let sf: SuperfluidSDK.Framework,
+let sf: Framework,
   superT: any,
   u: any,
   app: any,
@@ -37,17 +37,17 @@ describe("RexMarket", function () {
     );
     app = await REXMarketFactory.deploy(
       u.admin.address,
-      (sf.host as any).address,
-      (sf.agreements.cfa as any)?.address,
-      (sf.agreements.ida as any)?.address
+      sf.host.hostContract.address,
+      sf.cfaV1.host.hostContract.address,
+      sf.idaV1.host.hostContract.address
     );
 
-    u.app = sf.user({
+    u.app = {
       address: app.address,
       token: superT.wbtcx.address,
-    });
+      alias: "App"
+    };
 
-    u.app.alias = "App";
 
     const response = await axios.get(
       "https://api.coingecko.com/api/v3/simple/price?ids=wrapped-bitcoin&vs_currencies=usd"
@@ -72,7 +72,7 @@ describe("RexMarket", function () {
     );
 
     let inflowRate = "2592000000"; // 1000 usdc per month, 1000*24*30*60*60
-    await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+    await u.admin.flow({ flowRate: inflowRate, recipient: u.app.address });
 
     await increaseTime(getSeconds(30));
     console.log(
@@ -80,7 +80,7 @@ describe("RexMarket", function () {
       (await superT.usdcx.balanceOf(u.admin.address)).toString()
     );
 
-    await u.admin.flow({ flowRate: "0", recipient: u.app });
+    await u.admin.flow({ flowRate: "0", recipient: u.app.address });
     console.log(
       "balance afterwards days",
       (await superT.usdcx.balanceOf(u.admin.address)).toString()
