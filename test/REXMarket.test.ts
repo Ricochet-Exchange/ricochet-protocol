@@ -446,9 +446,9 @@ describe("RexMarket", function () {
         // start flow of 1000 USDC from admin address
         console.log("balance start", (await usdcx.balanceOf(admin.address)).toString());
 
-        let inflowRate = "2592000000"; // 1000 usdc per month, 1000*24*30*60*60
-        await admin.flow({ flowRate: inflowRate, recipient: app });
-        
+        inflowRate = '2592000000'; // 1000 usdc per month, 1000*24*30*60*60
+        await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+
         await increaseTime(getSeconds(30));
         console.log("balance after 30 days", (await usdcx.balanceOf(admin.address)).toString());
 

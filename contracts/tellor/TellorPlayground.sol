@@ -290,7 +290,7 @@ contract TellorPlayground {
     * @param _timestamp the timestamp that indentifies for the value
     */
     function disputeBytesValue(uint256 _requestId, uint256 _timestamp) external {
-        bytesValues[_requestId][_timestamp] = "";
+        bytesValues[_requestId][_timestamp] = '';
         isDisputed[_requestId][_timestamp] = true;
     }
 
