@@ -2,6 +2,8 @@ import { ethers } from "hardhat";
 import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { waffle } from "hardhat";
+import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
 const { provider, loadFixture } = waffle;
 
 const TellorPlayground = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json");
@@ -50,6 +52,7 @@ export const setup = async () => {
     BOB_ADDRESS,
     RIC_TOKEN_ADDRESS,
     SF_RESOLVER,
+    USDCX_SOURCE_ADDRESS
   ];
 
   const accountAddrs = [
@@ -60,7 +63,7 @@ export const setup = async () => {
     USDCX_SOURCE_ADDRESS,
     SF_RESOLVER,
   ];
-  const accounts = await impersonateAccounts(accountAddrs);
+  const accounts : SignerWithAddress[] = await impersonateAccounts(accountAddrs);
   const names = ["admin", "alice", "bob", "carl", "spender"];
 
   // Initialize superfluid sdk
@@ -117,6 +120,7 @@ export const setup = async () => {
   return {
     superfluid,
     users,
+    accounts,
     tokens,
     superTokens,
     contracts,
