@@ -1,16 +1,17 @@
 {
-    "compilerOptions": {
-      "target": "ES2017",
-      "module": "commonjs",
-      "declaration": true,
-      "declarationMap": true,
-      "sourceMap": true,
-      "outDir": "./dist",
-      "strict": true,
-      "rootDirs": ["./src", "./scripts", "./test", "./misc"],
-      "esModuleInterop": true
-    },
-    "exclude": ["dist", "node_modules"],
-    "include": ["./test", "./src", "./scripts", "./misc"],
-    "files": ["./hardhat.config.ts"]
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "outDir": "dist",
+    "declaration": true,
+    "resolveJsonModule": true
+  },
+  "include": ["./scripts", "./test", "./typechain"],
+  "files": ["hardhat.config.ts"],
+  "ts-node": {
+    "transpileOnly": true,
+    "transpiler": "ts-node/transpilers/swc-experimental"
   }
+}

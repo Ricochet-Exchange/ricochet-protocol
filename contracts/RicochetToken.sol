@@ -15,7 +15,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { ISuperfluidToken, SuperfluidToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperfluidToken.sol";
 
-import { ERC777Helper } from "@superfluid-finance/ethereum-contracts/contracts/utils/ERC777Helper.sol";
+import "@superfluid-finance/ethereum-contracts/contracts/utils/ERC777Helper.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
