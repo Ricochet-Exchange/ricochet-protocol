@@ -84,6 +84,8 @@ contract REXTwoWayMarket is REXMarket {
       _onlyHost();
       _onlyExpected(_superToken, _agreementClass);
 
+      console.log("afterAgreementCreated");
+
       if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
           return _ctx;
       console.log("inside after agreement1");
@@ -101,45 +103,7 @@ contract REXTwoWayMarket is REXMarket {
       _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
   }
 
-  function _shouldDistribute() internal override returns (bool) {
-
-    // TODO: This section should be checked,
-    //       since it only checks one IDA,
-
-    (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
-        .getIndex(
-            market.outputPools[OUTPUTA_INDEX].token,
-            address(this),
-            OUTPUTA_INDEX
-        );
-    if (_totalUnitsApproved + _totalUnitsPending > 0) {
-      (, , _totalUnitsApproved, _totalUnitsPending) = ida
-          .getIndex(
-              market.outputPools[OUTPUTB_INDEX].token,
-              address(this),
-              OUTPUTB_INDEX
-          );
-      if (_totalUnitsApproved + _totalUnitsPending > 0) {
-
-        // Check balance and account for just 1 input token
-        uint256 _balance = ISuperToken(inputTokenA).balanceOf(
-            address(this)
-        ) /
-            (10 **
-                (18 -
-                    ERC20(inputTokenA.getUnderlyingToken()).decimals()));
-
-        return _balance > 0;
-      }
-    }
-
-    return false;
-
-
-
-  }
-
-  function afterAgreementUpdated(
+function afterAgreementUpdated(
       ISuperToken _superToken,
       address _agreementClass,
       bytes32, //_agreementId,
@@ -150,12 +114,16 @@ contract REXTwoWayMarket is REXMarket {
       _onlyHost();
       _onlyExpected(_superToken, _agreementClass);
 
+      console.log("afterAgreementUpdated");
+
       _newCtx = _ctx;
+
+      _newCtx = distribute(_newCtx);
+
       (address _shareholder, int96 _flowRate) = _getShareholderInfo(
           _agreementData, _superToken
       );
 
-      _newCtx = distribute(_newCtx);
       _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
   }
 
@@ -165,10 +133,14 @@ contract REXTwoWayMarket is REXMarket {
       address _agreementClass,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
-      bytes calldata // _ctx
+      bytes calldata _ctx
   ) external view override returns (bytes memory _cbdata) {
       _onlyHost();
       _onlyExpected(_superToken, _agreementClass);
+
+      console.log("beforeAgreementTerminated");
+
+      // TODO: This method isn't getting called when a stream is closed
 
       (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
 
@@ -194,17 +166,20 @@ contract REXTwoWayMarket is REXMarket {
       bytes calldata _ctx
   ) external override returns (bytes memory _newCtx) {
       _onlyHost();
+      console.log("afterAgreementTerminated");
 
       _newCtx = _ctx;
       (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
-      uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
+
+      // uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
 
       // Refund the unswapped amount back to the person who started the stream
-      market.inputToken.transferFrom(
-          address(this),
-          _shareholder,
-          _uninvestAmount
-      );
+      // market.inputToken.transferFrom(
+      //     address(this),
+      //     _shareholder,
+      //     _uninvestAmount
+      // );
+
       _newCtx = _updateShareholder(_newCtx, _shareholder, 0, _superToken);
   }
 
@@ -219,50 +194,51 @@ contract REXTwoWayMarket is REXMarket {
     console.log("inputTokenA Balance: ", inputTokenA.balanceOf(address(this)));
     console.log("inputTokenB Balance: ", inputTokenB.balanceOf(address(this)));
 
-    // Check how much inputTokenA we want to fill the sale of tokenB
-    uint256 tokenWant = inputTokenB.balanceOf(address(this)) * market.oracles[inputTokenB].usdPrice / market.oracles[inputTokenA].usdPrice / 1e6;
+    // Check how much inputTokenA we have already from tokenB
+    uint256 tokenHave = inputTokenB.balanceOf(address(this)) * market.oracles[inputTokenB].usdPrice / market.oracles[inputTokenA].usdPrice;
+    console.log("Initial tokenHave A", tokenHave);
     // If we have more tokenA than we need, swap the surplus to inputTokenB
-    if (tokenWant < inputTokenA.balanceOf(address(this))) {
-      tokenWant = inputTokenA.balanceOf(address(this)) - tokenWant;
-      console.log("Surplus to swap inputTokenA", tokenWant);
-      console.log("Swapped:", _swap(inputTokenA, inputTokenB, tokenWant, block.timestamp + 3600));
+    if (tokenHave < inputTokenA.balanceOf(address(this))) {
+      tokenHave = inputTokenA.balanceOf(address(this)) - tokenHave;
+      console.log("Surplus to swap inputTokenA", tokenHave);
+      console.log("Swapped:", _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600));
       // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
     } else {
-      tokenWant = inputTokenA.balanceOf(address(this)) * market.oracles[inputTokenA].usdPrice / market.oracles[inputTokenB].usdPrice / 1e6;
-      tokenWant = inputTokenB.balanceOf(address(this)) - tokenWant;
-      console.log("Surplus to swap inputTokenB", tokenWant);
-      console.log("Swapped:", _swap(inputTokenB, inputTokenA, tokenWant, block.timestamp + 3600));
+      tokenHave = inputTokenA.balanceOf(address(this)) * market.oracles[inputTokenA].usdPrice / market.oracles[inputTokenB].usdPrice;
+      console.log("Initial tokenHave B", tokenHave);
+      tokenHave = inputTokenB.balanceOf(address(this)) - tokenHave;
+      console.log("Surplus to swap inputTokenB", tokenHave);
+      console.log("Swapped:", _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600));
     }
 
-    // At this point, we've got enough of tokenA and tokenB to perform the distribution
+    console.log("inputTokenA Balance: ", inputTokenA.balanceOf(address(this)));
+    console.log("inputTokenB Balance: ", inputTokenB.balanceOf(address(this)));
+
+     // At this point, we've got enough of tokenA and tokenB to perform the distribution
      uint256 tokenAAmount = inputTokenA.balanceOf(address(this));
      uint256 tokenBAmount = inputTokenB.balanceOf(address(this));
+     if (tokenAAmount == 0 && tokenBAmount == 0) { return newCtx; }
 
-     console.log("tokenAAmount", tokenAAmount);
-     console.log("tokenBAmount", tokenBAmount);
+     // Perform the distributions
+     uint256 feeCollected;
+     uint256 distAmount;
 
 
-     (tokenAAmount,) = ida.calculateDistribution(
-        inputTokenA,
-        address(this),
-        OUTPUTA_INDEX,
-        tokenAAmount);
-     console.log("tokenAAmount", tokenAAmount);
-     (tokenBAmount,) = ida.calculateDistribution(
-        inputTokenB,
-        address(this),
-        OUTPUTB_INDEX,
-        tokenBAmount);
+     (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) =  ida
+         .getIndex(
+             market.outputPools[OUTPUTA_INDEX].token,
+             address(this),
+             OUTPUTA_INDEX
+         );
+     console.log("Units Approved", uint(_totalUnitsApproved));
+     console.log("Units Pending", uint(_totalUnitsPending));
+     if (tokenAAmount > 0 && _totalUnitsApproved + _totalUnitsPending > 0) {
+       (tokenAAmount,) = ida.calculateDistribution(
+          inputTokenA,
+          address(this),
+          OUTPUTA_INDEX,
+          tokenAAmount);
 
-      console.log("tokenAAmount", tokenAAmount);
-      console.log("tokenBAmount", tokenBAmount);
-
-      if (tokenAAmount == 0 && tokenBAmount == 0) { return newCtx; }
-
-      // Perform the distribution
-      uint256 feeCollected;
-      uint256 distAmount;
-      if (tokenAAmount > 0) {
         // Distribute TokenA
         (feeCollected, distAmount) = _getFeeAndDist(tokenAAmount, market.outputPools[OUTPUTA_INDEX].feeRate);
         console.log("Distributing tokenA distAmount", distAmount);
@@ -271,8 +247,24 @@ contract REXTwoWayMarket is REXMarket {
         newCtx = _idaDistribute(OUTPUTA_INDEX, uint128(distAmount), inputTokenA, newCtx);
         inputTokenA.transfer(owner(), feeCollected);
         emit Distribution(distAmount, feeCollected, address(inputTokenA));
-      }
-      if (tokenBAmount > 0) {
+
+     }
+
+     (, , _totalUnitsApproved, _totalUnitsPending) =  ida
+         .getIndex(
+             market.outputPools[OUTPUTB_INDEX].token,
+             address(this),
+             OUTPUTB_INDEX
+         );
+     console.log("Units Approved", uint(_totalUnitsApproved));
+     console.log("Units Pending", uint(_totalUnitsPending));
+     if (tokenBAmount > 0 && _totalUnitsApproved + _totalUnitsPending > 0) {
+       (tokenBAmount,) = ida.calculateDistribution(
+          inputTokenB,
+          address(this),
+          OUTPUTB_INDEX,
+          tokenBAmount);
+
         // Distribute TokenB
         (feeCollected, distAmount) = _getFeeAndDist(tokenBAmount, market.outputPools[OUTPUTB_INDEX].feeRate);
         console.log("Distributing tokenB distAmount", distAmount);
@@ -307,11 +299,13 @@ contract REXTwoWayMarket is REXMarket {
 
    inputToken = input.getUnderlyingToken();
    outputToken = output.getUnderlyingToken();
+   console.log("amount", amount);
 
    // Downgrade and scale the input amount
    input.downgrade(amount);
    // Scale it to 1e18 for calculations
    amount = ERC20(inputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(inputToken).decimals()));
+   console.log("amount", amount);
 
    minOutput = amount * market.oracles[input].usdPrice / market.oracles[output].usdPrice;
    minOutput = minOutput * (1e6 - market.rateTolerance) / 1e6;
@@ -320,6 +314,8 @@ contract REXTwoWayMarket is REXMarket {
    minOutput = minOutput * (10 ** (ERC20(outputToken).decimals())) / 1e18;
    // Scale it back to inputToken decimals
    amount = amount / (10 ** (18 - ERC20(inputToken).decimals()));
+
+   console.log("amount", amount);
 
    // Assumes a direct path to swap input/output
    path = new address[](2);
@@ -333,11 +329,13 @@ contract REXTwoWayMarket is REXMarket {
       deadline
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
+   console.log("minOutput", minOutput);
    outputAmount = ERC20(outputToken).balanceOf(address(this));
+   console.log("outputAmount", outputAmount);
    require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
-   output.upgrade(outputAmount * (10 ** (18 - ERC20(outputToken).decimals())));
+   output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
 
    return outputAmount;
  }
@@ -348,15 +346,23 @@ contract REXTwoWayMarket is REXMarket {
      int96 _shareholderFlowRate,
      ISuperToken _superToken
  ) internal returns (bytes memory _newCtx) {
-   console.log("shareholder", _shareholder);
-   console.log("_shareholderFlowRate", uint(int(_shareholderFlowRate)));
-   console.log("_superToken", address(_superToken));
-     // TODO: We need to make sure this for-loop won't run out of gas, do this we can set a limit on numOutputPools
-     // We need to go through all the output tokens and update their IDA shares
+
+     // Check the input supertoken used and figure out the output Index
+     // inputTokenA maps the OUTPUTB_INDEX
+     // maybe a better way to do this
+     uint32 outputIndex;
+     if (outputPoolIndices[_superToken] == OUTPUTA_INDEX) {
+       outputIndex = OUTPUTB_INDEX;
+       _superToken = inputTokenB;
+     } else {
+       outputIndex = OUTPUTA_INDEX;
+       _superToken = inputTokenA;
+     }
+
      _newCtx = _ctx;
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
-         outputPoolIndices[_superToken],
+         outputIndex,
          _shareholder,
          uint128(uint256(int256(_shareholderFlowRate))),
          _superToken
@@ -372,5 +378,49 @@ contract REXTwoWayMarket is REXMarket {
  {
      return address(_superToken) == address(inputTokenA) || address(_superToken) == address(inputTokenB);
  }
+
+ function _shouldDistribute() internal override returns (bool) {
+
+   // TODO: This section should be checked,
+   //       since it only checks one IDA,
+
+   (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
+       .getIndex(
+           market.outputPools[OUTPUTA_INDEX].token,
+           address(this),
+           OUTPUTA_INDEX
+       );
+   console.log("Units Approved A", uint(_totalUnitsApproved));
+   console.log("Units Pending A", uint(_totalUnitsPending));
+   if (_totalUnitsApproved + _totalUnitsPending > 0) {
+     (, , _totalUnitsApproved, _totalUnitsPending) = ida
+         .getIndex(
+             market.outputPools[OUTPUTB_INDEX].token,
+             address(this),
+             OUTPUTB_INDEX
+         );
+     console.log("Units Approved B", uint(_totalUnitsApproved));
+     console.log("Units Pending B", uint(_totalUnitsPending));
+     if (_totalUnitsApproved + _totalUnitsPending > 0) {
+
+       // Check balance and account for just 1 input token
+       uint256 _balance = ISuperToken(inputTokenA).balanceOf(
+           address(this)
+       ) /
+           (10 **
+               (18 -
+                   ERC20(inputTokenA.getUnderlyingToken()).decimals()));
+
+       return _balance > 0;
+     }
+   }
+
+   return false;
+
+
+
+ }
+
+
 
 }

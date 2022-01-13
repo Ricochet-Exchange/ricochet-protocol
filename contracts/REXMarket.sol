@@ -92,7 +92,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
             SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
 
-        console.log(_registrationKey);
         if (bytes(_registrationKey).length > 0) {
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
@@ -252,15 +251,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Oracle Functions
 
     function updateTokenPrice(ISuperToken _token) public {
-        console.log("token", address(_token));
         (
             bool _ifRetrieve,
             uint256 _value,
             uint256 _timestampRetrieved
         ) = getCurrentValue(market.oracles[_token].requestId);
-
-        console.log("rid", market.oracles[_token].requestId);
-        console.log("timestampRetrieved", _timestampRetrieved);
 
         require(_ifRetrieve, "!getCurrentValue");
         require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
@@ -411,7 +406,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-        console.log(address(distToken));
 
         host.callAgreement(
             ida,
@@ -590,7 +584,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-        console.log("inside after agreement1");
 
         _newCtx = _ctx;
 
@@ -602,10 +595,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
-        console.log("inside after agreement4");
-
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate);
-        console.log("inside after agreement5");
+
     }
 
     function afterAgreementUpdated(
