@@ -92,12 +92,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ida = _ida;
         transferOwnership(_owner);
 
-        uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL |
-            SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
+        uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
 
-        console.log(_registrationKey);
         if (bytes(_registrationKey).length > 0) {
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
@@ -257,15 +253,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Oracle Functions
 
     function updateTokenPrice(ISuperToken _token) public {
-        console.log("token", address(_token));
         (
             bool _ifRetrieve,
             uint256 _value,
             uint256 _timestampRetrieved
         ) = getCurrentValue(market.oracles[_token].requestId);
-
-        console.log("rid", market.oracles[_token].requestId);
-        console.log("timestampRetrieved", _timestampRetrieved);
 
         require(_ifRetrieve, "!getCurrentValue");
         require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
@@ -416,7 +408,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-        console.log(address(distToken));
 
         host.callAgreement(
             ida,
@@ -582,6 +573,16 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     // Superfluid Functions
 
+    function beforeAgreementCreated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata // _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+
+    }
+
     function afterAgreementCreated(
         ISuperToken _superToken,
         address _agreementClass,
@@ -595,7 +596,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-        console.log("inside after agreement1");
 
         _newCtx = _ctx;
 
@@ -607,11 +607,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
-        console.log("inside after agreement4");
-
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate);
-        console.log("inside after agreement5");
+
     }
+
+    function beforeAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata // _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+      
+    }
+
 
     function afterAgreementUpdated(
         ISuperToken _superToken,
@@ -641,6 +650,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+        console.log("beforeAgreementTerminated");
+
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 
