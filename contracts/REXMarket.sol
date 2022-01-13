@@ -87,10 +87,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ida = _ida;
         transferOwnership(_owner);
 
-        uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL |
-            SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP |
-            SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP;
+        uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
 
         if (bytes(_registrationKey).length > 0) {
             host.registerAppWithKey(_configWord, _registrationKey);
@@ -571,6 +568,16 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     // Superfluid Functions
 
+    function beforeAgreementCreated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata // _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+
+    }
+
     function afterAgreementCreated(
         ISuperToken _superToken,
         address _agreementClass,
@@ -598,6 +605,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate);
 
     }
+
+    function beforeAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata // _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+      
+    }
+
 
     function afterAgreementUpdated(
         ISuperToken _superToken,
@@ -627,6 +645,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+        console.log("beforeAgreementTerminated");
+
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 

@@ -127,35 +127,7 @@ function afterAgreementUpdated(
       _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
   }
 
-  // We need before agreement to get the uninvested amount using the flowRate before update
-  function beforeAgreementTerminated(
-      ISuperToken _superToken,
-      address _agreementClass,
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata _ctx
-  ) external view override returns (bytes memory _cbdata) {
-      _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
 
-      console.log("beforeAgreementTerminated");
-
-      // TODO: This method isn't getting called when a stream is closed
-
-      (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
-
-      (uint256 _timestamp, int96 _flowRateMain, , ) = cfa.getFlow(
-          market.inputToken,
-          _shareholder,
-          address(this)
-      );
-      uint256 _uinvestAmount = _calcUserUninvested(
-          _timestamp,
-          uint256(uint96(_flowRateMain)),
-          market.lastDistributionAt
-      );
-      _cbdata = abi.encode(_uinvestAmount);
-  }
 
   function afterAgreementTerminated(
       ISuperToken _superToken,
@@ -171,14 +143,16 @@ function afterAgreementUpdated(
       _newCtx = _ctx;
       (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
 
-      // uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
+      uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
+
+      console.log("Refunding", _uninvestAmount);
 
       // Refund the unswapped amount back to the person who started the stream
-      // market.inputToken.transferFrom(
-      //     address(this),
-      //     _shareholder,
-      //     _uninvestAmount
-      // );
+      market.inputToken.transferFrom(
+          address(this),
+          _shareholder,
+          _uninvestAmount
+      );
 
       _newCtx = _updateShareholder(_newCtx, _shareholder, 0, _superToken);
   }
@@ -270,6 +244,8 @@ function afterAgreementUpdated(
         inputTokenB.transfer(owner(), feeCollected);
         emit Distribution(distAmount, feeCollected, address(inputTokenB));
       }
+
+      market.lastDistributionAt = block.timestamp;
 
   }
 

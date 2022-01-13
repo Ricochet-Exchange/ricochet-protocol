@@ -458,8 +458,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.03)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.03)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
 
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
@@ -467,7 +467,6 @@ describe('REXTwoWayMarket', () => {
       await u.alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: u.app });
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
@@ -485,8 +484,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.03)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.03)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
 
       console.log('Transfer carl');
       await usdcx.transfer(u.carl.address, toWad(400), { from: u.usdcspender.address });
@@ -519,12 +518,21 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.03)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.03)
-      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.03)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
+      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.05)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
+      let aliceBeforeBalance = parseInt(await usdcx.balanceOf(u.alice.address));
+      console.log("before", aliceBeforeBalance.toString());
+      // await traveler.advanceTimeAndBlock(30);
       await u.alice.flow({ flowRate: '0', recipient: u.app });
+      let aliceAfterBalance = await usdcx.balanceOf(u.alice.address);
+      // Need to also account for the four hour fee
+      console.log("after", aliceAfterBalance.toString());
+      aliceAfterBalance = aliceAfterBalance - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
+      console.log("after", aliceAfterBalance.toString());
+      expect(aliceBeforeBalance).to.within(aliceAfterBalance * 0.99999, aliceAfterBalance * 1.00001);
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(0);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
 
@@ -535,7 +543,7 @@ describe('REXTwoWayMarket', () => {
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(ethx.address);
-      // 4. Trigger a distribution
+      // 4. Trigger a distributions
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
       await takeMeasurements();
@@ -550,10 +558,10 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.03)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
       expect(deltaAlice.usdcx).to.equal(0)
       expect(deltaAlice.ethx).to.equal(0)
-      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.03)
+      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.05)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
       await u.carl.flow({ flowRate: '0', recipient: u.app });
@@ -582,7 +590,7 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.03)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
       expect(deltaCarl.usdcx).to.equal(0)
       expect(deltaCarl.ethx).to.equal(0)
 
