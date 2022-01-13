@@ -230,8 +230,6 @@ function afterAgreementUpdated(
              address(this),
              OUTPUTA_INDEX
          );
-     console.log("Units Approved", uint(_totalUnitsApproved));
-     console.log("Units Pending", uint(_totalUnitsPending));
      if (tokenAAmount > 0 && _totalUnitsApproved + _totalUnitsPending > 0) {
        (tokenAAmount,) = ida.calculateDistribution(
           inputTokenA,
@@ -256,8 +254,6 @@ function afterAgreementUpdated(
              address(this),
              OUTPUTB_INDEX
          );
-     console.log("Units Approved", uint(_totalUnitsApproved));
-     console.log("Units Pending", uint(_totalUnitsPending));
      if (tokenBAmount > 0 && _totalUnitsApproved + _totalUnitsPending > 0) {
        (tokenBAmount,) = ida.calculateDistribution(
           inputTokenB,
@@ -390,8 +386,6 @@ function afterAgreementUpdated(
            address(this),
            OUTPUTA_INDEX
        );
-   console.log("Units Approved A", uint(_totalUnitsApproved));
-   console.log("Units Pending A", uint(_totalUnitsPending));
    if (_totalUnitsApproved + _totalUnitsPending > 0) {
      (, , _totalUnitsApproved, _totalUnitsPending) = ida
          .getIndex(
@@ -399,8 +393,6 @@ function afterAgreementUpdated(
              address(this),
              OUTPUTB_INDEX
          );
-     console.log("Units Approved B", uint(_totalUnitsApproved));
-     console.log("Units Pending B", uint(_totalUnitsPending));
      if (_totalUnitsApproved + _totalUnitsPending > 0) {
 
        // Check balance and account for just 1 input token
