@@ -93,11 +93,8 @@ contract REXOneWayMarket is REXMarket {
     console.log("distAmount", distAmount);
 
     // Make the distribution for output pool 0
-    newCtx = _idaDistribute(0, uint128(distAmount), market.outputPools[OUTPUT_INDEX].token, newCtx);
-    emit Distribution(distAmount, feeCollected, address(market.outputPools[OUTPUT_INDEX].token));
-
-    // Take the fee
-    ISuperToken(market.outputPools[OUTPUT_INDEX].token).transfer(owner(), feeCollected);
+    newCtx = _idaDistribute(0, uint128(actualAmount), market.outputPools[OUTPUT_INDEX].token, newCtx);
+    emit Distribution(actualAmount, feeCollected, address(market.outputPools[OUTPUT_INDEX].token));
 
     // Go through the other OutputPools and trigger distributions
     for( uint32 index = 1; index < market.numOutputPools; index++) {
@@ -105,16 +102,13 @@ contract REXOneWayMarket is REXMarket {
       if (outputBalance > 0) {
         // Should oneway market only support subsidy tokens?
         if (market.outputPools[index].feeRate != 0) {
-          feeCollected = outputBalance * market.outputPools[index].feeRate / 1e6;
-          distAmount = outputBalance - feeCollected;
-          newCtx = _idaDistribute(index, uint128(distAmount), market.outputPools[index].token, newCtx);
-          emit Distribution(distAmount, feeCollected, address(market.outputPools[index].token));
-          // TODO: ERC20 transfer fee
+          newCtx = _idaDistribute(index, uint128(outputBalance), market.outputPools[index].token, newCtx);
+          emit Distribution(outputBalance, feeCollected, address(market.outputPools[index].token));
         } else {
-          distAmount = (block.timestamp - market.lastDistributionAt) * market.outputPools[index].emissionRate;
-          if (distAmount < outputBalance) {
-            newCtx = _idaDistribute(index, uint128(distAmount), market.outputPools[index].token, newCtx);
-            emit Distribution(distAmount, 0, address(market.outputPools[index].token));
+          actualAmount = (block.timestamp - market.lastDistributionAt) * market.outputPools[index].emissionRate;
+          if (actualAmount < outputBalance) {
+            newCtx = _idaDistribute(index, uint128(actualAmount), market.outputPools[index].token, newCtx);
+            emit Distribution(actualAmount, 0, address(market.outputPools[index].token));
           }
         }
       }
