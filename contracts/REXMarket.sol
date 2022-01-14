@@ -327,6 +327,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         int96 _currentFlowRate,
         int96 _previousFlowRate
     ) internal returns (bytes memory _newCtx) {
+      console.log("_updateShareholder");
         // We need to go through all the output tokens and update their IDA shares
         _newCtx = _ctx;
 
@@ -359,12 +360,14 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
           changeInFlowRate = -1 * changeInFlowRate;
           feeShares = uint128(uint256(int256(changeInFlowRate)) * 2 / 100);
           daoShares -= feeShares;
-          console.log("feeShares:", uint(feeShares));
-          console.log("daoShares:", uint(daoShares));
+          console.log("neg feeShares:", uint(feeShares));
+          console.log("neg daoShares:", uint(daoShares));
         }
         require(int(uint(daoShares)) > 0, "daoShares negative" );
 
+        console.log("updating", uint256(int256(_currentFlowRate)) * 98 / 100);
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
+          console.log("stakeholder", uint(_index));
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
@@ -373,7 +376,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 uint128(uint256(int256(_currentFlowRate))) * 98 / 100,
                 market.outputPools[_index].token
             );
-
+            console.log("dao", uint(_index));
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
@@ -389,10 +392,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function _getShareholderInfo(bytes calldata _agreementData, ISuperToken _superToken)
         internal
         view
-        returns (address _shareholder, int96 _flowRate)
+        returns (address _shareholder, int96 _flowRate, uint256 _timestamp)
     {
         (_shareholder, ) = abi.decode(_agreementData, (address, address));
-        (, _flowRate, , ) = cfa.getFlow(
+        (_timestamp, _flowRate, , ) = cfa.getFlow(
             _superToken,
             _shareholder,
             address(this)
@@ -643,7 +646,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _newCtx = distribute(_newCtx);
         }
 
-        (address _shareholder, int96 _flowRate) = _getShareholderInfo(
+        (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData, _superToken
         );
 
@@ -660,7 +663,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
       // Get the stakeholders current flow rate and save it in cbData
-      (, int96 _flowRate) = _getShareholderInfo(
+      (, int96 _flowRate,) = _getShareholderInfo(
           _agreementData, _superToken
       );
 
@@ -680,7 +683,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _onlyExpected(_superToken, _agreementClass);
 
         _newCtx = _ctx;
-        (address _shareholder, int96 _flowRate) = _getShareholderInfo(
+        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
             _agreementData, _superToken
         );
         int _beforeFlowRate = abi.decode(_cbdata, (int));
@@ -705,19 +708,16 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 
-        (address _shareholder,) = _getShareholderInfo(_agreementData, _superToken);
+        (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
-        (uint256 _timestamp, int96 _flowRateMain, , ) = cfa.getFlow(
-            market.inputToken,
-            _shareholder,
-            address(this)
-        );
         uint256 _uinvestAmount = _calcUserUninvested(
             _timestamp,
             uint256(uint96(_flowRateMain)),
             market.lastDistributionAt
         );
         _cbdata = abi.encode(_uinvestAmount, int(_flowRateMain));
+        console.log("balanceOf", market.inputToken.balanceOf(address(this)));
+
     }
 
     function afterAgreementTerminated(
@@ -729,19 +729,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
-
-
+        console.log("afterAgreementTerminated");
 
         _newCtx = _ctx;
-        (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
+        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
         (uint256 _uninvestAmount, int _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int));
-
+        _newCtx = _updateShareholder(_newCtx, _shareholder, 0, int96(_beforeFlowRate));
+        console.log("_uninvestAmount", _uninvestAmount);
+        console.log("balanceOf", market.inputToken.balanceOf(address(this)));
         // Refund the unswapped amount back to the person who started the stream
         market.inputToken.transferFrom(
             address(this),
             _shareholder,
             _uninvestAmount
         );
-        _newCtx = _updateShareholder(_newCtx, _shareholder, 0, int96(_beforeFlowRate));
+        console.log("_afterFlowRate3");
     }
 }

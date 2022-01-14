@@ -467,12 +467,110 @@ describe('REXOneWayMarket', () => {
       expect(deltaAlice.outputx * 2).to.be.within(deltaBob.outputx * 0.998, deltaBob.outputx * 1.008)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
-      //
+      
       // Test increasing a flow rate
+      await u.alice.flow({ flowRate: inflowRatex2, recipient: u.app });
+
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
+      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRatex2);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,1960000,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,80000,0`);
+      // 3. Advance time 1 hour
+      await takeMeasurements();
+      await traveler.advanceTimeAndBlock(3600);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(ethx.address);
+      // 4. Trigger a distribution
+      await app.distribute('0x');
+      // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
+      await takeMeasurements();
+
+      deltaAlice = await delta('alice', aliceBalances);
+      deltaBob = await delta('bob', bobBalances);
+      deltaOwner = await delta('owner', ownerBalances);
+      // verify
+      console.log(deltaOwner)
+      console.log(deltaAlice)
+      console.log(deltaBob)
+      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect(deltaAlice.outputx).to.be.within(deltaBob.outputx * 0.9999, deltaBob.outputx * 1.0001)
+      expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
+
 
       // Test decreasing a flow rate
+      await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
+
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,60000,0`);
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
+      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRate);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
+      // 3. Advance time 1 hour
+      await takeMeasurements();
+      await traveler.advanceTimeAndBlock(3600);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(ethx.address);
+      // 4. Trigger a distribution
+      await app.distribute('0x');
+      // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
+      await takeMeasurements();
+
+      deltaAlice = await delta('alice', aliceBalances);
+      deltaBob = await delta('bob', bobBalances);
+      deltaOwner = await delta('owner', ownerBalances);
+      // verify
+      console.log(deltaOwner)
+      console.log(deltaAlice)
+      console.log(deltaBob)
+      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect(deltaBob.outputx * 2).to.be.within(deltaAlice.outputx * 0.9999, deltaAlice.outputx * 1.0001)
+      expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
+
 
       // Test deleting a flow
+      await u.bob.flow({ flowRate: '0', recipient: u.app });
+      expect(await sf.host.isAppJailed(app.address)).to.equal(false);
+
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
+      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(0);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,40000,0`);
+      // 3. Advance time 1 hour
+      await takeMeasurements();
+      await traveler.advanceTimeAndBlock(3600);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(ethx.address);
+      // 4. Trigger a distribution
+      await app.distribute('0x');
+      // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
+      await takeMeasurements();
+
+      deltaAlice = await delta('alice', aliceBalances);
+      deltaBob = await delta('bob', bobBalances);
+      deltaOwner = await delta('owner', ownerBalances);
+      // verify
+      console.log(deltaOwner)
+      console.log(deltaAlice)
+      console.log(deltaBob)
+      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect(deltaBob.usdcx).to.equal(0)
+      expect(deltaBob.outputx).to.equal(0)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
+
+
 
 
     });

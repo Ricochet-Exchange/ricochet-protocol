@@ -114,6 +114,8 @@ contract REXOneWayMarket is REXMarket {
       }
     }
 
+    market.lastDistributionAt = block.timestamp;
+
   }
 
   function _swap(
