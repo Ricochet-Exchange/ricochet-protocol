@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
+import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; 
+import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
+import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol";
+import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
+import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol";
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
 import {IInstantDistributionAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
 import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
@@ -626,6 +631,15 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     }
 
+    // Referral functionss
+    function checkAffiliate(bytes memory _ctx) internal {
+        ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx); 
+		// Decode userData
+        (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
+
+        safeRegisterUser(decompiledContext.msgSender, affiliateId);
+    }
+
     function afterAgreementCreated(
         ISuperToken _superToken,
         address _agreementClass,
@@ -641,6 +655,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             return _ctx;
 
         _newCtx = _ctx;
+        
+        checkAffiliate(_newCtx);
 
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx);
@@ -662,12 +678,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+
       // Get the stakeholders current flow rate and save it in cbData
       (, int96 _flowRate,) = _getShareholderInfo(
           _agreementData, _superToken
       );
 
-      _cbdata = abi.encode(int(_flowRate));
     }
 
 

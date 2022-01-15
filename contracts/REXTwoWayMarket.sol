@@ -121,6 +121,7 @@ function afterAgreementUpdated(
       _newCtx = distribute(_newCtx);
 
       (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+
           _agreementData, _superToken
       );
 
@@ -141,6 +142,7 @@ function afterAgreementUpdated(
       console.log("afterAgreementTerminated");
 
       _newCtx = _ctx;
+
       (address _shareholder, ,) = _getShareholderInfo(_agreementData, _superToken);
 
       uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
