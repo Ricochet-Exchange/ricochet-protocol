@@ -1,0 +1,319 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "BankStorage",
+  "sourceName": "contracts/BankStorage.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "KEEPER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "REPORTER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralTokenAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralTokenLastUpdatedAt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralTokenPrice",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralTokenPriceGranularity",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getCollateralizationRatio",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getDebtTokenAddress",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getDebtTokenLastUpdatedAt",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getDebtTokenPrice",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getDebtTokenPriceGranularity",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getInterestRate",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getLiquidationPenalty",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getName",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getOriginationFee",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getReserveBalance",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getReserveCollateralBalance",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getVaultCollateralAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "vaultOwner",
+          "type": "address"
+        }
+      ],
+      "name": "getVaultCollateralizationRatio",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getVaultDebtAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getVaultRepayAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "principal",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "vaults",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "collateralAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "debtAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "createdAt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b5061063e806100206000396000f3fe608060405234801561001057600080fd5b50600436106101425760003560e01c80636d483fe6116100b8578063c969ac061161007c578063c969ac06146102a7578063cb765c1d146102af578063d267974c146102b7578063f327e324146102c8578063f91614eb146102d0578063fc2e39a6146102d857600080fd5b80636d483fe61461021457806386ef573814610239578063a622ee7c14610241578063a860988c1461028a578063b71d7a6e1461029f57600080fd5b8063317c9e421161010a578063317c9e4214610196578063364bc15a1461019e5780633f60d799146101c55780635257b566146101ec57806353388f44146101f4578063685a5808146101fc57600080fd5b806308dcd7c614610147578063151439501461015e57806317d7de7c146101665780631b9084b41461017b5780631e522b291461018e575b600080fd5b6005545b6040519081526020015b60405180910390f35b600a5461014b565b61016e6102e0565b60405161015591906104f6565b61014b6101893660046104c8565b610372565b60145461014b565b600b5461014b565b61014b7ffc8737ab85eb45125971625a9ebdb75cc78e01d5c1fa80c4c6e5203f47bc4fab81565b61014b7f3204c940063673962b481a0395619b3dbbd137589c419e993978c1c71bcf68ec81565b60115461014b565b600e5461014b565b3360009081526002602052604090206001015461014b565b6009546001600160a01b03165b6040516001600160a01b039091168152602001610155565b60135461014b565b61026f61024f3660046104c8565b600260208190526000918252604090912080546001820154919092015483565b60408051938452602084019290925290820152606001610155565b3360009081526002602052604090205461014b565b61014b61041f565b60045461014b565b60105461014b565b6003546001600160a01b0316610221565b60085461014b565b600f5461014b565b60125461014b565b6060600180546102ef906105b7565b80601f016020809104026020016040519081016040528092919081815260200182805461031b906105b7565b80156103685780601f1061033d57610100808354040283529160200191610368565b820191906000526020600020905b81548152906001019060200180831161034b57829003601f168201915b5050505050905090565b6001600160a01b03811660009081526002602052604081206001015461039a57506000919050565b6005546004546001600160a01b0384166000908152600260205260409020600101546103c69190610581565b6103d09190610561565b600b54600a546001600160a01b0385166000908152600260205260409020546103f99190610581565b6104039190610561565b61040f90612710610581565b6104199190610561565b92915050565b33600090815260026020526040812060010154601654909190610446906301e13380610561565b601654336000908152600260208190526040822001549293509161046a9190610561565b6016546104779042610561565b61048191906105a0565b90508082612710600f60020154866104999190610581565b6104a39190610561565b6104ad9190610561565b6104b79190610581565b6104c19084610549565b9250505090565b6000602082840312156104d9578081fd5b81356001600160a01b03811681146104ef578182fd5b9392505050565b6000602080835283518082850152825b8181101561052257858101830151858201604001528201610506565b818111156105335783604083870101525b50601f01601f1916929092016040019392505050565b6000821982111561055c5761055c6105f2565b500190565b60008261057c57634e487b7160e01b81526012600452602481fd5b500490565b600081600019048311821515161561059b5761059b6105f2565b500290565b6000828210156105b2576105b26105f2565b500390565b600181811c908216806105cb57607f821691505b602082108114156105ec57634e487b7160e01b600052602260045260246000fd5b50919050565b634e487b7160e01b600052601160045260246000fdfea2646970667358221220214c2a7bacd2abb3e4d4942b98fd626f789f45578b3aaa3de935a1bcfae97f2e64736f6c63430008040033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106101425760003560e01c80636d483fe6116100b8578063c969ac061161007c578063c969ac06146102a7578063cb765c1d146102af578063d267974c146102b7578063f327e324146102c8578063f91614eb146102d0578063fc2e39a6146102d857600080fd5b80636d483fe61461021457806386ef573814610239578063a622ee7c14610241578063a860988c1461028a578063b71d7a6e1461029f57600080fd5b8063317c9e421161010a578063317c9e4214610196578063364bc15a1461019e5780633f60d799146101c55780635257b566146101ec57806353388f44146101f4578063685a5808146101fc57600080fd5b806308dcd7c614610147578063151439501461015e57806317d7de7c146101665780631b9084b41461017b5780631e522b291461018e575b600080fd5b6005545b6040519081526020015b60405180910390f35b600a5461014b565b61016e6102e0565b60405161015591906104f6565b61014b6101893660046104c8565b610372565b60145461014b565b600b5461014b565b61014b7ffc8737ab85eb45125971625a9ebdb75cc78e01d5c1fa80c4c6e5203f47bc4fab81565b61014b7f3204c940063673962b481a0395619b3dbbd137589c419e993978c1c71bcf68ec81565b60115461014b565b600e5461014b565b3360009081526002602052604090206001015461014b565b6009546001600160a01b03165b6040516001600160a01b039091168152602001610155565b60135461014b565b61026f61024f3660046104c8565b600260208190526000918252604090912080546001820154919092015483565b60408051938452602084019290925290820152606001610155565b3360009081526002602052604090205461014b565b61014b61041f565b60045461014b565b60105461014b565b6003546001600160a01b0316610221565b60085461014b565b600f5461014b565b60125461014b565b6060600180546102ef906105b7565b80601f016020809104026020016040519081016040528092919081815260200182805461031b906105b7565b80156103685780601f1061033d57610100808354040283529160200191610368565b820191906000526020600020905b81548152906001019060200180831161034b57829003601f168201915b5050505050905090565b6001600160a01b03811660009081526002602052604081206001015461039a57506000919050565b6005546004546001600160a01b0384166000908152600260205260409020600101546103c69190610581565b6103d09190610561565b600b54600a546001600160a01b0385166000908152600260205260409020546103f99190610581565b6104039190610561565b61040f90612710610581565b6104199190610561565b92915050565b33600090815260026020526040812060010154601654909190610446906301e13380610561565b601654336000908152600260208190526040822001549293509161046a9190610561565b6016546104779042610561565b61048191906105a0565b90508082612710600f60020154866104999190610581565b6104a39190610561565b6104ad9190610561565b6104b79190610581565b6104c19084610549565b9250505090565b6000602082840312156104d9578081fd5b81356001600160a01b03811681146104ef578182fd5b9392505050565b6000602080835283518082850152825b8181101561052257858101830151858201604001528201610506565b818111156105335783604083870101525b50601f01601f1916929092016040019392505050565b6000821982111561055c5761055c6105f2565b500190565b60008261057c57634e487b7160e01b81526012600452602481fd5b500490565b600081600019048311821515161561059b5761059b6105f2565b500290565b6000828210156105b2576105b26105f2565b500390565b600181811c908216806105cb57607f821691505b602082108114156105ec57634e487b7160e01b600052602260045260246000fd5b50919050565b634e487b7160e01b600052601160045260246000fdfea2646970667358221220214c2a7bacd2abb3e4d4942b98fd626f789f45578b3aaa3de935a1bcfae97f2e64736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

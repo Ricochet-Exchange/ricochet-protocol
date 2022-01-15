@@ -17,6 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./tellor/ITellor.sol";
 import "hardhat/console.sol";
+import "./referral/IREXReferral.sol";
 
 // solhint-disable not-rely-on-time
 abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
@@ -68,6 +69,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
+    IREXReferral referral; // REX Referral contracts
+
 
     // TODO: Emit these events where appropriate
     /// @dev Distribution event. Emitted on each token distribution operation.
@@ -637,7 +640,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 		// Decode userData
         (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
 
-        safeRegisterUser(decompiledContext.msgSender, affiliateId);
+        referral.safeRegisterCustomer(decompiledContext.msgSender, affiliateId);
     }
 
     function afterAgreementCreated(
