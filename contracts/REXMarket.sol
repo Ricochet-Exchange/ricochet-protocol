@@ -11,7 +11,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./tellor/ITellor.sol";
+import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
+
 
 // solhint-disable not-rely-on-time
 abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
@@ -63,6 +65,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
+    IREXReferral referrals;
 
     // TODO: Emit these events where appropriate
     /// @dev Distribution event. Emitted on each token distribution operation.
@@ -80,11 +83,14 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperfluid _host,
         IConstantFlowAgreementV1 _cfa,
         IInstantDistributionAgreementV1 _ida,
-        string memory _registrationKey
+        string memory _registrationKey,
+        IREXReferral _rexReferral
     ) {
         host = _host;
         cfa = _cfa;
         ida = _ida;
+        referrals = _rexReferral;
+
         transferOwnership(_owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
@@ -95,6 +101,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             host.registerApp(_configWord);
         }
     }
+
+    // Referral System Methods
 
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
@@ -327,13 +335,14 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         int96 _currentFlowRate,
         int96 _previousFlowRate
     ) internal returns (bytes memory _newCtx) {
-      console.log("_updateShareholder");
+        console.log("_updateShareholder");
         // We need to go through all the output tokens and update their IDA shares
         _newCtx = _ctx;
 
         uint128 feeShares; // The number of shares to add/subtract from the DAOs IDA share
         int96 changeInFlowRate; // The change in the flow rate for the shareholder (can be negative)
         uint128 daoShares;      // The new number of shares the DAO should be allocated
+        uint128 affiliateShares; // The new number of shares to give to the affiliate if any
 
         (,,daoShares,) = getIDAShares(0, owner());
         daoShares *= 1e9; // Scale back up to same percision as the flowRate
@@ -342,6 +351,13 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         console.log("_previousFlowRate", uint256(int256(_previousFlowRate)));
         console.log("daoShares:", daoShares);
 
+        // Check affiliate
+        address affiliateAddress = referrals.getAffiliateAddress(_shareholder);
+        if (address(0) != affiliateAddress) {
+          (,,affiliateShares,) = getIDAShares(0, affiliateAddress);
+          affiliateShares *= 1e9;
+          console.log("affiliateShares:", affiliateShares);
+        }
 
         // Compute the change in flow rate, will be negative is slowing the flow rate
         changeInFlowRate = _currentFlowRate - _previousFlowRate;
@@ -351,23 +367,32 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         if(changeInFlowRate > 0) {
           // Add new shares to the DAO
           feeShares = uint128(uint256(int256(changeInFlowRate)) * 2 / 100);
-          daoShares += feeShares;
-          console.log("feeShares:", uint(feeShares));
-          console.log("daoShares:", uint(daoShares));
+          if (address(0) != affiliateAddress) {
+            daoShares += feeShares * 90 / 100;
+            affiliateShares += feeShares * 10 / 100;
+          } else {
+            daoShares += feeShares;
+          }
 
         } else {
           // Make the rate positive
           changeInFlowRate = -1 * changeInFlowRate;
           feeShares = uint128(uint256(int256(changeInFlowRate)) * 2 / 100);
-          daoShares -= feeShares;
-          console.log("neg feeShares:", uint(feeShares));
-          console.log("neg daoShares:", uint(daoShares));
+          if (address(0) != affiliateAddress) {
+            daoShares -= feeShares * 90 / 100;
+            affiliateShares -= feeShares * 10 / 100;
+          } else {
+            daoShares -= feeShares;
+          }
+
         }
+        console.log("feeShares:", uint(feeShares));
+        console.log("daoShares:", uint(daoShares));
+        console.log("affiliateShares:", uint(affiliateShares));
         require(int(uint(daoShares)) > 0, "daoShares negative" );
 
-        console.log("updating", uint256(int256(_currentFlowRate)) * 98 / 100);
+        console.log("stakeHolderShares", uint256(int256(_currentFlowRate)) * 98 / 100);
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
-          console.log("stakeholder", uint(_index));
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
@@ -376,7 +401,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 uint128(uint256(int256(_currentFlowRate))) * 98 / 100,
                 market.outputPools[_index].token
             );
-            console.log("dao", uint(_index));
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
@@ -385,6 +409,16 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 daoShares,
                 market.outputPools[_index].token
             );
+            if (address(0) != affiliateAddress) {
+              _newCtx = _updateSubscriptionWithContext(
+                  _newCtx,
+                  _index,
+                  affiliateAddress,
+                  // shareholder gets 98% of the units, DAO takes 0.02%
+                  affiliateShares,
+                  market.outputPools[_index].token
+              );
+            }
             // TODO: Update the fee taken by the DAO
         }
     }
@@ -649,11 +683,18 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData, _superToken
         );
+        
+        // Register with RexReferral
+        ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
+        (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
+        referrals.safeRegisterCustomer(_shareholder, affiliateId);
+
 
         // TODO: Update shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, 0);
 
     }
+
 
     function beforeAgreementUpdated(
         ISuperToken _superToken,

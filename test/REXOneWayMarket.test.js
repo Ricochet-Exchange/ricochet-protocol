@@ -148,6 +148,14 @@ describe('REXOneWayMarket', () => {
     usdcx: [],
     ric: [],
   };
+  const carlBalances = {
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
+    daix: [],
+    usdcx: [],
+    ric: [],
+  };
   const aliceBalances = {
     outputx: [],
     ethx: [],
@@ -271,6 +279,15 @@ describe('REXOneWayMarket', () => {
   });
 
   beforeEach(async () => {
+
+    // Deploy REXReferral
+    RexReferral = await ethers.getContractFactory("REXReferral", {
+      signer: owner,
+    });
+    referral = await RexReferral.deploy();
+    await referral.deployed();
+
+
     // ==============
     // Deploy REX Market
 
@@ -286,7 +303,8 @@ describe('REXOneWayMarket', () => {
       sf.host.address,
       sf.agreements.cfa.address,
       sf.agreements.ida.address,
-      registrationKey);
+      "ricochetftw-151221-3",
+      referral.address);
 
     console.log('Deployed REXOneWayMarket');
 
@@ -303,6 +321,14 @@ describe('REXOneWayMarket', () => {
 
     // Add subsidy pool
     await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
+
+    // Register the market with REXReferral
+    await referral.registerApp(app.address);
+    referral = await referral.connect(carl);
+    await referral.applyForAffiliate("carl", "carl");
+    referral = await referral.connect(owner);
+    await referral.verifyAffiliate("carl");
+
 
 
 
@@ -348,16 +374,19 @@ describe('REXOneWayMarket', () => {
     ownerBalances.outputx.push((await ethx.balanceOf(u.admin.address)).toString());
     aliceBalances.outputx.push((await ethx.balanceOf(u.alice.address)).toString());
     bobBalances.outputx.push((await ethx.balanceOf(u.bob.address)).toString());
+    carlBalances.outputx.push((await ethx.balanceOf(u.carl.address)).toString());
 
     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
     ownerBalances.usdcx.push((await usdcx.balanceOf(u.admin.address)).toString());
     aliceBalances.usdcx.push((await usdcx.balanceOf(u.alice.address)).toString());
     bobBalances.usdcx.push((await usdcx.balanceOf(u.bob.address)).toString());
+    carlBalances.usdcx.push((await usdcx.balanceOf(u.carl.address)).toString());
 
     appBalances.ric.push((await ric.balanceOf(app.address)).toString());
     ownerBalances.ric.push((await ric.balanceOf(u.admin.address)).toString());
     aliceBalances.ric.push((await ric.balanceOf(u.alice.address)).toString());
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
+    carlBalances.ric.push((await ric.balanceOf(u.carl.address)).toString());
   }
 
   describe('Stream Exchange', async () => {
@@ -421,7 +450,7 @@ describe('REXOneWayMarket', () => {
     });
 
     it('should distribute tokens to streamers', async () => {
-      await approveSubscriptions([u.alice.address, u.bob.address, u.admin.address]);
+      await approveSubscriptions([u.alice.address, u.bob.address, u.admin.address, u.carl.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.spender.address });
@@ -433,17 +462,21 @@ describe('REXOneWayMarket', () => {
       const inflowRateIDAShares = '1000000';
       const inflowRateIDASharesx2 = '2000000';
 
-      // 1. Initialize a stream exchange
-      // 2. Create 2 streamers, one with 2x the rate of the other
-      await u.alice.flow({ flowRate: inflowRate, recipient: u.app });
-      await u.bob.flow({ flowRate: inflowRatex2, recipient: u.app });
-
+      // Start Alices flow and confirm the IDA shares are done right: check owner and carl
+      await u.alice.flow({ flowRate: inflowRate, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl')});
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRate);
       expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+
+      // Start Bobs flow and do the same check
+      await u.bob.flow({ flowRate: inflowRatex2, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', '')});
       expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRatex2);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,1960000,0`);
-      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,60000,0`);
-      // 3. Advance time 1 hour
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,58000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+
+      // Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
@@ -458,24 +491,21 @@ describe('REXOneWayMarket', () => {
       let deltaAlice = await delta('alice', aliceBalances);
       let deltaBob = await delta('bob', bobBalances);
       let deltaOwner = await delta('owner', ownerBalances);
-      // verify
-      console.log(deltaOwner)
-      console.log(deltaAlice)
-      console.log(deltaBob)
+      let deltaCarl = await delta('carl', carlBalances);
+
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
       expect(deltaAlice.outputx * 2).to.be.within(deltaBob.outputx * 0.998, deltaBob.outputx * 1.008)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
-      
+      //
       // Test increasing a flow rate
       await u.alice.flow({ flowRate: inflowRatex2, recipient: u.app });
-
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
       expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
-      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRatex2);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,76000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,4000,0`);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,1960000,0`);
-      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,80000,0`);
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
@@ -491,25 +521,25 @@ describe('REXOneWayMarket', () => {
       deltaAlice = await delta('alice', aliceBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
-      // verify
-      console.log(deltaOwner)
-      console.log(deltaAlice)
-      console.log(deltaBob)
-      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      deltaCarl = await delta('carl', carlBalances);
+
+      // // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
       expect(deltaAlice.outputx).to.be.within(deltaBob.outputx * 0.9999, deltaBob.outputx * 1.0001)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
-
-
+      //
+      //
       // Test decreasing a flow rate
       await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
 
-      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,60000,0`);
-      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
-      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
       expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRate);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,56000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,4000,0`);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
+
+
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
@@ -525,26 +555,25 @@ describe('REXOneWayMarket', () => {
       deltaAlice = await delta('alice', aliceBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
-      // verify
-      console.log(deltaOwner)
-      console.log(deltaAlice)
-      console.log(deltaBob)
+      deltaCarl = await delta('carl', carlBalances);
+
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
       expect(deltaBob.outputx * 2).to.be.within(deltaAlice.outputx * 0.9999, deltaAlice.outputx * 1.0001)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
-
-
+      //
+      //
       // Test deleting a flow
-      await u.bob.flow({ flowRate: '0', recipient: u.app });
-      expect(await sf.host.isAppJailed(app.address)).to.equal(false);
+      await u.alice.flow({ flowRate: '0', recipient: u.app });
 
-      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRatex2);
-      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,1960000,0`);
-      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(0);
-      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
-      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,40000,0`);
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(0);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
+
+
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
@@ -560,16 +589,35 @@ describe('REXOneWayMarket', () => {
       deltaAlice = await delta('alice', aliceBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
-      // verify
-      console.log(deltaOwner)
-      console.log(deltaAlice)
-      console.log(deltaBob)
+      deltaCarl = await delta('carl', carlBalances);
+
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
       expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
-      expect(deltaBob.usdcx).to.equal(0)
-      expect(deltaBob.outputx).to.equal(0)
+      expect(deltaAlice.usdcx).to.equal(0)
+      expect(deltaAlice.outputx).to.equal(0)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
 
+      // Some light tests of the referral mechanism
+
+      // Test reregistering alice with a different affiliate
+      await u.alice.flow({ flowRate: inflowRate, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'karen') });
+
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRate);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,38000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
+
+
+      // Test reregistering bob with an affiliate,
+      await u.bob.flow({ flowRate: '0', recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl')});
+
+      await u.bob.flow({ flowRate: inflowRate, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') });
+      expect(await app.getStreamRate(u.bob.address, usdcx.address)).to.equal(inflowRate);
+      expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,38000,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
 
 
 

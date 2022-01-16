@@ -39,8 +39,9 @@ contract REXSushiFarmMarket is REXMarket {
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
     IInstantDistributionAgreementV1 _ida,
-    string memory _registrationKey
-  ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey) {
+    string memory _registrationKey,
+    IREXReferral _rexReferral
+  ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {
 
     RicochetToken _rexToken = new RicochetToken(_host);
     _rexToken.initialize(ERC20(_slpAddress), 18, "Ricochet SLP", "rexSLP");

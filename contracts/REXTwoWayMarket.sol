@@ -24,8 +24,9 @@ contract REXTwoWayMarket is REXMarket {
     ISuperfluid _host,
     IConstantFlowAgreementV1 _cfa,
     IInstantDistributionAgreementV1 _ida,
-    string memory _registrationKey
-  ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey) {
+    string memory _registrationKey,
+    IREXReferral _rexReferral
+  ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {
 
   }
 
