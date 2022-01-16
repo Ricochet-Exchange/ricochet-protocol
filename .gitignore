@@ -6,7 +6,8 @@ node_modules
 *__pycache__
 logs
 
-
+artifacts
 coverage
 coverage.json
 typechain
+.DS_Store
