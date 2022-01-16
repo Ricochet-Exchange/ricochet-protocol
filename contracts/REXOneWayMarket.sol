@@ -56,7 +56,7 @@ contract REXOneWayMarket is REXMarket {
         address(market.inputToken),
         2**256 - 1
     );
-    ERC20(market.outputPools[OUTPUT_INDEX].token.getUnderlyingToken()).safeIncreaseAllowance(
+    ERC20(address(market.outputPools[OUTPUT_INDEX].token)).safeIncreaseAllowance(
         address(market.outputPools[OUTPUT_INDEX].token),
         2**256 - 1
     );
@@ -134,7 +134,7 @@ contract REXOneWayMarket is REXMarket {
    uint256 outputAmount;         // The balance before the swap
 
    inputToken = input.getUnderlyingToken();
-   outputToken = output.getUnderlyingToken();
+   outputToken = address(output); //.getUnderlyingToken();
 
    // Downgrade and scale the input amount
    input.downgrade(amount);
@@ -165,7 +165,7 @@ contract REXOneWayMarket is REXMarket {
    require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
-   output.upgrade(outputAmount * (10 ** (18 - ERC20(outputToken).decimals())));
+   // output.upgrade(outputAmount * (10 ** (18 - ERC20(outputToken).decimals())));
 
    return outputAmount;
  }

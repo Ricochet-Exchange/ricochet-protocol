@@ -114,9 +114,9 @@ describe('REXOneWayMarket', () => {
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
   const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
-  const TELLOR_ETH_REQUEST_ID = 1;
+  const TELLOR_ETH_REQUEST_ID = 77;
   const TELLOR_USDC_REQUEST_ID = 78;
-  const COINGECKO_KEY = 'ethereum';
+  const COINGECKO_KEY = 'richochet';
 
   // random address from polygonscan that have a lot of usdcx
   const USDCX_SOURCE_ADDRESS = '0x81ea02098336435d5e92e032c029aab850304f5d';
@@ -175,7 +175,7 @@ describe('REXOneWayMarket', () => {
 
   async function approveSubscriptions(
     users = [u.alice.address, u.bob.address, u.admin.address],
-    tokens = [ethx.address, ricAddress],
+    tokens = [ricAddress],
   ) {
     // Do approvals
     // Already approved?
@@ -184,9 +184,9 @@ describe('REXOneWayMarket', () => {
     for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
       for (let userIndex = 0; userIndex < users.length; userIndex += 1) {
         let index = 0;
-        if (tokens[tokenIndex] === ricAddress) {
-          index = 1;
-        }
+        // if (tokens[tokenIndex] === ricAddress) {
+        //   index = 1;
+        // }
 
         await web3tx(
           sf.host.callAgreement,
@@ -272,8 +272,8 @@ describe('REXOneWayMarket', () => {
     ric = ric.connect(owner);
 
     // Attach alice to the SLP token
-    outputx = ethx;
-    output = await ERC20.attach(await outputx.getUnderlyingToken());
+    outputx = ric;
+    // output = await ERC20.attach(await outputx.getUnderlyingToken());
 
 
   });
@@ -303,7 +303,7 @@ describe('REXOneWayMarket', () => {
       sf.host.address,
       sf.agreements.cfa.address,
       sf.agreements.ida.address,
-      "ricochetftw-151221-3",
+      registrationKey,
       referral.address);
 
     console.log('Deployed REXOneWayMarket');
@@ -314,13 +314,13 @@ describe('REXOneWayMarket', () => {
       usdcx.address,
       20000,
       TELLOR_USDC_REQUEST_ID,
-      ethx.address,
+      outputx.address,
       20000,
       TELLOR_ETH_REQUEST_ID
     )
 
     // Add subsidy pool
-    await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
+    // await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);
@@ -370,11 +370,11 @@ describe('REXOneWayMarket', () => {
 
   async function takeMeasurements() {
 
-    appBalances.outputx.push((await ethx.balanceOf(app.address)).toString());
-    ownerBalances.outputx.push((await ethx.balanceOf(u.admin.address)).toString());
-    aliceBalances.outputx.push((await ethx.balanceOf(u.alice.address)).toString());
-    bobBalances.outputx.push((await ethx.balanceOf(u.bob.address)).toString());
-    carlBalances.outputx.push((await ethx.balanceOf(u.carl.address)).toString());
+    appBalances.outputx.push((await outputx.balanceOf(app.address)).toString());
+    ownerBalances.outputx.push((await outputx.balanceOf(u.admin.address)).toString());
+    aliceBalances.outputx.push((await outputx.balanceOf(u.alice.address)).toString());
+    bobBalances.outputx.push((await outputx.balanceOf(u.bob.address)).toString());
+    carlBalances.outputx.push((await outputx.balanceOf(u.carl.address)).toString());
 
     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
     ownerBalances.usdcx.push((await usdcx.balanceOf(u.admin.address)).toString());
@@ -450,7 +450,7 @@ describe('REXOneWayMarket', () => {
     });
 
     it('should distribute tokens to streamers', async () => {
-      await approveSubscriptions([u.alice.address, u.bob.address, u.admin.address, u.carl.address]);
+      await approveSubscriptions([u.alice.address, u.bob.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.spender.address });
@@ -464,10 +464,14 @@ describe('REXOneWayMarket', () => {
 
       // Start Alices flow and confirm the IDA shares are done right: check owner and carl
       await u.alice.flow({ flowRate: inflowRate, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl')});
+      await approveSubscriptions([u.admin.address, u.carl.address]);
+
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRate);
       expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+
+
 
       // Start Bobs flow and do the same check
       await u.bob.flow({ flowRate: inflowRatex2, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', '')});
@@ -482,7 +486,7 @@ describe('REXOneWayMarket', () => {
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -494,7 +498,7 @@ describe('REXOneWayMarket', () => {
       let deltaCarl = await delta('carl', carlBalances);
 
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.01999, 0.020001)
       expect(deltaAlice.outputx * 2).to.be.within(deltaBob.outputx * 0.998, deltaBob.outputx * 1.008)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
@@ -512,7 +516,7 @@ describe('REXOneWayMarket', () => {
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -523,8 +527,7 @@ describe('REXOneWayMarket', () => {
       deltaOwner = await delta('owner', ownerBalances);
       deltaCarl = await delta('carl', carlBalances);
 
-      // // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.01999, 0.020001)
       expect(deltaAlice.outputx).to.be.within(deltaBob.outputx * 0.9999, deltaBob.outputx * 1.0001)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
@@ -546,7 +549,7 @@ describe('REXOneWayMarket', () => {
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -557,8 +560,7 @@ describe('REXOneWayMarket', () => {
       deltaOwner = await delta('owner', ownerBalances);
       deltaCarl = await delta('carl', carlBalances);
 
-      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.02, 0.02001)
+      expect((deltaOwner.outputx + deltaCarl.outputx) / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx + deltaCarl.outputx)).to.within(0.01999, 0.020001)
       expect(deltaBob.outputx * 2).to.be.within(deltaAlice.outputx * 0.9999, deltaAlice.outputx * 1.0001)
       expect(deltaBob.usdcx / oraclePrice * 1e6 * -1 ).to.within(deltaBob.outputx * 0.98, deltaBob.outputx * 1.05)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)
@@ -580,7 +582,7 @@ describe('REXOneWayMarket', () => {
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 4. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -591,8 +593,7 @@ describe('REXOneWayMarket', () => {
       deltaOwner = await delta('owner', ownerBalances);
       deltaCarl = await delta('carl', carlBalances);
 
-      // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
+      expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.01999, 0.02001)
       expect(deltaAlice.usdcx).to.equal(0)
       expect(deltaAlice.outputx).to.equal(0)
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.outputx * 0.98, deltaAlice.outputx * 1.05)

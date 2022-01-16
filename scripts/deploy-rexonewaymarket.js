@@ -42,10 +42,12 @@ async function main() {
     TELLOR_RIC_REQUEST_ID
   );
 
-  // TODO: addOutputPool to add RIC subsidies (currently not tested)
-
   // Register the market with REXReferral
+  console.log("Registering with RexReferral system...")
+  const RexReferral = await ethers.getContractFactory("RexReferral");
+  const referral = await RexReferral.attach(process.env.REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexOneWayMarket.address);
+  console.log("Registered:", rexOneWayMarket.address);
 
   // Affiliates will need to be setup manually
   // referral = await referral.connect(carl);

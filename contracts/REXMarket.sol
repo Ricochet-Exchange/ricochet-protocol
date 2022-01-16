@@ -256,6 +256,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Oracle Functions
 
     function updateTokenPrice(ISuperToken _token) public {
+      console.log("token", address(_token));
         (
             bool _ifRetrieve,
             uint256 _value,
@@ -278,6 +279,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256 _timestampRetrieved
         )
     {
+        console.log("_requestId", _requestId);
         uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
         _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
             _requestId,
@@ -389,7 +391,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         console.log("feeShares:", uint(feeShares));
         console.log("daoShares:", uint(daoShares));
         console.log("affiliateShares:", uint(affiliateShares));
-        require(int(uint(daoShares)) > 0, "daoShares negative" );
 
         console.log("stakeHolderShares", uint256(int256(_currentFlowRate)) * 98 / 100);
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
@@ -657,6 +658,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+      console.log("beforeAgreementCreated");
 
     }
 
@@ -668,6 +670,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata, //_cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
+        console.log("afterAgreementCreated");
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 
@@ -683,7 +686,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData, _superToken
         );
-        
+
         // Register with RexReferral
         ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
         (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
@@ -701,14 +704,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         address _agreementClass,
         bytes32, //_agreementId,
         bytes calldata _agreementData,
-        bytes calldata // _ctx
+        bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
+
       // Get the stakeholders current flow rate and save it in cbData
       (, int96 _flowRate,) = _getShareholderInfo(
           _agreementData, _superToken
       );
+      console.log("flowRate", uint(int(_flowRate)));
 
       _cbdata = abi.encode(int(_flowRate));
+      console.log("Done");
     }
 
 
@@ -720,8 +729,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
+        console.log("afterAgreementUpdated");
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
+
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
 
         _newCtx = _ctx;
         (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
