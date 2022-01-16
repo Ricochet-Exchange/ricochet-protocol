@@ -13,16 +13,11 @@ async function main() {
 
   USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
   TELLOR_USDC_REQUEST_ID = 78;
-  ETHX_ADDRESS = "0x27e1e4E6BC79D93032abef01025811B7E4727e85";
-  TELLOR_ETH_REQUEST_ID = 1;
+  RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  TELLOR_RIC_REQUEST_ID = 77;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
-
-  console.log("Deploying RexReferral")
-  const REXReferral = await ethers.getContractFactory("REXReferral");
-  let referral = await REXReferral.deploy();
-  console.log("Deployed RexReferral at address:", referral.address)
 
   const REXOneWayMarket = await ethers.getContractFactory("REXOneWayMarket");
   console.log("Deploying REXOneWayMarket")
@@ -31,7 +26,7 @@ async function main() {
                                                       CFA_ADDRESS,
                                                       IDA_ADDRESS,
                                                       process.env.SF_REG_KEY,
-                                                      referral.address
+                                                      process.env.REX_REFERRAL_ADDRESS
                                                      );
   await rexOneWayMarket.deployed();
   console.log("Deployed rexOneWayMarket at address:", rexOneWayMarket.address);
@@ -42,9 +37,9 @@ async function main() {
     USDCX_ADDRESS,
     20000,
     TELLOR_USDC_REQUEST_ID,
-    ETHX_ADDRESS,
+    RIC_ADDRESS,
     20000,
-    TELLOR_ETH_REQUEST_ID
+    TELLOR_RIC_REQUEST_ID
   );
 
   // TODO: addOutputPool to add RIC subsidies (currently not tested)
