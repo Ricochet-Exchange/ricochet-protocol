@@ -2,6 +2,7 @@ cache
 node_modules
 .env
 .vscode
+artifacts
 
 *__pycache__
 logs
