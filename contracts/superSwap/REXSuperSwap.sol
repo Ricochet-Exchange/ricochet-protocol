@@ -1,17 +1,17 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/swap-router-contracts/contracts/interfaces/ISwapRouter02.sol";
 
 contract RexSuperSwap {
-    ISwapRouter public immutable swapRouter;
+    ISwapRouter02 public immutable swapRouter;
 
     event SuperSwapComplete(uint256 amountOut);
 
-    constructor(ISwapRouter _swapRouter) {
+    constructor(ISwapRouter02 _swapRouter) {
         swapRouter = _swapRouter;
     }
 
@@ -27,8 +27,7 @@ contract RexSuperSwap {
         uint256 amountIn,
         uint256 amountOutMin,
         address[] memory path,
-        uint24[] memory poolFees, // Example: 0.3% * 10000 = 3000
-        uint256 deadline
+        uint24[] memory poolFees // Example: 0.3% * 10000 = 3000
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount cannot be 0");
         require(path.length > 1, "Incorrect path");
@@ -78,19 +77,19 @@ contract RexSuperSwap {
             amountIn
         );
 
-        ISwapRouter.ExactInputParams memory params = ISwapRouter
+        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
                 path: encodedPath,
                 recipient: address(this),
-                deadline: block.timestamp + deadline,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMin
             });
 
-        // Executes the swap.
+        // Execute the swap
         amountOut = swapRouter.exactInput(params);
 
         // Step 5: Upgrade and send tokens back
+        TransferHelper.safeApprove(address(toBase), address(_to), amountOut);
         _to.upgrade(amountOut);
         TransferHelper.safeApprove(address(_to), msg.sender, amountOut);
         TransferHelper.safeTransferFrom(
