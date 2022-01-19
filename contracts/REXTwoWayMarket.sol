@@ -72,7 +72,6 @@ contract REXTwoWayMarket is REXMarket {
     );
 
   }
-
   function afterAgreementCreated(
       ISuperToken _superToken,
       address _agreementClass,
