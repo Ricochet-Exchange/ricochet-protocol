@@ -14,7 +14,6 @@ import "./tellor/ITellor.sol";
 import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
-
 // solhint-disable not-rely-on-time
 abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // REX Market Base Contract
@@ -56,7 +55,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         address owner; // The owner of the market (reciever of fees)
         mapping(ISuperToken => OracleInfo) oracles; // Maps tokens to their oracle info
         mapping(uint32 => OutputPool) outputPools; // Maps IDA indexes to their distributed Supertokens
-        uint8 numOutputPools; // Indexes outputPools and outputPoolFees
+        uint32 numOutputPools; // Indexes outputPools and outputPoolFees
     }
 
     ISuperfluid internal host; // Superfluid host contract
@@ -65,7 +64,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
-    IREXReferral referrals;
+    IREXReferral internal referrals;
 
     // TODO: Emit these events where appropriate
     /// @dev Distribution event. Emitted on each token distribution operation.
@@ -256,7 +255,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Oracle Functions
 
     function updateTokenPrice(ISuperToken _token) public {
-      console.log("token", address(_token));
+        console.log("token", address(_token));
         (
             bool _ifRetrieve,
             uint256 _value,
@@ -264,7 +263,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ) = getCurrentValue(market.oracles[_token].requestId);
 
         require(_ifRetrieve, "!getCurrentValue");
-        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
+        require(
+            _timestampRetrieved >= block.timestamp - 1 hours,
+            "!currentValue"
+        );
 
         market.oracles[_token].usdPrice = _value;
         market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
@@ -343,10 +345,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         uint128 feeShares; // The number of shares to add/subtract from the DAOs IDA share
         int96 changeInFlowRate; // The change in the flow rate for the shareholder (can be negative)
-        uint128 daoShares;      // The new number of shares the DAO should be allocated
+        uint128 daoShares; // The new number of shares the DAO should be allocated
         uint128 affiliateShares; // The new number of shares to give to the affiliate if any
 
-        (,,daoShares,) = getIDAShares(0, owner());
+        (, , daoShares, ) = getIDAShares(0, owner());
         daoShares *= 1e9; // Scale back up to same percision as the flowRate
 
         console.log("_currentFlowRate", uint256(int256(_currentFlowRate)));
@@ -356,9 +358,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // Check affiliate
         address affiliateAddress = referrals.getAffiliateAddress(_shareholder);
         if (address(0) != affiliateAddress) {
-          (,,affiliateShares,) = getIDAShares(0, affiliateAddress);
-          affiliateShares *= 1e9;
-          console.log("affiliateShares:", affiliateShares);
+            (, , affiliateShares, ) = getIDAShares(0, affiliateAddress);
+            affiliateShares *= 1e9;
+            console.log("affiliateShares:", affiliateShares);
         }
 
         // Compute the change in flow rate, will be negative is slowing the flow rate
@@ -366,40 +368,41 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         // if the change is positive value then DAO has some new shares,
         // which would be 2% of the increase in shares
-        if(changeInFlowRate > 0) {
-          // Add new shares to the DAO
-          feeShares = uint128(uint256(int256(changeInFlowRate)) * 2 / 100);
-          if (address(0) != affiliateAddress) {
-            daoShares += feeShares * 90 / 100;
-            affiliateShares += feeShares * 10 / 100;
-          } else {
-            daoShares += feeShares;
-          }
-
+        if (changeInFlowRate > 0) {
+            // Add new shares to the DAO
+            feeShares = uint128((uint256(int256(changeInFlowRate)) * 2) / 100);
+            if (address(0) != affiliateAddress) {
+                daoShares += (feeShares * 90) / 100;
+                affiliateShares += (feeShares * 10) / 100;
+            } else {
+                daoShares += feeShares;
+            }
         } else {
-          // Make the rate positive
-          changeInFlowRate = -1 * changeInFlowRate;
-          feeShares = uint128(uint256(int256(changeInFlowRate)) * 2 / 100);
-          if (address(0) != affiliateAddress) {
-            daoShares -= feeShares * 90 / 100;
-            affiliateShares -= feeShares * 10 / 100;
-          } else {
-            daoShares -= feeShares;
-          }
-
+            // Make the rate positive
+            changeInFlowRate = -1 * changeInFlowRate;
+            feeShares = uint128((uint256(int256(changeInFlowRate)) * 2) / 100);
+            if (address(0) != affiliateAddress) {
+                daoShares -= (feeShares * 90) / 100;
+                affiliateShares -= (feeShares * 10) / 100;
+            } else {
+                daoShares -= feeShares;
+            }
         }
-        console.log("feeShares:", uint(feeShares));
-        console.log("daoShares:", uint(daoShares));
-        console.log("affiliateShares:", uint(affiliateShares));
+        console.log("feeShares:", uint256(feeShares));
+        console.log("daoShares:", uint256(daoShares));
+        console.log("affiliateShares:", uint256(affiliateShares));
 
-        console.log("stakeHolderShares", uint256(int256(_currentFlowRate)) * 98 / 100);
+        console.log(
+            "stakeHolderShares",
+            (uint256(int256(_currentFlowRate)) * 98) / 100
+        );
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
                 _shareholder,
                 // shareholder gets 98% of the units, DAO takes 0.02%
-                uint128(uint256(int256(_currentFlowRate))) * 98 / 100,
+                (uint128(uint256(int256(_currentFlowRate))) * 98) / 100,
                 market.outputPools[_index].token
             );
             _newCtx = _updateSubscriptionWithContext(
@@ -411,23 +414,30 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 market.outputPools[_index].token
             );
             if (address(0) != affiliateAddress) {
-              _newCtx = _updateSubscriptionWithContext(
-                  _newCtx,
-                  _index,
-                  affiliateAddress,
-                  // shareholder gets 98% of the units, DAO takes 0.02%
-                  affiliateShares,
-                  market.outputPools[_index].token
-              );
+                _newCtx = _updateSubscriptionWithContext(
+                    _newCtx,
+                    _index,
+                    affiliateAddress,
+                    // shareholder gets 98% of the units, DAO takes 0.02%
+                    affiliateShares,
+                    market.outputPools[_index].token
+                );
             }
             // TODO: Update the fee taken by the DAO
         }
     }
 
-    function _getShareholderInfo(bytes calldata _agreementData, ISuperToken _superToken)
+    function _getShareholderInfo(
+        bytes calldata _agreementData,
+        ISuperToken _superToken
+    )
         internal
         view
-        returns (address _shareholder, int96 _flowRate, uint256 _timestamp)
+        returns (
+            address _shareholder,
+            int96 _flowRate,
+            uint256 _timestamp
+        )
     {
         (_shareholder, ) = abi.decode(_agreementData, (address, address));
         (_timestamp, _flowRate, , ) = cfa.getFlow(
@@ -485,8 +495,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     // Superfluid Agreement Management Methods
 
-    function _createIndex(uint256 index, ISuperToken distToken) internal {
-
+    function _createIndex(uint32 index, ISuperToken distToken) internal {
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
@@ -577,8 +586,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     function _isInputToken(ISuperToken _superToken)
         internal
-        virtual
         view
+        virtual
         returns (bool)
     {
         return address(_superToken) == address(market.inputToken);
@@ -630,36 +639,32 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     function _shouldDistribute() internal virtual returns (bool) {
+        (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
+            .getIndex(
+                market.outputPools[PRIMARY_OUTPUT_INDEX].token,
+                address(this),
+                PRIMARY_OUTPUT_INDEX
+            );
 
-      (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
-          .getIndex(
-              market.outputPools[PRIMARY_OUTPUT_INDEX].token,
-              address(this),
-              PRIMARY_OUTPUT_INDEX
-          );
+        // Check balance and account for just 1 input token
+        uint256 _balance = market.inputToken.balanceOf(address(this)) /
+            (10 **
+                (18 -
+                    ERC20(market.inputToken.getUnderlyingToken()).decimals()));
 
-      // Check balance and account for just 1 input token
-      uint256 _balance = market.inputToken.balanceOf(
-          address(this)
-      ) /
-          (10 **
-              (18 -
-                  ERC20(market.inputToken.getUnderlyingToken()).decimals()));
-
-      return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
+        return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
     }
 
     // Superfluid Functions
 
     function beforeAgreementCreated(
-        ISuperToken _superToken,
-        address _agreementClass,
+        ISuperToken, // _superToken,
+        address, // _agreementClass,
         bytes32, //_agreementId,
-        bytes calldata _agreementData,
+        bytes calldata, // _agreementData,
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
-      console.log("beforeAgreementCreated");
-
+        console.log("beforeAgreementCreated");
     }
 
     function afterAgreementCreated(
@@ -684,20 +689,21 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
 
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-            _agreementData, _superToken
+            _agreementData,
+            _superToken
         );
 
         // Register with RexReferral
         ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
-        (string memory affiliateId) = abi.decode(decompiledContext.userData, (string));
+        string memory affiliateId = abi.decode(
+            decompiledContext.userData,
+            (string)
+        );
         referrals.safeRegisterCustomer(_shareholder, affiliateId);
-
 
         // TODO: Update shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, 0);
-
     }
-
 
     function beforeAgreementUpdated(
         ISuperToken _superToken,
@@ -706,20 +712,19 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
 
-      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-          return _ctx;
+        // Get the stakeholders current flow rate and save it in cbData
+        (, int96 _flowRate, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
+        );
+        console.log("flowRate", uint256(int256(_flowRate)));
 
-      // Get the stakeholders current flow rate and save it in cbData
-      (, int96 _flowRate,) = _getShareholderInfo(
-          _agreementData, _superToken
-      );
-      console.log("flowRate", uint(int(_flowRate)));
-
-      _cbdata = abi.encode(int(_flowRate));
-      console.log("Done");
+        _cbdata = abi.encode(int256(_flowRate));
+        console.log("Done");
     }
-
 
     function afterAgreementUpdated(
         ISuperToken _superToken,
@@ -737,16 +742,21 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             return _ctx;
 
         _newCtx = _ctx;
-        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
-            _agreementData, _superToken
+        (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
         );
-        int _beforeFlowRate = abi.decode(_cbdata, (int));
-
+        int256 _beforeFlowRate = abi.decode(_cbdata, (int256));
 
         _newCtx = distribute(_newCtx);
 
         // TODO: Udpate shareholder needs before and after flow rate
-        _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, int96(_beforeFlowRate));
+        _newCtx = _updateShareholder(
+            _newCtx,
+            _shareholder,
+            _flowRate,
+            int96(_beforeFlowRate)
+        );
     }
 
     // We need before agreement to get the uninvested amount using the flowRate before update
@@ -762,20 +772,22 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 
-        (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
+        (, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(
+            _agreementData,
+            _superToken
+        );
 
         uint256 _uinvestAmount = _calcUserUninvested(
             _timestamp,
             uint256(uint96(_flowRateMain)),
             market.lastDistributionAt
         );
-        _cbdata = abi.encode(_uinvestAmount, int(_flowRateMain));
+        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
         console.log("balanceOf", market.inputToken.balanceOf(address(this)));
-
     }
 
     function afterAgreementTerminated(
-        ISuperToken _superToken,
+        ISuperToken, // _superToken,
         address, //_agreementClass
         bytes32, //_agreementId,
         bytes calldata _agreementData,
@@ -786,9 +798,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         console.log("afterAgreementTerminated");
 
         _newCtx = _ctx;
-        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
-        (uint256 _uninvestAmount, int _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int));
-        _newCtx = _updateShareholder(_newCtx, _shareholder, 0, int96(_beforeFlowRate));
+        (address _shareholder, ) = abi.decode(
+            _agreementData,
+            (address, address)
+        );
+        (uint256 _uninvestAmount, int256 _beforeFlowRate) = abi.decode(
+            _cbdata,
+            (uint256, int256)
+        );
+        _newCtx = _updateShareholder(
+            _newCtx,
+            _shareholder,
+            0,
+            int96(_beforeFlowRate)
+        );
         console.log("_uninvestAmount", _uninvestAmount);
         console.log("balanceOf", market.inputToken.balanceOf(address(this)));
         // Refund the unswapped amount back to the person who started the stream

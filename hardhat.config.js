@@ -29,14 +29,15 @@ module.exports = {
       forking: {
         url: process.env.POLYGON_NODE_URL,
         accounts: [process.env.POLYGON_PRIVATE_KEY],
-        enabled: true
+        enabled: true,
+        blockNumber: 23908800
       },
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,
       accounts: [process.env.POLYGON_PRIVATE_KEY],
       blockGasLimit: 20000000,
-      gasPrice: 55000000000 // 35 Gwei
+      gasPrice: 55000000000 // 55 Gwei
     }
   },
   mocha: {
