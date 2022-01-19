@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import { UUPSProxiable } from "@superfluid-finance/ethereum-contracts/contracts/upgradability/UUPSProxiable.sol";
+import { UUPSProxiable } from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/upgradability/UUPSProxiable.sol";
 import "hardhat/console.sol";
 
 import {
@@ -12,10 +12,10 @@ import {
     IERC20,
     IERC777,
     TokenInfo
-} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import { ISuperfluidToken, SuperfluidToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperfluidToken.sol";
+} from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { ISuperfluidToken, SuperfluidToken } from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/superfluid/SuperfluidToken.sol";
 
-import "@superfluid-finance/ethereum-contracts/contracts/utils/ERC777Helper.sol";
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/utils/ERC777Helper.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

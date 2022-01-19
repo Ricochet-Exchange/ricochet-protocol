@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 
-import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; 
-import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
-import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol";
-import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
-import "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol";
-import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
-import {IInstantDistributionAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
-import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; 
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol";
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol";
+import {IConstantFlowAgreementV1} from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import {IInstantDistributionAgreementV1} from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
+import {SuperAppBase} from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
