@@ -1,7 +1,6 @@
 import {parseEther} from "@ethersproject/units";
 import { hexValue } from "@ethersproject/bytes";
 import { network, ethers } from "hardhat";
-import BigNumber from 'bignumber.js'
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
@@ -48,18 +47,18 @@ export const setNextBlockTimestamp = async (timestamp: number) => {
     await network.provider.send("evm_mine")
 };
 
-// Function for converting amount from larger unit (like eth) to smaller unit (like wei)
-export function convertTo(amount: string, decimals: string) {
-    return new BigNumber(amount)
-        .times('1e' + decimals)
-        .integerValue()
-        .toString(10);
-}
+// // Function for converting amount from larger unit (like eth) to smaller unit (like wei)
+// export function convertTo(amount: string, decimals: string) {
+//     return new BigNumber(amount)
+//         .times('1e' + decimals)
+//         .integerValue()
+//         .toString(10);
+// }
 
-// Function for converting amount from smaller unit (like wei) to larger unit (like ether)
-export function convertFrom(amount: string, decimals: string) {
-    return new BigNumber(amount)
-        .div('1e' + decimals)
-        .toString(10);
-}
+// // Function for converting amount from smaller unit (like wei) to larger unit (like ether)
+// export function convertFrom(amount: string, decimals: string) {
+//     return new BigNumber(amount)
+//         .div('1e' + decimals)
+//         .toString(10);
+// }
 
