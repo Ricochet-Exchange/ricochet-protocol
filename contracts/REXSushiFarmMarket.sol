@@ -53,9 +53,11 @@ contract REXSushiFarmMarket is REXMarket {
     ISuperToken _inputToken,
     uint256 _rateTolerance,
     ITellor _tellor,
-    uint256 _inputTokenRequestId
+    uint256 _inputTokenRequestId,
+    uint128 _affiliateFee,
+    uint128 _feeRate
   ) public override onlyOwner {
-    REXMarket.initializeMarket(_inputToken,_rateTolerance,_tellor,_inputTokenRequestId);
+    REXMarket.initializeMarket(_inputToken,_rateTolerance,_tellor,_inputTokenRequestId, _affiliateFee, _feeRate);
     //NOTE: REXLP token doesnt have a oracle price...
     addOutputPool(ISuperToken(address(rexToken)), 20000, 0, 77);
     addOutputPool(sushix, 200000, 0, 78);

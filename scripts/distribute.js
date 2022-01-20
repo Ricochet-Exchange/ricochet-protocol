@@ -19,7 +19,8 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   console.log('Distributing...');
-  await rexMarket.distribute("0x");
+  let tx = await rexMarket.distribute("0x");
+  console.log(tx)
   console.log('Distributed');
 
 }

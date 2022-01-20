@@ -38,7 +38,7 @@ contract REXOneWayMarket is REXMarket {
     uint256 _ouptutTokenRequestId) public onlyOwner initializer {
 
     router = _router;
-    REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId);
+    REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId, 100000, _feeRate);
     addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId);
 
     // Approvals
@@ -86,7 +86,7 @@ contract REXOneWayMarket is REXMarket {
     if (actualAmount == 0) { return newCtx; }
 
     // Calculate the fee for making the distribution
-    uint256 feeCollected = actualAmount * market.outputPools[OUTPUT_INDEX].feeRate / 1e6;
+    uint256 feeCollected = actualAmount * market.feeRate / 1e6;
     uint256 distAmount = actualAmount - feeCollected;
 
     console.log("ouptutBalance", outputBalance);
@@ -103,7 +103,7 @@ contract REXOneWayMarket is REXMarket {
       outputBalance = market.outputPools[index].token.balanceOf(address(this));
       if (outputBalance > 0) {
         // Should oneway market only support subsidy tokens?
-        if (market.outputPools[index].feeRate != 0) {
+        if (market.feeRate != 0) {
           newCtx = _idaDistribute(index, uint128(outputBalance), market.outputPools[index].token, newCtx);
           emit Distribution(outputBalance, feeCollected, address(market.outputPools[index].token));
         } else {

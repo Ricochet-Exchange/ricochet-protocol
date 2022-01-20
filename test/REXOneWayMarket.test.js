@@ -312,7 +312,7 @@ describe('REXOneWayMarket', () => {
       SUSHISWAP_ROUTER_ADDRESS,
       TELLOR_ORACLE_ADDRESS,
       usdcx.address,
-      20000,
+      30000,
       TELLOR_USDC_REQUEST_ID,
       outputx.address,
       20000,
@@ -341,7 +341,7 @@ describe('REXOneWayMarket', () => {
     // ==============
     // Get actual price
     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
+    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1.01 * 1000000).toString();
     console.log('oraclePrice', oraclePrice);
     await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
     await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
