@@ -696,7 +696,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // Register with RexReferral
         ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
         string memory affiliateId;
-        if (decompiledContext.userData.length >= 0) {
+        if (decompiledContext.userData.length > 0) {
           (affiliateId) = abi.decode(decompiledContext.userData, (string));
         } else {
           affiliateId = "";

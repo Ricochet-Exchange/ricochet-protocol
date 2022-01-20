@@ -119,7 +119,9 @@ function afterAgreementUpdated(
 
       _newCtx = _ctx;
 
-      _newCtx = distribute(_newCtx);
+      if (_shouldDistribute()) {
+          _newCtx = distribute(_newCtx);
+      }
 
       (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
           _agreementData, _superToken
