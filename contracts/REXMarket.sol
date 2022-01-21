@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-
-import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol"; 
+import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
 import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol";
 import "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
@@ -99,6 +98,22 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         } else {
             host.registerApp(_configWord);
         }
+    }
+
+    /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
+    /// @param Streamer is stream source
+    function closeStream(address streamer) public {
+        host.callAgreement(
+            cfa,
+            abi.encodeWithSelector(
+                cfa.deleteFlow.selector,
+                market.inputToken,
+                streamer,
+                address(this),
+                new bytes(0) // placeholder
+            ),
+            "0x"
+        );
     }
 
     /// @dev Allows anyone to close any stream if the app is jailed.
@@ -346,11 +361,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
     }
 
-    function _getShareholderInfo(bytes calldata _agreementData, ISuperToken _superToken)
-        internal
-        view
-        returns (address _shareholder, int96 _flowRate)
-    {
+    function _getShareholderInfo(
+        bytes calldata _agreementData,
+        ISuperToken _superToken
+    ) internal view returns (address _shareholder, int96 _flowRate) {
         (_shareholder, ) = abi.decode(_agreementData, (address, address));
         (, _flowRate, , ) = cfa.getFlow(
             _superToken,
@@ -408,7 +422,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
@@ -499,8 +512,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     function _isInputToken(ISuperToken _superToken)
         internal
-        virtual
         view
+        virtual
         returns (bool)
     {
         return address(_superToken) == address(market.inputToken);
@@ -552,23 +565,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     function _shouldDistribute() internal virtual returns (bool) {
+        (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
+            .getIndex(
+                market.outputPools[PRIMARY_OUTPUT_INDEX].token,
+                address(this),
+                PRIMARY_OUTPUT_INDEX
+            );
 
-      (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
-          .getIndex(
-              market.outputPools[PRIMARY_OUTPUT_INDEX].token,
-              address(this),
-              PRIMARY_OUTPUT_INDEX
-          );
+        // Check balance and account for just 1 input token
+        uint256 _balance = market.inputToken.balanceOf(address(this)) /
+            (10 **
+                (18 -
+                    ERC20(market.inputToken.getUnderlyingToken()).decimals()));
 
-      // Check balance and account for just 1 input token
-      uint256 _balance = market.inputToken.balanceOf(
-          address(this)
-      ) /
-          (10 **
-              (18 -
-                  ERC20(market.inputToken.getUnderlyingToken()).decimals()));
-
-      return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
+        return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
     }
 
     // Superfluid Functions
@@ -579,9 +589,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes32, //_agreementId,
         bytes calldata _agreementData,
         bytes calldata // _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-
-    }
+    ) external view virtual override returns (bytes memory _cbdata) {}
 
     function afterAgreementCreated(
         ISuperToken _superToken,
@@ -604,11 +612,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
 
         (address _shareholder, int96 _flowRate) = _getShareholderInfo(
-            _agreementData, _superToken
+            _agreementData,
+            _superToken
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate);
-
     }
 
     function beforeAgreementUpdated(
@@ -617,10 +625,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes32, //_agreementId,
         bytes calldata _agreementData,
         bytes calldata // _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-      
-    }
-
+    ) external view virtual override returns (bytes memory _cbdata) {}
 
     function afterAgreementUpdated(
         ISuperToken _superToken,
@@ -635,7 +640,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         _newCtx = _ctx;
         (address _shareholder, int96 _flowRate) = _getShareholderInfo(
-            _agreementData, _superToken
+            _agreementData,
+            _superToken
         );
 
         _newCtx = distribute(_newCtx);
@@ -655,7 +661,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _onlyHost();
         _onlyExpected(_superToken, _agreementClass);
 
-        (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
+        (address _shareholder, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
+        );
 
         (uint256 _timestamp, int96 _flowRateMain, , ) = cfa.getFlow(
             market.inputToken,
@@ -681,7 +690,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _onlyHost();
 
         _newCtx = _ctx;
-        (address _shareholder, ) = _getShareholderInfo(_agreementData, _superToken);
+        (address _shareholder, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
+        );
         uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
 
         // Refund the unswapped amount back to the person who started the stream
