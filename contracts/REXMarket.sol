@@ -145,6 +145,31 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
     }
 
+    // Setters
+
+    /// @dev Set rate tolerance
+    /// @param _rate This is the new rate we need to set to
+    function setRateTolerance(uint256 _rate) external onlyOwner {
+        market.rateTolerance = _rate;
+    }
+
+    /// @dev Sets fee rate for a output pool/token
+    /// @param _index IDA index for the output pool/token
+    /// @param _feeRate Fee rate for the ouput pool/token
+    function setFeeRate(uint32 _index, uint128 _feeRate) external onlyOwner {
+        market.outputPools[_index].feeRate = _feeRate;
+    }
+
+    /// @dev Sets emission rate for a output pool/token
+    /// @param _index IDA index for the output pool/token
+    /// @param _emissionRate Emission rate for the ouput pool/token
+    function setEmissionRate(uint32 _index, uint128 _emissionRate)
+        external
+        onlyOwner
+    {
+        market.outputPools[_index].emissionRate = _emissionRate;
+    }
+
     // Getters
 
     /// @dev Get input token address
@@ -191,6 +216,26 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return address(oracle);
     }
 
+    /// @dev Get rate tolerance
+    /// @return Rate tolerance scaled to 1e6
+    function getRateTolerance() external view returns (uint256) {
+        return market.rateTolerance;
+    }
+
+    /// @dev Get fee rate for a given output pool/token
+    /// @param _index IDA index for the output pool/token
+    /// @return Fee rate for the output pool
+    function getFeeRate(uint32 _index) external view returns (uint128) {
+        return market.outputPools[_index].feeRate;
+    }
+
+    /// @dev Get emission rate for a given output pool/token
+    /// @param _index IDA index for the output pool/token
+    /// @return Emission rate for the output pool
+    function getEmissionRate(uint32 _index) external view returns (uint256) {
+        return market.outputPools[_index].emissionRate;
+    }
+    
     // Emergency Admin Methods
 
     /// @dev Is app jailed in SuperFluid protocol
