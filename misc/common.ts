@@ -1,45 +1,51 @@
 import { ethers } from "hardhat";
 import { parseUnits } from "@ethersproject/units";
 
-import { setup , IUser, ISuperToken} from "./setup";
+import { setup, IUser, ISuperToken } from "./setup";
 import { impersonateAccounts } from "./helpers";
-
+import { type } from "os";
+import { constants } from "buffer";
+const { defaultAbiCoder, keccak256 } = require("ethers/lib/utils");
 
 const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
-const SuperfluidGovernanceBase = require("@superfluid-finance/ethereum-contracts/build/contracts/SuperfluidGovernanceII.json");
+const SuperfluidGovernanceBase = require("../test/artifacts/superfluid/SuperfluidGovernanceII.json");
 
 export const common = async () => {
-  const { superfluid, users, tokens, superTokens, contracts, addresses } =
-    await setup();
+  const { superfluid, users, tokens, superTokens, contracts } = await setup();
 
-  const appBalances : { [key: string] : string[]} = {
+  const appBalances: { [key: string]: string[] } = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const ownerBalances : { [key: string] : string[]}= {
+  const ownerBalances: { [key: string]: string[] } = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const aliceBalances : { [key: string] : string[]} = {
+  const aliceBalances: { [key: string]: string[] } = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
-  const bobBalances : { [key: string] : string[]} = {
+  const bobBalances: { [key: string]: string[] } = {
     ethx: [],
     wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
+
+  const hostABI = [
+    "function getGovernance() external view returns (address)",
+    "function getSuperTokenFactory() external view returns(address)",
+  ];
 
   async function checkBalance(users: any) {
     for (let i = 0; i < users.length; ++i) {
@@ -74,7 +80,6 @@ export const common = async () => {
     }
   }
 
-
   async function logUsers() {
     let string = "user\t\ttokens\t\tnetflow\n";
     let p = 0;
@@ -97,8 +102,8 @@ export const common = async () => {
     return inFlows.length + outFlows.length > 0;
   }
 
-  // Need to migrate this to superfluid sdk 
-  
+  // Need to migrate this to superfluid sdk
+
   // async function subscribe(user:any) {
   //   // Alice approves a subscription to the app
   //   console.log(superfluid.host.hostContract.callAgreement);
@@ -150,39 +155,76 @@ export const common = async () => {
   //   bobBalances.ric.push((await tokens.ric.balanceOf(users.bob.address)).toString());
   // }
 
-  async function createSFRegistrationKey(deployerAddr: string) {
-    const registrationKey = `testKey-${Date.now()}`;
-    const encodedKey = ethers.utils.solidityKeccak256(
-      ["string", "address", "string"],
-      [
-        "org.superfluid-finance.superfluid.appWhiteListing.registrationKey",
-        deployerAddr,
-        registrationKey,
-      ]
+  async function approveSubscriptions(
+    userss: any,
+    tokenss:any,
+    app: any
+  ) {
+    // Do approvals
+    // Already approved?
+    console.log('Approving subscriptions...');
+
+    for (let tokenIndex = 0; tokenIndex < tokenss.length; tokenIndex += 1) {
+      for (let userIndex = 0; userIndex < userss.length; userIndex += 1) {
+        let index = 0;
+        if (tokens[tokenIndex] === tokens.ric.address) {
+          index = 1;
+        }
+
+        await web3tx(
+          superfluid.host.hostContract.callAgreement,
+          `${users[userIndex]} approves subscription to the app ${tokens[tokenIndex]} ${index}`,
+        )(
+          sf.agreements.ida.address,
+          sf.agreements.ida.contract.methods
+            .approveSubscription(tokens[tokenIndex], app.address, tokenIndex, '0x')
+            .encodeABI(),
+          '0x', // user data
+          {
+            from: users[userIndex],
+          },
+        );
+      }
+    }
+    console.log('Approved.');
+  }
+
+  async function createSFRegistrationKey(sf: any, deployerAddr: any) {
+    console.log("address", deployerAddr);
+    const host = await ethers.getContractAt(
+      hostABI,
+      sf.host.hostContract.address
     );
+    const registrationKey = `testKey-${Date.now()}`;
+    console.log("resigration ?? key", registrationKey);
 
-    const hostABI = [
-      "function getGovernance() external view returns (address)",
-    ];
-
-    const host = await ethers.getContractAt(hostABI, addresses[5]);
-    const governance = await host.getGovernance();
-
+    const encodedKey = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["string", "address", "string"],
+        [
+          "org.superfluid-finance.superfluid.appWhiteListing.registrationKey",
+          deployerAddr,
+          registrationKey,
+        ]
+      )
+    );
+    const governance: string = await host.getGovernance();
     const sfGovernanceRO = await ethers.getContractAt(
       SuperfluidGovernanceBase.abi,
       governance
     );
-
     const govOwner = await sfGovernanceRO.owner();
     const [govOwnerSigner] = await impersonateAccounts([govOwner]);
-
     const sfGovernance = await ethers.getContractAt(
       SuperfluidGovernanceBase.abi,
       governance,
       govOwnerSigner
     );
-
-    await sfGovernance.whiteListNewApp(addresses[5], encodedKey);
+    //console.log("sf governance", sfGovernance.whiteListNewApp);
+    await sfGovernance.whiteListNewApp(
+      sf.host.hostContract.address,
+      encodedKey
+    );
 
     return registrationKey;
   }
