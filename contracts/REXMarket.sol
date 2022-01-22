@@ -102,51 +102,51 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
     /// @param streamer is stream source (streamer) address
-    function _closeStream(
-        StreamExchangeStorage.StreamExchange storage self,
-        address streamer
-    ) public {
-        // Only closable iff their balance is less than 8 hours of streaming
-        (, int96 streamerFlowRate, , ) = self.cfa.getFlow(
-            self.inputToken,
-            streamer,
-            address(this)
-        );
-        require(
-            int256(self.inputToken.balanceOf(streamer)) <=
-                streamerFlowRate * 8 hours,
-            "!closable"
-        );
+    // function _closeStream(
+    //     StreamExchangeStorage.StreamExchange storage self,
+    //     address streamer
+    // ) public {
+    //     // Only closable if their balance is less than 8 hours of streaming
+    //     (, int96 streamerFlowRate, , ) = self.cfa.getFlow(
+    //         self.inputToken,
+    //         streamer,
+    //         address(this)
+    //     );
+    //     require(
+    //         int256(self.inputToken.balanceOf(streamer)) <=
+    //             streamerFlowRate * 8 hours,
+    //         "!closable"
+    //     );
 
-        // Update Subscriptions
-        _updateSubscription(
-            self,
-            self.subsidyIndexId,
-            streamer,
-            0,
-            self.subsidyToken
-        );
-        _updateSubscription(
-            self,
-            self.outputIndexId,
-            streamer,
-            0,
-            self.outputToken
-        );
+    //     // Update Subscriptions
+    //     _updateSubscription(
+    //         self,
+    //         self.subsidyIndexId,
+    //         streamer,
+    //         0,
+    //         self.subsidyToken
+    //     );
+    //     _updateSubscription(
+    //         self,
+    //         self.outputIndexId,
+    //         streamer,
+    //         0,
+    //         self.outputToken
+    //     );
 
-        // Close the streamers stream
-        host.callAgreement(
-            cfa,
-            abi.encodeWithSelector(
-                cfa.deleteFlow.selector,
-                market.inputToken,
-                streamer,
-                address(this),
-                new bytes(0) // placeholder
-            ),
-            "0x"
-        );
-    }
+    //     // Close the streamers stream
+    //     host.callAgreement(
+    //         cfa,
+    //         abi.encodeWithSelector(
+    //             cfa.deleteFlow.selector,
+    //             market.inputToken,
+    //             streamer,
+    //             address(this),
+    //             new bytes(0) // placeholder
+    //         ),
+    //         "0x"
+    //     );
+    // }
 
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
