@@ -10,7 +10,6 @@ import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
-import "hardhat-gas-reporter";
 import "solidity-coverage";
 
 dotenv.config();
@@ -62,12 +61,12 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      // forking: {
-      //   url: process.env.POLYGON_NODE_URL,
+      forking: {
+        url: process.env.POLYGON_NODE_URL || '',
       //   accounts: [process.env.POLYGON_PRIVATE_KEY],
-      //   enabled: true,
-      //   blockNumber: 22877930
-      // },
+        enabled: true,
+        blockNumber: 22877930
+      },
     },
     // polygon: {
     //   url: process.env.POLYGON_NODE_URL,
