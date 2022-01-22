@@ -47,6 +47,7 @@ contract REXTwoWayMarket is REXMarket {
     market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
     market.rateTolerance = _rateTolerance;
     oracle = _tellor;
+    market.feeRate = _feeRate;
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId);
     outputPoolIndices[inputTokenA] = OUTPUTA_INDEX;
@@ -74,35 +75,33 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
-  function afterAgreementCreated(
-      ISuperToken _superToken,
-      address _agreementClass,
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata, //_cbdata,
-      bytes calldata _ctx
-  ) external override returns (bytes memory _newCtx) {
-      _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
-
-      console.log("afterAgreementCreated");
-
-      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-          return _ctx;
-      console.log("inside after agreement1");
-
-      _newCtx = _ctx;
-
-      if (_shouldDistribute()) {
-          _newCtx = distribute(_newCtx);
-      }
-
-      (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-          _agreementData, _superToken
-      );
-
-      _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
-  }
+  // function afterAgreementCreated(
+  //     ISuperToken _superToken,
+  //     address _agreementClass,
+  //     bytes32, //_agreementId,
+  //     bytes calldata _agreementData,
+  //     bytes calldata, //_cbdata,
+  //     bytes calldata _ctx
+  // ) external override returns (bytes memory _newCtx) {
+  //     console.log("afterAgreementCreated");
+  //     _onlyHost();
+  //     _onlyExpected(_superToken, _agreementClass);
+  //
+  //     if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+  //         return _ctx;
+  //
+  //     _newCtx = _ctx;
+  //
+  //     if (_shouldDistribute()) {
+  //         _newCtx = distribute(_newCtx);
+  //     }
+  //
+  //     (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+  //         _agreementData, _superToken
+  //     );
+  //
+  //     _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
+  // }
 
 function afterAgreementUpdated(
       ISuperToken _superToken,

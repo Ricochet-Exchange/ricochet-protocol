@@ -289,6 +289,13 @@ describe('REXTwoWayMarket', () => {
     // ==============
     // Deploy REX Market
 
+    // Deploy REXReferral
+    RexReferral = await ethers.getContractFactory("REXReferral", {
+      signer: owner,
+    });
+    referral = await RexReferral.deploy();
+    await referral.deployed();
+
     const REXTwoWayMarket = await ethers.getContractFactory('REXTwoWayMarket', {
       signer: owner,
     });
@@ -301,7 +308,8 @@ describe('REXTwoWayMarket', () => {
       sf.host.address,
       sf.agreements.cfa.address,
       sf.agreements.ida.address,
-      registrationKey);
+      registrationKey,
+      referral.address);
 
     console.log('Deployed REXTwoWayMarket');
 
@@ -315,6 +323,13 @@ describe('REXTwoWayMarket', () => {
       20000,
       20000
     )
+
+    // Register the market with REXReferral
+    await referral.registerApp(app.address);
+    referral = await referral.connect(carl);
+    await referral.applyForAffiliate("carl", "carl");
+    referral = await referral.connect(owner);
+    await referral.verifyAffiliate("carl");
 
 
 
@@ -374,7 +389,7 @@ describe('REXTwoWayMarket', () => {
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
   }
 
-  describe('Stream Exchange', async () => {
+  describe('REXTwoWayMarket', async () => {
 
     xit('should create a stream exchange with the correct parameters', async () => {
       const inflowRate = '77160493827160';
@@ -413,7 +428,7 @@ describe('REXTwoWayMarket', () => {
     });
 
     it('should distribute tokens to streamers', async () => {
-      await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address]);
+      await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.admin.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
@@ -428,14 +443,18 @@ describe('REXTwoWayMarket', () => {
 
       // 1. Initialize a stream exchange
       // 2. Create 2 streamers, one with 2x the rate of the other
-      await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app });
+      await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl')});
       await u.bob.flow({ flowRate: inflowRateEth, recipient: u.app });
       await takeMeasurements();
 
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
-      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,${inflowRateIDASharesUsdc},0`);
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
-      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,${inflowRateIDASharesEth},0`);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,200,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,1800,0`);
       // 3. Advance time 1 hour
       await traveler.advanceTimeAndBlock(3600);
       console.log("Fast forward")
@@ -443,8 +462,7 @@ describe('REXTwoWayMarket', () => {
       await checkBalance(u.bob)
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -593,11 +611,6 @@ describe('REXTwoWayMarket', () => {
       expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
       expect(deltaCarl.usdcx).to.equal(0)
       expect(deltaCarl.ethx).to.equal(0)
-
-
-
-
-
 
     });
 
