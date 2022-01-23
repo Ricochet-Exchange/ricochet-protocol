@@ -84,7 +84,7 @@ describe('REXTwoWayMarket', () => {
     if (err) throw err;
   };
 
-  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'UsdcSpender', 'EthSpender'];
+  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
 
   let sf;
   let dai;
@@ -132,6 +132,7 @@ describe('REXTwoWayMarket', () => {
   const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
   const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
   const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
+  const KAREN_ADDRESS = "0xbf188ab46C1ca9d9e47a7996d585566ECeDdAeAb"
   let oraclePrice;
 
   const appBalances = {
@@ -175,8 +176,17 @@ describe('REXTwoWayMarket', () => {
     ric: [],
   };
 
+  const karenBalances = {
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
+    daix: [],
+    usdcx: [],
+    ric: [],
+  };
+
   async function approveSubscriptions(
-    users = [u.alice.address, u.bob.address, u.carl.address, u.admin.address],
+    users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
     tokens = [usdcx.address, ethx.address],
   ) {
     // Do approvals
@@ -207,7 +217,7 @@ describe('REXTwoWayMarket', () => {
     // ==============
     // impersonate accounts and set balances
 
-    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
+    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
 
     accountAddrs.forEach(async (account) => {
       await impersonateAndSetBalance(account);
@@ -220,9 +230,10 @@ describe('REXTwoWayMarket', () => {
     alice = await ethers.provider.getSigner(ALICE_ADDRESS);
     bob = await ethers.provider.getSigner(BOB_ADDRESS);
     carl = await ethers.provider.getSigner(CARL_ADDRESS);
+    karen = await ethers.provider.getSigner(KAREN_ADDRESS);
     usdcSpender = await ethers.provider.getSigner(USDCX_SOURCE_ADDRESS);
     ethSpender = await ethers.provider.getSigner(ETHX_SOURCE_ADDRESS);
-    const accounts = [owner, alice, bob, carl, usdcSpender, ethSpender];
+    const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender];
 
     // ==============
     // Init Superfluid Framework
@@ -374,18 +385,21 @@ describe('REXTwoWayMarket', () => {
     ownerBalances.ethx.push((await ethx.balanceOf(u.admin.address)).toString());
     aliceBalances.ethx.push((await ethx.balanceOf(u.alice.address)).toString());
     carlBalances.ethx.push((await ethx.balanceOf(u.carl.address)).toString());
+    karenBalances.ethx.push((await ethx.balanceOf(u.karen.address)).toString());
     bobBalances.ethx.push((await ethx.balanceOf(u.bob.address)).toString());
 
     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
     ownerBalances.usdcx.push((await usdcx.balanceOf(u.admin.address)).toString());
     aliceBalances.usdcx.push((await usdcx.balanceOf(u.alice.address)).toString());
     carlBalances.usdcx.push((await usdcx.balanceOf(u.carl.address)).toString());
+    karenBalances.usdcx.push((await usdcx.balanceOf(u.karen.address)).toString());
     bobBalances.usdcx.push((await usdcx.balanceOf(u.bob.address)).toString());
 
     appBalances.ric.push((await ric.balanceOf(app.address)).toString());
     ownerBalances.ric.push((await ric.balanceOf(u.admin.address)).toString());
     aliceBalances.ric.push((await ric.balanceOf(u.alice.address)).toString());
     carlBalances.ric.push((await ric.balanceOf(u.carl.address)).toString());
+    karenBalances.ric.push((await ric.balanceOf(u.karen.address)).toString());
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
   }
 
@@ -428,7 +442,7 @@ describe('REXTwoWayMarket', () => {
     });
 
     it('should distribute tokens to streamers', async () => {
-      await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.admin.address]);
+      await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
@@ -453,8 +467,8 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
-      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,200,0`);
-      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,1800,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,200,0`);
       // 3. Advance time 1 hour
       await traveler.advanceTimeAndBlock(3600);
       console.log("Fast forward")
@@ -469,15 +483,19 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
 
       let deltaAlice = await delta('alice', aliceBalances);
+      let deltaCarl = await delta('carl', carlBalances);
+      let deltaKaren = await delta('karen', karenBalances);
       let deltaBob = await delta('bob', bobBalances);
       let deltaOwner = await delta('owner', ownerBalances);
       // verify
       console.log(deltaOwner)
+      console.log(deltaCarl)
+      console.log(deltaKaren)
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
@@ -495,24 +513,28 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
 
       deltaAlice = await delta('alice', aliceBalances);
+      deltaCarl = await delta('carl', carlBalances);
+      deltaKaren = await delta('karen', karenBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
       // verify
       console.log(deltaOwner)
+      console.log(deltaCarl)
+      console.log(deltaKaren)
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
-      console.log('Transfer carl');
-      await usdcx.transfer(u.carl.address, toWad(400), { from: u.usdcspender.address });
+      console.log('Transfer karen');
+      await usdcx.transfer(u.karen.address, toWad(400), { from: u.usdcspender.address });
 
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
-      await u.carl.flow({ flowRate: inflowRateUsdc, recipient: u.app });
-      expect(await app.getStreamRate(u.carl.address, usdcx.address)).to.equal(inflowRateUsdc);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,${inflowRateIDASharesUsdc},0`);
+      await u.karen.flow({ flowRate: inflowRateUsdc, recipient: u.app });
+      expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(inflowRateUsdc);
+      expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,980000,0`);
 
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
@@ -527,18 +549,20 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
 
       deltaAlice = await delta('alice', aliceBalances);
-      let deltaCarl = await delta('carl', carlBalances);
+      deltaCarl = await delta('carl', carlBalances);
+      deltaKaren = await delta('karen', karenBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
       // verify
       console.log(deltaOwner)
       console.log(deltaCarl)
+      console.log(deltaKaren)
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.05)
-      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.05)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
+      expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
       let aliceBeforeBalance = parseInt(await usdcx.balanceOf(u.alice.address));
@@ -550,7 +574,7 @@ describe('REXTwoWayMarket', () => {
       console.log("after", aliceAfterBalance.toString());
       aliceAfterBalance = aliceAfterBalance - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
       console.log("after", aliceAfterBalance.toString());
-      expect(aliceBeforeBalance).to.within(aliceAfterBalance * 0.99999, aliceAfterBalance * 1.00001);
+      expect(aliceBeforeBalance).to.within(aliceAfterBalance * 0.999, aliceAfterBalance * 1.001);
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(0);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
 
@@ -568,23 +592,25 @@ describe('REXTwoWayMarket', () => {
 
       deltaAlice = await delta('alice', aliceBalances);
       deltaCarl = await delta('carl', carlBalances);
+      deltaKaren = await delta('karen', karenBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
       // verify
       console.log(deltaOwner)
       console.log(deltaCarl)
+      console.log(deltaKaren)
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
       expect(deltaAlice.usdcx).to.equal(0)
       expect(deltaAlice.ethx).to.equal(0)
-      expect(deltaCarl.usdcx / oraclePrice * 1e6 * -1).to.within(deltaCarl.ethx * 0.98, deltaCarl.ethx * 1.05)
+      expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
-      await u.carl.flow({ flowRate: '0', recipient: u.app });
-      expect(await app.getStreamRate(u.carl.address, usdcx.address)).to.equal(0);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+      await u.karen.flow({ flowRate: '0', recipient: u.app });
+      expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(0);
+      expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,0,0`);
 
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
@@ -600,17 +626,19 @@ describe('REXTwoWayMarket', () => {
 
       deltaAlice = await delta('alice', aliceBalances);
       deltaCarl = await delta('carl', carlBalances);
+      deltaKaren = await delta('karen', karenBalances);
       deltaBob = await delta('bob', bobBalances);
       deltaOwner = await delta('owner', ownerBalances);
       // verify
       console.log(deltaOwner)
       console.log(deltaCarl)
+      console.log(deltaKaren)
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.05)
-      expect(deltaCarl.usdcx).to.equal(0)
-      expect(deltaCarl.ethx).to.equal(0)
+      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaKaren.usdcx).to.equal(0)
+      expect(deltaKaren.ethx).to.equal(0)
 
     });
 
