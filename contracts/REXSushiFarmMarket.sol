@@ -4,15 +4,19 @@ pragma solidity ^0.8.0;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import './REXMarket.sol';
-import './RicochetToken.sol';
-import './sushiswap/IMiniChefV2.sol';
-import './matic/IWMATIC.sol';
-import './superfluid/IMATICx.sol';
+import "./libraries/REXUniswapV2Adapter.sol";
+
+import "./REXMarket.sol";
+import "./RicochetToken.sol";
+import "./sushiswap/IMiniChefV2.sol";
+import "./matic/IWMATIC.sol";
+import "./superfluid/IMATICx.sol";
+
 
 contract REXSushiFarmMarket is REXMarket {
 
   using SafeERC20 for ERC20;
+  using REXUniswapV2Adapter for IUniswapV2Router02;
 
   // Token addresses
   address public constant sushi = 0x6B3595068778DD592e39A122f4f5a5cF09C90fE2;
@@ -199,23 +203,19 @@ contract REXSushiFarmMarket is REXMarket {
   ) public returns(uint) {
 
 
-
     ERC20 _inputToken = ERC20(market.inputToken.getUnderlyingToken());
     ERC20 _pairToken = ERC20(pairToken);
 
-    // Downgrade all the input supertokens
-    market.inputToken.downgrade(market.inputToken.balanceOf(address(this)));
-
     // Swap half of input tokens to pair tokens
     uint256 inTokenBalance = _inputToken.balanceOf(address(this));
-    uint256 minOutputAmount = inTokenBalance * market.oracles[market.inputToken].usdPrice / market.oracles[ISuperToken(pairToken)].usdPrice;
-
+    uint256 minOutput = getMinimumSwapOutput(market.inputToken, ISuperToken(pairToken), inTokenBalance);
 
     if (inTokenBalance > 0) {
-      _swapSushiswap(address(_inputToken), address(_pairToken), inTokenBalance / 2, minOutputAmount);
+      router.swap(market.inputToken, ISuperToken(pairToken), inTokenBalance / 2, minOutput, block.timestamp + 60, false);
     }
 
-
+    // Downgrade the remaining input supertokens
+    market.inputToken.downgrade(market.inputToken.balanceOf(address(this)));
 
     // Adds liquidity for inputToken/pairToken
     inTokenBalance = _inputToken.balanceOf(address(this));
@@ -240,8 +240,6 @@ contract REXSushiFarmMarket is REXMarket {
       // TODO: Unlimited approvals in the constructor
       ERC20(rexToken.getUnderlyingToken()).approve(address(masterChef), slpBalance);
 
-
-
       masterChef.deposit(poolId, slpBalance, address(this));
 
       rexToken.mintTo(address(this), slpBalance, new bytes(0));
@@ -250,32 +248,6 @@ contract REXSushiFarmMarket is REXMarket {
     }
 
   }
-
-    // Credit: Pickle.finance
-    function _swapSushiswap(
-        address _from,
-        address _to,
-        uint256 _amount,
-        uint256 _minOutputAmount // TODO: Integrate this is, after the swap check rates
-    ) internal {
-        require(_to != address(0));
-
-        address[] memory path;
-
-        // TODO: Support changing the path
-        path = new address[](2);
-        path[0] = _from;
-        path[1] = _to;
-
-        router.swapExactTokensForTokens(
-            _amount,
-            _minOutputAmount,
-            path,
-            address(this),
-            block.timestamp + 60
-        );
-
-    }
 
   fallback() external payable { }
 

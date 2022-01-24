@@ -351,6 +351,30 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return (false, 0, _timestampRetrieved);
     }
 
+    /**
+     * @dev Get minimum swap ouput from Tellor
+     * @param input ISuperToken input
+     * @param output ISuperToken output
+     * @param inputAmount Input amount for swap
+     */
+    function getMinimumSwapOutput(ISuperToken input, ISuperToken output, uint256 inputAmount) internal returns (uint256 _minOutput) {
+        address inputToken = input.getUnderlyingToken();
+        address outputToken = output.getUnderlyingToken();
+        // Scale amount to 1e18 for calculations
+        amount = inputAmount * (10 ** (18 - ERC20(inputToken).decimals()));
+        console.log("amount", amount);
+
+        _minOutput = amount  * market.oracles[input].usdPrice / market.oracles[output].usdPrice;
+        _minOutput = _minOutput * (1e6 - market.rateTolerance) / 1e6;
+        
+        console.log("amount", amount);
+
+        // Scale back from 1e18 to outputToken decimals
+        _minOutput = _minOutput * (10 ** (ERC20(outputToken).decimals())) / 1e18;
+
+        return _minOutput;
+    }
+
     /// @dev Get flow rate for `_streamer`
     /// @param _streamer is streamer address
     /// @return _requesterFlowRate `_streamer` flow rate
