@@ -280,7 +280,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.inputToken = _inputToken;
         market.rateTolerance = _rateTolerance;
         market.affiliateFee = _affiliateFee;
-        market.feeRate = _feeRate;
+        market. feeRate = _feeRate;
         oracle = _tellor;
         OracleInfo memory _newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
         market.oracles[market.inputToken] = _newOracle;
@@ -402,72 +402,26 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
     ) internal virtual returns (bytes memory _newCtx) {
-        console.log("_updateShareholder");
+        // console.log("_updateShareholder");
         // We need to go through all the output tokens and update their IDA shares
         _newCtx = _ctx;
 
-        uint128 feeShares;       // The number of shares to add/subtract from the DAOs IDA share
-        int96 changeInFlowRate;  // The change in the flow rate for the shareholder (can be negative)
-        uint128 daoShares;       // The new number of shares the DAO should be allocated
-        uint128 affiliateShares; // The new number of shares to give to the affiliate if any
+        (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
 
-        (,,daoShares,) = getIDAShares(0, owner());
-        daoShares *= 1e9; // Scale back up to same percision as the flowRate
-
-        console.log("_currentFlowRate", uint256(int256(_shareholderUpdate.currentFlowRate)));
-        console.log("_previousFlowRate", uint256(int256(_shareholderUpdate.previousFlowRate)));
-        console.log("daoShares:", daoShares);
-
-        // Check affiliate
-        address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
-        if (address(0) != affiliateAddress) {
-          (,,affiliateShares,) = getIDAShares(0, affiliateAddress);
-          affiliateShares *= 1e9;
-          console.log("affiliateShares:", affiliateShares);
-        }
-
-        // Compute the change in flow rate, will be negative is slowing the flow rate
-        changeInFlowRate = _shareholderUpdate.currentFlowRate - _shareholderUpdate.previousFlowRate;
-
-        // if the change is positive value then DAO has some new shares,
-        // which would be 2% of the increase in shares
-        if(changeInFlowRate > 0) {
-          // Add new shares to the DAO
-          feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-          if (address(0) != affiliateAddress) {
-            daoShares += feeShares * (1e6 - market.affiliateFee) / 1e6;
-            affiliateShares += feeShares * market.affiliateFee / 1e6;
-            // TODO: Handle Dust
-          } else {
-            daoShares += feeShares;
-          }
-
-        } else {
-          // Make the rate positive
-          changeInFlowRate = -1 * changeInFlowRate;
-          feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-          if (address(0) != affiliateAddress) {
-            daoShares -= feeShares * (1e6 - market.affiliateFee) / 1e6;
-            affiliateShares -= feeShares * market.affiliateFee / 1e6;
-            require(daoShares >= 0 && affiliateShares >= 0, "negative shares");
-            // TODO: Handle Dust
-          } else {
-            daoShares -= feeShares;
-          }
-
-        }
-        console.log("feeShares:", uint(feeShares));
-        console.log("daoShares:", uint(daoShares));
-        console.log("affiliateShares:", uint(affiliateShares));
+        // console.log("feeShares:", uint(feeShares));
+        // console.log("daoShares:", uint(daoShares));
+        // console.log("affiliateShares:", uint(affiliateShares));
 
         // updateOutputPools
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
+            console.log("Index", _index);
+            console.log("token", address(_shareholderUpdate.token));
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 _index,
                 _shareholderUpdate.shareholder,
                 // shareholder gets 98% of the units, DAO takes 0.02%
-                uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6,
+                userShares,
                 market.outputPools[_index].token
             );
             _newCtx = _updateSubscriptionWithContext(
@@ -478,18 +432,74 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 daoShares,
                 market.outputPools[_index].token
             );
-            if (address(0) != affiliateAddress) {
-              _newCtx = _updateSubscriptionWithContext(
-                  _newCtx,
-                  _index,
-                  affiliateAddress,
-                  // affiliate may get 0.2%
-                  affiliateShares,
-                  market.outputPools[_index].token
-              );
-            }
+            _newCtx = _updateSubscriptionWithContext(
+                _newCtx,
+                _index,
+                referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
+                // affiliate may get 0.2%
+                affiliateShares,
+                market.outputPools[_index].token
+            );
             // TODO: Update the fee taken by the DAO
         }
+
+    }
+
+    function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
+     internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
+    {
+      (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
+      daoShares *= 1e9; // Scale back up to same percision as the flowRate
+      console.log("daoShares:", daoShares);
+
+      address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
+      console.log("affiliateAddress", affiliateAddress);
+      if (address(0) != affiliateAddress) {
+        (,,affiliateShares,) = getIDAShares(0, affiliateAddress);
+        affiliateShares *= 1e9;
+        console.log("affiliateShares:", affiliateShares);
+      }
+
+      console.log("_currentFlowRate", uint256(int256(_shareholderUpdate.currentFlowRate)));
+      console.log("_previousFlowRate", uint256(int256(_shareholderUpdate.previousFlowRate)));
+      // Compute the change in flow rate, will be negative is slowing the flow rate
+      int96 changeInFlowRate = _shareholderUpdate.currentFlowRate - _shareholderUpdate.previousFlowRate;
+      uint128 feeShares;
+      // if the change is positive value then DAO has some new shares,
+      // which would be 2% of the increase in shares
+      if(changeInFlowRate > 0) {
+        // Add new shares to the DAO
+        feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        if (address(0) != affiliateAddress) {
+          daoShares += feeShares * (1e6 - market.affiliateFee) / 1e6;
+          affiliateShares += feeShares * market.affiliateFee / 1e6;
+          // TODO: Handle Dust
+        } else {
+          daoShares += feeShares;
+        }
+      } else {
+        // Make the rate positive
+        // Compute userShares
+        console.log("INSIDE", gasleft());
+        changeInFlowRate = -1 * changeInFlowRate;
+        feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        if (address(0) != affiliateAddress) {
+          daoShares -= feeShares * (1e6 - market.affiliateFee) / 1e6;
+          affiliateShares -= feeShares * market.affiliateFee / 1e6;
+          require(daoShares >= 0 && affiliateShares >= 0, "negative shares");
+          // TODO: Handle Dust
+        } else {
+          daoShares -= feeShares;
+        }
+
+      }
+
+      // Compute userShares
+      // console.log("INSIDE", gasleft());
+      userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
+      // console.log("userShares:", uint(userShares));
+      // console.log("daoShares:", uint(daoShares));
+      // console.log("affiliateShares:", uint(affiliateShares));
 
     }
 
