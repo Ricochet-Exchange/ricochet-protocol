@@ -68,6 +68,7 @@
     "@truffle/abi-utils": "^0.2.3",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "graphql": "^16.2.0",
     "hardhat-contract-sizer": "^2.0.3",
     "usingtellor": "^3.0.2"
   }
