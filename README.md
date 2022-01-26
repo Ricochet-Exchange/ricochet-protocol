@@ -5,13 +5,19 @@ This project has all the smart contracts used by the [ricochet exchange applicat
 ## Tasks
 
 - Compile the Solidity code 
-```npx hardhat compile```
+```
+npx hardhat compile
+```
 
 - Run all the test cases included in a file
-```npx hardhat test test/bankFactory.ts```
+```
+npx hardhat test test/bankFactory.ts
+```
 
 - Run all the test cases included in a file and reports the code coverage on a web page inside the *coverage* directory
-```npx hardhat coverage --testfiles test/bankFactory.ts ```
+```
+npx hardhat coverage --testfiles test/bankFactory.ts
+```
 Coverage runs tests a little more slowly, **distorts gas consumption** and contracts are compiled **without optimization**.
 More info [here](https://github.com/sc-forks/solidity-coverage/).
 
