@@ -5,7 +5,6 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
-import "hardhat/console.sol";
 
 contract REXOneWayMarket is REXMarket {
     using SafeERC20 for ERC20;
@@ -77,12 +76,12 @@ contract REXOneWayMarket is REXMarket {
     {
         newCtx = ctx;
 
-        // require(
-        //     market
-        //         .oracles[market.outputPools[OUTPUT_INDEX].token]
-        //         .lastUpdatedAt >= block.timestamp - 3600,
-        //     "!currentValue"
-        // );
+        require(
+            market
+                .oracles[market.outputPools[OUTPUT_INDEX].token]
+                .lastUpdatedAt >= block.timestamp - 3600,
+            "!currentValue"
+        );
 
         _swap(
             market.inputToken,
@@ -138,11 +137,9 @@ contract REXOneWayMarket is REXMarket {
 
         // Go through the other OutputPools and trigger distributions
         for (uint32 index = 1; index < market.numOutputPools; index++) {
-            console.log(address(this));
             outputBalance = market.outputPools[index].token.balanceOf(
                 address(this)
             );
-            console.log("output Balance: ", outputBalance);
             if (outputBalance > 0) {
                 // Should oneway market only support subsidy tokens?
                 if (market.outputPools[index].feeRate != 0) {
