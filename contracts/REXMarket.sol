@@ -307,7 +307,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ) = getCurrentValue(market.oracles[_token].requestId);
 
         require(_ifRetrieve, "!getCurrentValue");
-        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
+        // require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
 
         market.oracles[_token].usdPrice = _value;
         market.oracles[_token].lastUpdatedAt = _timestampRetrieved;

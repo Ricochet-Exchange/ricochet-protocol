@@ -80,7 +80,6 @@ describe("RexOneWayMarket", function () {
       20000,
       constant.TELLOR_ETH_REQUEST_ID
     );
-
     await app.addOutputPool(constant.RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
 
     u.app = {
@@ -101,6 +100,8 @@ describe("RexOneWayMarket", function () {
     console.log("oraclePrice", oraclePrice);
     await tp.submitValue(constant.TELLOR_ETH_REQUEST_ID, oraclePrice);
     await tp.submitValue(constant.TELLOR_USDC_REQUEST_ID, 1000000);
+    await tp.submitValue(77, 1000000);
+
   });
 
   it("should be correctly configured", async () => {
@@ -234,13 +235,13 @@ describe("RexOneWayMarket", function () {
     // )
     //).to.be.equal(ethers.constants.MaxUint256);
 
-    expect(
-      await tokenss.weth.allowance(app.address, superT.ethx.address)
-    ).to.be.equal(ethers.constants.MaxUint256);
+    // expect(
+    //   await tokenss.weth.allowance(app.address, superT.ethx.address)
+    // ).to.be.equal(ethers.constants.MaxUint256);
 
-    expect(
-      await tokenss.usdc.allowance(app.address, superT.usdcx.address)
-    ).to.be.equal(ethers.constants.MaxUint256);
+    // expect(
+    //   await tokenss.usdc.allowance(app.address, superT.usdcx.address)
+    // ).to.be.equal(ethers.constants.MaxUint256);
   });
 
   it("should distribute tokens to streamers", async () => {
@@ -333,6 +334,117 @@ describe("RexOneWayMarket", function () {
     // expect(deltaOwner.outputx / (deltaAlice.outputx + deltaBob.outputx + deltaOwner.outputx)).to.within(0.02, 0.02001)
     // expect(deltaAlice.outputx * 2).to.be.within(deltaBob.outputx * 0.998, deltaBob.outputx * 1.008)
   });
+
+  it("make sure output tokens and subsidy tokens are streamed correctly", async () => {
+
+    // The token with feeRate != 0 is output token in this case that is ethx 
+    // The token with emissionRate != 0 is subsisdy token in this case that ric tokens. 
+    // 0. Approve subscriptions
+    await superT.ric
+      .transfer({ receiver: u.app.address, amount: toWad(400).toString() })
+      .exec(accountss[0]);
+
+    await sf.idaV1
+    .approveSubscription({
+      indexId: "0",
+      superToken: superT.ethx.address,
+      publisher: u.app.address,
+      userData: "0x",
+    })
+    .exec(accountss[2]);
+
+  await sf.idaV1
+    .approveSubscription({
+      indexId: "1",
+      superToken: superT.ric.address,
+      publisher: u.app.address,
+      userData: "0x",
+    })
+    .exec(accountss[2]);
+    console.log(" get ida shares", await app.getIDAShares(0, u.bob.address));
+
+    // 1. Check balance for output and subsidy tokens and usdcx
+    console.log(
+      "USDCx balance of bob: ",
+      (
+        await superT.usdcx.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+    console.log(
+      "ETHx balance of bob: ",
+      (
+        await superT.ethx.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+    console.log(
+      "RIC balance of bob: ",
+      (
+        await superT.ric.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+
+    // 2. Create a stream from an account to app to excahnge tokens
+    const inflowRatex2 = "2000000000000000";
+    const txnResponseBob = await sf.cfaV1
+    .createFlow({
+      sender: u.bob.address,
+      receiver: u.app.address,
+      superToken: superT.usdcx.address,
+      flowRate: inflowRatex2,
+    })
+    .exec(accountss[2]);
+    const txnReceiptBob = await txnResponseBob.wait();
+
+    // 3. Increase time by 1 hour
+    await increaseTime(60*60);
+    const lastDistributionAt = await app.getLastDistributionAt()
+    //await app.updateTokenPrice(superT.usdcx.address);
+    //await app.updateTokenPrice(superT.ethx.address);
+    //await app.updateTokenPrice(superT.ric.address);
+
+    // 4. Distribute tokens 
+    await app.distribute("0x");
+    // 5. Check balance for output and subsidy tokens
+    console.log(
+      "USDCx balance of bob: ",
+      (
+        await superT.usdcx.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+    console.log(
+      "ETHx balance of bob: ",
+      (
+        await superT.ethx.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+    console.log(
+      "RIC balance of bob: ",
+      (
+        await superT.ric.balanceOf({
+          account: u.bob.address,
+          providerOrSigner: accountss[2],
+        })
+      ).toString()
+    );
+
+  
+  });
+
   it("should let keepers close streams with < 8 hours left", async () => {
     await sf.idaV1
       .approveSubscription({

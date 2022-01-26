@@ -61,12 +61,11 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      forking: {
-        url: process.env.POLYGON_NODE_URL || '',
-      //   accounts: [process.env.POLYGON_PRIVATE_KEY],
-        enabled: true,
-        blockNumber: 22877930
-      },
+       forking: {
+         url: process.env.POLYGON_NODE_URL || '',
+         //accounts: [process.env.POLYGON_PRIVATE_KEY],
+         enabled: true,
+       },
     },
     // polygon: {
     //   url: process.env.POLYGON_NODE_URL,

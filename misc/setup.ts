@@ -43,6 +43,7 @@ export interface ISuperToken {
   usdcx: SuperToken;
   wbtcx: SuperToken;
   daix: SuperToken;
+  ric: SuperToken;
 }
 
 export interface IUser {
@@ -106,6 +107,9 @@ export const setup = async () => {
     ),
     daix: await superfluid.loadSuperToken(
       "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
+    ),
+    ric: await superfluid.loadSuperToken(
+      RIC_TOKEN_ADDRESS
     ),
   };
 
