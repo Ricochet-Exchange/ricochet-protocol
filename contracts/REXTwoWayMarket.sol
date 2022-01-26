@@ -337,8 +337,11 @@ contract REXTwoWayMarket is REXMarket {
        _shareholderUpdate.token = inputTokenA;
      }
 
+     // console.log("start share dist.");
      (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
+     console.log("userShares:", uint(userShares));
 
+     // console.log("end share dist.");
      _newCtx = _ctx;
 
      // TODO: Update the fee taken by the DAO, Affiliate
@@ -347,7 +350,7 @@ contract REXTwoWayMarket is REXMarket {
          outputIndex,
          _shareholderUpdate.shareholder,
          userShares,
-         _shareholderUpdate.token
+         market.outputPools[outputIndex].token
      );
 
      _newCtx = _updateSubscriptionWithContext(
@@ -355,74 +358,15 @@ contract REXTwoWayMarket is REXMarket {
          outputIndex,
          owner(),
          daoShares,
-         _shareholderUpdate.token
+         market.outputPools[outputIndex].token
      );
-     if (affiliateShares > 0) {
-       _newCtx = _updateSubscriptionWithContext(
-           _newCtx,
-           outputIndex,
-           referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
-           affiliateShares,
-           _shareholderUpdate.token
-       );
-     }
-
- }
-
- function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
-  internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
- {
-   (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
-   daoShares *= 1e9; // Scale back up to same percision as the flowRate
-   console.log("daoShares:", daoShares);
-
-   address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
-   console.log("affiliateAddress", affiliateAddress);
-   if (address(0) != affiliateAddress) {
-     (,,affiliateShares,) = getIDAShares(0, affiliateAddress);
-     affiliateShares *= 1e9;
-     console.log("affiliateShares:", affiliateShares);
-   }
-
-   console.log("_currentFlowRate", uint256(int256(_shareholderUpdate.currentFlowRate)));
-   console.log("_previousFlowRate", uint256(int256(_shareholderUpdate.previousFlowRate)));
-   console.log("INSIDE");
-   // Compute the change in flow rate, will be negative is slowing the flow rate
-   int96 changeInFlowRate = _shareholderUpdate.currentFlowRate - _shareholderUpdate.previousFlowRate;
-   uint128 feeShares;
-   // if the change is positive value then DAO has some new shares,
-   // which would be 2% of the increase in shares
-   if(changeInFlowRate > 0) {
-     // Add new shares to the DAO
-     feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-     if (address(0) != affiliateAddress) {
-       daoShares += feeShares * (1e6 - market.affiliateFee) / 1e6;
-       affiliateShares += feeShares * market.affiliateFee / 1e6;
-       // TODO: Handle Dust
-     } else {
-       daoShares += feeShares;
-     }
-   } else {
-     // Make the rate positive
-     changeInFlowRate = -1 * changeInFlowRate;
-     feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-     if (address(0) != affiliateAddress) {
-       daoShares -= feeShares * (1e6 - market.affiliateFee) / 1e6;
-       affiliateShares -= feeShares * market.affiliateFee / 1e6;
-       require(daoShares >= 0 && affiliateShares >= 0, "negative shares");
-       // TODO: Handle Dust
-     } else {
-       daoShares -= feeShares;
-     }
-
-   }
-
-   // Compute userShares
-   userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
-
-   console.log("userShares:", uint(userShares));
-   console.log("daoShares:", uint(daoShares));
-   console.log("affiliateShares:", uint(affiliateShares));
+     _newCtx = _updateSubscriptionWithContext(
+         _newCtx,
+         outputIndex,
+         referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
+         affiliateShares,
+         market.outputPools[outputIndex].token
+     );
 
  }
 

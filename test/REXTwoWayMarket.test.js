@@ -297,6 +297,14 @@ describe('REXTwoWayMarket', () => {
   });
 
   beforeEach(async () => {
+    // Update the oracles
+    // Get actual price
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
+    console.log('oraclePrice', oraclePrice);
+    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+    await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+
     // ==============
     // Deploy REX Market
 
@@ -350,12 +358,7 @@ describe('REXTwoWayMarket', () => {
     });
     u.app.alias = 'App';
     // ==============
-    // Get actual price
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
-    console.log('oraclePrice', oraclePrice);
-    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-    await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+
 
   });
 
@@ -463,7 +466,6 @@ describe('REXTwoWayMarket', () => {
 
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
@@ -500,13 +502,21 @@ describe('REXTwoWayMarket', () => {
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
       // Flip, alice streams more USDC than Bob streams ETH
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       await u.alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: u.app });
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,180000,0`);
+      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,200,0`);
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -533,16 +543,24 @@ describe('REXTwoWayMarket', () => {
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
       await u.karen.flow({ flowRate: inflowRateUsdc, recipient: u.app });
+      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
+      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,200,0`);
       expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,980000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,200000,0`);
+
 
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -564,16 +582,13 @@ describe('REXTwoWayMarket', () => {
       expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
       expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
-      // Add another streamer, alice streams more USDC than Bob streams ETH
       let aliceBeforeBalance = parseInt(await usdcx.balanceOf(u.alice.address));
       console.log("before", aliceBeforeBalance.toString());
       // await traveler.advanceTimeAndBlock(30);
       await u.alice.flow({ flowRate: '0', recipient: u.app });
       let aliceAfterBalance = await usdcx.balanceOf(u.alice.address);
       // Need to also account for the four hour fee
-      console.log("after", aliceAfterBalance.toString());
       aliceAfterBalance = aliceAfterBalance - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
-      console.log("after", aliceAfterBalance.toString());
       expect(aliceBeforeBalance).to.within(aliceAfterBalance * 0.999, aliceAfterBalance * 1.001);
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(0);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
@@ -583,8 +598,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
@@ -617,8 +631,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await app.updateTokenPrice(usdcx.address);
-      await app.updateTokenPrice(ethx.address);
+      await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
       // 5. Verify streamer 1 streamed 1/2 streamer 2's amount and received 1/2 the output
