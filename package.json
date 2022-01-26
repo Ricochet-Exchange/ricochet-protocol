@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test --no-compile",
+    "coverage": "npx hardhat coverage", 
     "build": "waffle",
     "debug-tests": "node --inspect ./node_modules/.bin/hardhat test"
   },
