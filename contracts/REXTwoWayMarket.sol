@@ -13,6 +13,13 @@ contract REXTwoWayMarket is REXMarket {
   ISuperToken inputTokenB;
   uint32 constant OUTPUTA_INDEX = 0;
   uint32 constant OUTPUTB_INDEX = 1;
+  uint32 constant SUBSIDYA_INDEX = 2;
+  uint32 constant SUBSIDYB_INDEX = 3;
+  uint256 lastDistributionTokenAAt;
+  uint256 lastDistributionTokenBAt;
+  address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
+  ISuperToken subsidyToken = ISuperToken(ric);
+  uint256 ricRequestId = 77;
   IUniswapV2Router02 router;
 
   // REX Two Way Market Contracts
@@ -28,7 +35,6 @@ contract REXTwoWayMarket is REXMarket {
   ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {
 
   }
-
 
   function initializeTwoWayMarket(
     IUniswapV2Router02 _router,
@@ -76,6 +82,41 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
+  function initializeSubsidies(
+    uint256 _emissionRate
+  ) public onlyOwner {
+    require(address(market.outputPools[SUBSIDYA_INDEX].token) == address(0) && address(market.outputPools[SUBSIDYB_INDEX].token) == address(0), "already initialized");
+    addOutputPool(subsidyToken, 0, _emissionRate, 77);
+    addOutputPool(subsidyToken, 0, _emissionRate, 77);
+    lastDistributionTokenAAt = block.timestamp;
+    lastDistributionTokenBAt = block.timestamp;
+    // Does not need to add subsidy token to outputPoolIndicies
+    // since these pools are hardcoded
+  }
+
+  function addOutputPool(
+      ISuperToken _token,
+      uint128 _feeRate,
+      uint256 _emissionRate,
+      uint256 _requestId
+  ) public override onlyOwner {
+      // Only Allow 4 output pools, this overrides the block in REXMarket
+      // where there can't be two output pools of the same token
+      require(market.numOutputPools < 4, "too many pools");
+
+      OutputPool memory _newPool = OutputPool(
+          _token,
+          _feeRate,
+          _emissionRate
+      );
+      market.outputPools[market.numOutputPools] = _newPool;
+      market.outputPoolIndicies[_token] = market.numOutputPools;
+      _createIndex(market.numOutputPools, _token);
+      market.numOutputPools++;
+      OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
+      market.oracles[_token] = _newOracle;
+      updateTokenPrice(_token);
+  }
 
   function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
 
@@ -108,7 +149,6 @@ contract REXTwoWayMarket is REXMarket {
      uint256 feeCollected;
      uint256 distAmount;
 
-
      (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) =  ida
          .getIndex(
              market.outputPools[OUTPUTA_INDEX].token,
@@ -126,9 +166,16 @@ contract REXTwoWayMarket is REXMarket {
         (feeCollected, distAmount) = _getFeeAndDist(tokenAAmount, market.outputPools[OUTPUTA_INDEX].feeRate);
         require(inputTokenA.balanceOf(address(this)) >= tokenAAmount, "!enough");
         newCtx = _idaDistribute(OUTPUTA_INDEX, uint128(distAmount), inputTokenA, newCtx);
-        inputTokenA.transfer(owner(), feeCollected);
         emit Distribution(distAmount, feeCollected, address(inputTokenA));
 
+        // Distribution Subsidy
+        console.log("distributing subsidies to index a");
+        distAmount = (block.timestamp - lastDistributionTokenAAt) * market.outputPools[SUBSIDYA_INDEX].emissionRate;
+        if (distAmount < market.outputPools[SUBSIDYA_INDEX].token.balanceOf(address(this))) {
+          newCtx = _idaDistribute(SUBSIDYA_INDEX, uint128(distAmount), market.outputPools[SUBSIDYA_INDEX].token, newCtx);
+          emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYA_INDEX].token));
+        }
+        lastDistributionTokenAAt = block.timestamp;
      }
 
      (, , _totalUnitsApproved, _totalUnitsPending) =  ida
@@ -148,12 +195,75 @@ contract REXTwoWayMarket is REXMarket {
         (feeCollected, distAmount) = _getFeeAndDist(tokenBAmount, market.outputPools[OUTPUTB_INDEX].feeRate);
         require(inputTokenB.balanceOf(address(this)) >= tokenBAmount, "!enough");
         newCtx = _idaDistribute(OUTPUTB_INDEX, uint128(distAmount), inputTokenB, newCtx);
-        inputTokenB.transfer(owner(), feeCollected);
         emit Distribution(distAmount, feeCollected, address(inputTokenB));
+
+        // Distribution Subsidy
+        console.log("distributing subsidies to index b");
+        distAmount = (block.timestamp - lastDistributionTokenBAt) * market.outputPools[SUBSIDYB_INDEX].emissionRate;
+        if (distAmount < market.outputPools[SUBSIDYB_INDEX].token.balanceOf(address(this))) {
+          newCtx = _idaDistribute(SUBSIDYB_INDEX, uint128(distAmount), market.outputPools[SUBSIDYB_INDEX].token, newCtx);
+          emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYB_INDEX].token));
+        }
+        lastDistributionTokenBAt = block.timestamp;
+
       }
 
-      market.lastDistributionAt = block.timestamp;
 
+
+  }
+
+  function beforeAgreementTerminated(
+      ISuperToken _superToken,
+      address _agreementClass,
+      bytes32, //_agreementId,
+      bytes calldata _agreementData,
+      bytes calldata // _ctx
+  ) external view virtual override returns (bytes memory _cbdata) {
+      _onlyHost();
+      _onlyExpected(_superToken, _agreementClass);
+
+      (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
+
+      uint256 _uinvestAmount = _calcUserUninvested(
+          _timestamp,
+          uint256(uint96(_flowRateMain)),
+          // Select the correct lastDistributionAt for this _superToken
+          _getLastDistributionAt(_superToken)
+      );
+      _cbdata = abi.encode(_uinvestAmount, int(_flowRateMain));
+
+  }
+
+  function _getLastDistributionAt(ISuperToken _token) internal view returns (uint256) {
+    return market.outputPoolIndicies[_token] == OUTPUTA_INDEX ? lastDistributionTokenBAt : lastDistributionTokenAAt;
+  }
+
+  function afterAgreementTerminated(
+      ISuperToken _superToken,
+      address _agreementClass,
+      bytes32, //_agreementId,
+      bytes calldata _agreementData,
+      bytes calldata _cbdata, //_cbdata,
+      bytes calldata _ctx
+  ) external virtual override returns (bytes memory _newCtx) {
+      _onlyHost();
+      _onlyExpected(_superToken, _agreementClass);
+
+      _newCtx = _ctx;
+      (address _shareholder, ) = abi.decode(_agreementData, (address, address));
+      (uint256 _uninvestAmount, int _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int));
+
+      ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+        _shareholder, int96(_beforeFlowRate), 0, _superToken
+      );
+
+      _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+      // Refund the unswapped amount back to the person who started the stream
+      _superToken.transferFrom(
+          address(this),
+          _shareholder,
+          _uninvestAmount
+      );
   }
 
   function _getFeeAndDist(uint256 tokenAmount, uint256 feeRate)
@@ -222,15 +332,23 @@ contract REXTwoWayMarket is REXMarket {
      // inputTokenA maps the OUTPUTB_INDEX
      // maybe a better way to do this
      uint32 outputIndex;
+     uint32 subsidyIndex;
      if (market.outputPoolIndicies[_shareholderUpdate.token] == OUTPUTA_INDEX) {
        outputIndex = OUTPUTB_INDEX;
+       subsidyIndex = SUBSIDYB_INDEX;
        _shareholderUpdate.token = inputTokenB;
      } else {
        outputIndex = OUTPUTA_INDEX;
+       subsidyIndex = OUTPUTB_INDEX;
        _shareholderUpdate.token = inputTokenA;
      }
 
      (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
+
+     console.log("daoShares1", uint(daoShares));
+     console.log("affiliateShares1", uint(affiliateShares));
+     console.log("userShares1", uint(userShares));
+
 
      _newCtx = _ctx;
 
@@ -242,6 +360,7 @@ contract REXTwoWayMarket is REXMarket {
          userShares,
          market.outputPools[outputIndex].token
      );
+     console.log("1");
 
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
@@ -250,6 +369,8 @@ contract REXTwoWayMarket is REXMarket {
          daoShares,
          market.outputPools[outputIndex].token
      );
+     console.log("2");
+
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
          outputIndex,
@@ -257,6 +378,8 @@ contract REXTwoWayMarket is REXMarket {
          affiliateShares,
          market.outputPools[outputIndex].token
      );
+     console.log("3");
+
 
  }
 

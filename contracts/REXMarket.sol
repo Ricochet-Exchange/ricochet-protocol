@@ -469,7 +469,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
         if (address(0) != affiliateAddress) {
           daoShares -= feeShares * (1e6 - market.affiliateFee) / 1e6;
+          console.log("daoShares", uint(daoShares));
+          console.log("math", uint(feeShares * market.affiliateFee / 1e6));
           affiliateShares -= feeShares * market.affiliateFee / 1e6;
+          console.log("affiliateShares", uint(affiliateShares));
           // TODO: Handle Dust
         } else {
 
@@ -478,6 +481,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       }
 
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
+      console.log("userShares", uint(userShares));
 
 
     }
@@ -540,7 +544,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-
+      console.log("index", index);
+      console.log("distToken", address(distToken));
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
@@ -850,11 +855,13 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+        console.log("transferring");
         // Refund the unswapped amount back to the person who started the stream
         market.inputToken.transferFrom(
             address(this),
             _shareholder,
             _uninvestAmount
         );
+        console.log("transfered");
     }
 }

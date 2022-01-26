@@ -117,6 +117,7 @@ describe('REXTwoWayMarket', () => {
   const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
   const TELLOR_ETH_REQUEST_ID = 1;
   const TELLOR_USDC_REQUEST_ID = 78;
+  const TELLOR_RIC_REQUEST_ID = 77;
   const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
@@ -134,6 +135,7 @@ describe('REXTwoWayMarket', () => {
   const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
   const KAREN_ADDRESS = "0xbf188ab46C1ca9d9e47a7996d585566ECeDdAeAb"
   let oraclePrice;
+  let ricOraclePrice;
 
   const appBalances = {
     outputx: [],
@@ -299,11 +301,14 @@ describe('REXTwoWayMarket', () => {
   beforeEach(async () => {
     // Update the oracles
     // Get actual price
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+    let response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
     oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
     console.log('oraclePrice', oraclePrice);
     await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
     await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+    response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd');
+    ricOraclePrice = parseInt(response.data['richochet'].usd * 1000000).toString();
+    await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
 
     // ==============
     // Deploy REX Market
@@ -343,6 +348,10 @@ describe('REXTwoWayMarket', () => {
       20000
     )
 
+    await app.initializeSubsidies(10000000000000);
+    // send the contract some RIC
+    await ric.transfer(app.address, '971239975789381077848')
+
     // Register the market with REXReferral
     await referral.registerApp(app.address);
     referral = await referral.connect(carl);
@@ -366,19 +375,23 @@ describe('REXTwoWayMarket', () => {
     console.log('Balance of ', user.alias);
     console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
     console.log('ethx: ', (await ethx.balanceOf(user.address)).toString());
+    console.log('ric: ', (await ric.balanceOf(user.address)).toString());
   }
 
   async function delta(account, balances) {
     const len = balances.ethx.length;
     const changeInOutToken = balances.ethx[len - 1] - balances.ethx[len - 2];
     const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
+    const changeInSubsidyToken = balances.ric[len - 1] - balances.ric[len - 2];
     console.log();
     console.log('Change in balances for ', account);
-    console.log('ethx:', changeInOutToken, 'Bal:', balances.ethx[len - 1]);
+    console.log('Ethx:', changeInOutToken, 'Bal:', balances.ethx[len - 1]);
     console.log('Usdcx:', changeInInToken, 'Bal:', balances.usdcx[len - 1]);
+    console.log('Ric:', changeInSubsidyToken, 'Bal:', balances.ric[len - 1]);
     return {
       ethx: changeInOutToken,
       usdcx: changeInInToken,
+      ric: changeInSubsidyToken
     }
   }
 
@@ -478,6 +491,7 @@ describe('REXTwoWayMarket', () => {
       await checkBalance(u.bob)
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -516,6 +530,7 @@ describe('REXTwoWayMarket', () => {
       await traveler.advanceTimeAndBlock(3600);
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -560,6 +575,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -598,6 +614,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
@@ -631,6 +648,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
