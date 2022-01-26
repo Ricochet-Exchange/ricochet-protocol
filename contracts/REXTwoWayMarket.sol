@@ -14,7 +14,6 @@ contract REXTwoWayMarket is REXMarket {
   uint32 constant OUTPUTA_INDEX = 0;
   uint32 constant OUTPUTB_INDEX = 1;
   IUniswapV2Router02 router;
-  mapping(ISuperToken => uint32) outputPoolIndices;
 
   // REX Two Way Market Contracts
   // - Swaps the accumulated input tokens for output tokens
@@ -29,6 +28,7 @@ contract REXTwoWayMarket is REXMarket {
   ) public REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {
 
   }
+
 
   function initializeTwoWayMarket(
     IUniswapV2Router02 _router,
@@ -47,10 +47,12 @@ contract REXTwoWayMarket is REXMarket {
     market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
     market.rateTolerance = _rateTolerance;
     oracle = _tellor;
+    market.feeRate = _feeRate;
+    market.affiliateFee = 100000;
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId);
-    outputPoolIndices[inputTokenA] = OUTPUTA_INDEX;
-    outputPoolIndices[inputTokenB] = OUTPUTB_INDEX;
+    market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
+    market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
     // Approvals
     // Unlimited approve for sushiswap
@@ -74,91 +76,94 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
-  function afterAgreementCreated(
-      ISuperToken _superToken,
-      address _agreementClass,
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata, //_cbdata,
-      bytes calldata _ctx
-  ) external override returns (bytes memory _newCtx) {
-      _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
+  // function afterAgreementCreated(
+  //     ISuperToken _superToken,
+  //     address _agreementClass,
+  //     bytes32, //_agreementId,
+  //     bytes calldata _agreementData,
+  //     bytes calldata, //_cbdata,
+  //     bytes calldata _ctx
+  // ) external override returns (bytes memory _newCtx) {
+  //     console.log("afterAgreementCreated");
+  //     _onlyHost();
+  //     _onlyExpected(_superToken, _agreementClass);
+  //
+  //     if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+  //         return _ctx;
+  //
+  //     _newCtx = _ctx;
+  //
+  //     if (_shouldDistribute()) {
+  //         _newCtx = distribute(_newCtx);
+  //     }
+  //
+  //     (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+  //         _agreementData, _superToken
+  //     );
+  //
+  //
+  //     _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
+  // }
 
-      console.log("afterAgreementCreated");
-
-      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-          return _ctx;
-      console.log("inside after agreement1");
-
-      _newCtx = _ctx;
-
-      if (_shouldDistribute()) {
-          _newCtx = distribute(_newCtx);
-      }
-
-      (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-          _agreementData, _superToken
-      );
-
-      _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
-  }
-
-function afterAgreementUpdated(
-      ISuperToken _superToken,
-      address _agreementClass,
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata, //_cbdata,
-      bytes calldata _ctx
-  ) external override returns (bytes memory _newCtx) {
-      _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
-
-      console.log("afterAgreementUpdated");
-
-      _newCtx = _ctx;
-
-      if (_shouldDistribute()) {
-          _newCtx = distribute(_newCtx);
-      }
-
-      (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-          _agreementData, _superToken
-      );
-
-      _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
-  }
+// function afterAgreementUpdated(
+//       ISuperToken _superToken,
+//       address _agreementClass,
+//       bytes32, //_agreementId,
+//       bytes calldata _agreementData,
+//       bytes calldata, //_cbdata,
+//       bytes calldata _ctx
+//   ) external override returns (bytes memory _newCtx) {
+//       _onlyHost();
+//       _onlyExpected(_superToken, _agreementClass);
+//
+//       console.log("afterAgreementUpdated");
+//
+//       _newCtx = _ctx;
+//
+//       if (_shouldDistribute()) {
+//           _newCtx = distribute(_newCtx);
+//       }
+//
+//       (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+//           _agreementData, _superToken
+//       );
+//
+//       ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+//         _shareholder, int96(_beforeFlowRate), 0, _superToken
+//       );
+//
+//       _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
+//   }
 
 
-
-  function afterAgreementTerminated(
-      ISuperToken _superToken,
-      address, //_agreementClass
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata _cbdata, //_cbdata,
-      bytes calldata _ctx
-  ) external override returns (bytes memory _newCtx) {
-      _onlyHost();
-      console.log("afterAgreementTerminated");
-
-      _newCtx = _ctx;
-      (address _shareholder, ,) = _getShareholderInfo(_agreementData, _superToken);
-
-      uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
-
-      console.log("Refunding", _uninvestAmount);
-
-      // Refund the unswapped amount back to the person who started the stream
-      market.inputToken.transferFrom(
-          address(this),
-          _shareholder,
-          _uninvestAmount
-      );
-
-      _newCtx = _updateShareholder(_newCtx, _shareholder, 0, _superToken);
-  }
+  //
+  // function afterAgreementTerminated(
+  //     ISuperToken _superToken,
+  //     address, //_agreementClass
+  //     bytes32, //_agreementId,
+  //     bytes calldata _agreementData,
+  //     bytes calldata _cbdata, //_cbdata,
+  //     bytes calldata _ctx
+  // ) external override returns (bytes memory _newCtx) {
+  //     _onlyHost();
+  //     console.log("afterAgreementTerminated");
+  //
+  //     _newCtx = _ctx;
+  //     (address _shareholder, ,) = _getShareholderInfo(_agreementData, _superToken);
+  //
+  //     uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
+  //
+  //     console.log("Refunding", _uninvestAmount);
+  //
+  //     // Refund the unswapped amount back to the person who started the stream
+  //     market.inputToken.transferFrom(
+  //         address(this),
+  //         _shareholder,
+  //         _uninvestAmount
+  //     );
+  //
+  //     _newCtx = _updateShareholder(_newCtx, _shareholder, 0, _superToken);
+  // }
 
   function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
 
@@ -298,16 +303,16 @@ function afterAgreementUpdated(
    path[1] = outputToken;
    router.swapExactTokensForTokens(
       amount,
-      0, // Accept any amount but fail if we're too far from the oracle price
+      minOutput, // Accept any amount but fail if we're too far from the oracle price
       path,
       address(this),
       deadline
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
-   console.log("minOutput", minOutput);
+   // console.log("minOutput", minOutput);
    outputAmount = ERC20(outputToken).balanceOf(address(this));
-   console.log("outputAmount", outputAmount);
-   require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
+   // console.log("outputAmount", outputAmount);
+   // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
    output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
@@ -317,32 +322,52 @@ function afterAgreementUpdated(
 
  function _updateShareholder(
      bytes memory _ctx,
-     address _shareholder,
-     int96 _shareholderFlowRate,
-     ISuperToken _superToken
- ) internal returns (bytes memory _newCtx) {
+     ShareholderUpdate memory _shareholderUpdate
+ ) internal override returns (bytes memory _newCtx) {
 
      // Check the input supertoken used and figure out the output Index
      // inputTokenA maps the OUTPUTB_INDEX
      // maybe a better way to do this
      uint32 outputIndex;
-     if (outputPoolIndices[_superToken] == OUTPUTA_INDEX) {
+     if (market.outputPoolIndicies[_shareholderUpdate.token] == OUTPUTA_INDEX) {
        outputIndex = OUTPUTB_INDEX;
-       _superToken = inputTokenB;
+       _shareholderUpdate.token = inputTokenB;
      } else {
        outputIndex = OUTPUTA_INDEX;
-       _superToken = inputTokenA;
+       _shareholderUpdate.token = inputTokenA;
      }
 
+     // console.log("start share dist.");
+     (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
+     console.log("userShares:", uint(userShares));
+
+     // console.log("end share dist.");
      _newCtx = _ctx;
+
+     // TODO: Update the fee taken by the DAO, Affiliate
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
          outputIndex,
-         _shareholder,
-         uint128(uint256(int256(_shareholderFlowRate))),
-         _superToken
+         _shareholderUpdate.shareholder,
+         userShares,
+         market.outputPools[outputIndex].token
      );
-         // TODO: Update the fee taken by the DAO
+
+     _newCtx = _updateSubscriptionWithContext(
+         _newCtx,
+         outputIndex,
+         owner(),
+         daoShares,
+         market.outputPools[outputIndex].token
+     );
+     _newCtx = _updateSubscriptionWithContext(
+         _newCtx,
+         outputIndex,
+         referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
+         affiliateShares,
+         market.outputPools[outputIndex].token
+     );
+
  }
 
  function _isInputToken(ISuperToken _superToken)
