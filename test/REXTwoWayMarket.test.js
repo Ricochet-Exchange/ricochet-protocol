@@ -189,7 +189,7 @@ describe('REXTwoWayMarket', () => {
 
   async function approveSubscriptions(
     users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
-    tokens = [usdcx.address, ethx.address],
+    tokens = [usdcx.address, ethx.address, ric.address, ric.address],
   ) {
     // Do approvals
     // Already approved?
@@ -350,7 +350,7 @@ describe('REXTwoWayMarket', () => {
 
     await app.initializeSubsidies(10000000000000);
     // send the contract some RIC
-    await ric.transfer(app.address, '971239975789381077848')
+    await ric.transfer(app.address, '3971239975789381077848')
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);

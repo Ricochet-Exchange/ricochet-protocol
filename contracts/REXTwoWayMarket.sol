@@ -163,16 +163,14 @@ contract REXTwoWayMarket is REXMarket {
           tokenAAmount);
 
         // Distribute TokenA
-        (feeCollected, distAmount) = _getFeeAndDist(tokenAAmount, market.outputPools[OUTPUTA_INDEX].feeRate);
         require(inputTokenA.balanceOf(address(this)) >= tokenAAmount, "!enough");
-        newCtx = _idaDistribute(OUTPUTA_INDEX, uint128(distAmount), inputTokenA, newCtx);
+        newCtx = _idaDistribute(OUTPUTA_INDEX, uint128(tokenAAmount), inputTokenA, newCtx);
         emit Distribution(distAmount, feeCollected, address(inputTokenA));
 
         // Distribution Subsidy
-        console.log("distributing subsidies to index a");
         distAmount = (block.timestamp - lastDistributionTokenAAt) * market.outputPools[SUBSIDYA_INDEX].emissionRate;
+        console.log("distAmountA", uint(distAmount));
         if (distAmount < market.outputPools[SUBSIDYA_INDEX].token.balanceOf(address(this))) {
-          console.log("distributing subsidies to index a");
           newCtx = _idaDistribute(SUBSIDYA_INDEX, uint128(distAmount), market.outputPools[SUBSIDYA_INDEX].token, newCtx);
           emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYA_INDEX].token));
         }
@@ -193,14 +191,13 @@ contract REXTwoWayMarket is REXMarket {
           tokenBAmount);
 
         // Distribute TokenB
-        (feeCollected, distAmount) = _getFeeAndDist(tokenBAmount, market.outputPools[OUTPUTB_INDEX].feeRate);
         require(inputTokenB.balanceOf(address(this)) >= tokenBAmount, "!enough");
-        newCtx = _idaDistribute(OUTPUTB_INDEX, uint128(distAmount), inputTokenB, newCtx);
+        newCtx = _idaDistribute(OUTPUTB_INDEX, uint128(tokenBAmount), inputTokenB, newCtx);
         emit Distribution(distAmount, feeCollected, address(inputTokenB));
 
         // Distribution Subsidy
-        console.log("distributing subsidies to index b");
         distAmount = (block.timestamp - lastDistributionTokenBAt) * market.outputPools[SUBSIDYB_INDEX].emissionRate;
+        console.log("distAmountB", uint(distAmount));
         if (distAmount < market.outputPools[SUBSIDYB_INDEX].token.balanceOf(address(this))) {
           newCtx = _idaDistribute(SUBSIDYB_INDEX, uint128(distAmount), market.outputPools[SUBSIDYB_INDEX].token, newCtx);
           emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYB_INDEX].token));
@@ -267,12 +264,6 @@ contract REXTwoWayMarket is REXMarket {
       );
   }
 
-  function _getFeeAndDist(uint256 tokenAmount, uint256 feeRate)
-    internal returns (uint256 feeCollected, uint256 distAmount) {
-
-      feeCollected = tokenAmount * feeRate / 1e6;
-      distAmount = tokenAmount - feeCollected;
-  }
 
   function _swap(
         ISuperToken input,
@@ -340,7 +331,7 @@ contract REXTwoWayMarket is REXMarket {
        _shareholderUpdate.token = inputTokenB;
      } else {
        outputIndex = OUTPUTA_INDEX;
-       subsidyIndex = OUTPUTB_INDEX;
+       subsidyIndex = SUBSIDYA_INDEX;
        _shareholderUpdate.token = inputTokenA;
      }
 
@@ -361,8 +352,13 @@ contract REXTwoWayMarket is REXMarket {
          userShares,
          market.outputPools[outputIndex].token
      );
-     console.log("1");
-
+     _newCtx = _updateSubscriptionWithContext(
+         _newCtx,
+         subsidyIndex,
+         _shareholderUpdate.shareholder,
+         userShares,
+         subsidyToken
+     );
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
          outputIndex,
@@ -370,8 +366,8 @@ contract REXTwoWayMarket is REXMarket {
          daoShares,
          market.outputPools[outputIndex].token
      );
-     console.log("2");
-
+     // Owner is not added to subsidy pool
+     
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
          outputIndex,
@@ -379,9 +375,13 @@ contract REXTwoWayMarket is REXMarket {
          affiliateShares,
          market.outputPools[outputIndex].token
      );
-     console.log("3");
-
-
+     _newCtx = _updateSubscriptionWithContext(
+         _newCtx,
+         subsidyIndex,
+         referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
+         affiliateShares,
+         subsidyToken
+     );
  }
 
  function _isInputToken(ISuperToken _superToken)
