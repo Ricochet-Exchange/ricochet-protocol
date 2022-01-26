@@ -65,11 +65,10 @@ describe("RexOneWayMarket", function () {
     app = await REXMarketFactory.deploy(
       u.admin.address,
       sf.host.hostContract.address,
-      "0x6EeE6060f715257b970700bc2656De21dEdF074C",
-      "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1",
+      constant.IDA_SUPERFLUID_ADDRESS,
+      constant.CFA_SUPERFLUID_ADDRESS,
       registrationKey
     );
-    console.log("erro3?");
 
     await app.initializeOneWayMarket(
       constant.SUSHISWAP_ROUTER_ADDRESS,
@@ -446,5 +445,169 @@ describe("RexOneWayMarket", function () {
   
   });
 
+  it("should let keepers close streams with < 8 hours left", async () => {
+    await sf.idaV1
+      .approveSubscription({
+        indexId: "0",
+        superToken: superT.ethx.address,
+        publisher: u.app.address,
+        userData: "0x",
+      })
+      .exec(accountss[2]);
+    console.log("approved!");
+    //await approveSubscriptions([u.bob.address]);
+    // 1. Initialize a stream exchange
+    const bobUsdcxBalance = new BN(
+      await superT.usdcx.balanceOf({
+        account: u.bob.address,
+        providerOrSigner: accountss[2],
+      })
+    );
+    console.log("bob balance", bobUsdcxBalance);
+    // When user create stream, SF locks 4 hour deposit called initial deposit
+    const initialDeposit = bobUsdcxBalance.div(new BN("13")).mul(new BN("4"));
+    const inflowRate = bobUsdcxBalance
+      .sub(initialDeposit)
+      .div(new BN(9 * 3600))
+      .toString();
+    // 2. Initialize a streamer with 9 hours of balance
+    const txnResponse = await sf.cfaV1
+      .createFlow({
+        sender: u.bob.address,
+        receiver: u.app.address,
+        superToken: superT.usdcx.address,
+        flowRate: inflowRate,
+      })
+      .exec(accountss[2]);
+    const txnReceipt = await txnResponse.wait();
+    console.log("started streaming!");
+    expect(
+      await app.getStreamRate(u.bob.address, superT.usdcx.address)
+    ).to.equal(inflowRate);
+    // 3. Verfiy closing attempts revert
+    //await expect(app.closeStream(u.bob.address, superT.usdcx.address)).to.revertedWith("!closable");
+    // 4. Advance time 1 hour
+    await increaseTime(3600);
+    // 5. Verify closing the stream works
+    //await app.closeStream(u.bob.address);
+    expect(await app.getStreamRate(u.bob.address)).to.equal("0");
+  });
 
+  // it('getters and setters should work properly', async () => {
+  //   await app.connect(owner).setFeeRate(30000);
+  //   await app.connect(owner).setRateTolerance(30000);
+  //   await app.connect(owner).setSubsidyRate('500000000000000000');
+  //   await app.connect(owner).setOracle(OWNER_ADDRESS);
+  //   await app.connect(owner).setRequestId(61);
+  //   await app.connect(owner).transferOwnership(ALICE_ADDRESS);
+
+  //   expect(await app.getSubsidyRate()).to.equal('500000000000000000');
+  //   expect(await app.getFeeRate()).to.equal(30000);
+  //   expect(await app.getRateTolerance()).to.equal(30000);
+  //   expect(await app.getTellorOracle()).to.equal(OWNER_ADDRESS);
+  //   expect(await app.getRequestId()).to.equal(61);
+  //   expect(await app.getOwner()).to.equal(ALICE_ADDRESS);
+  // });
+
+  // it('should correctly emergency drain', async () => {
+  //   await approveSubscriptions([u.bob.address]);
+  //   const inflowRate = '77160493827160';
+  //   await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
+  //   await increaseTime(60 * 60 * 12);
+  //   expect((await superT.usdcx.balanceOf(app.address)).toString()).to.not.equal('0');
+  //   await expect(
+  //     app.emergencyDrain(),
+  //   ).to.be.revertedWith('!zeroStreamers');
+  //   await u.bob.flow({ flowRate: '0', recipient: u.app });
+  //   await app.emergencyDrain();
+  //   expect((await superT.usdcx.balanceOf(app.address)).toString()).to.equal('0');
+  //   expect((await superT.ethx.balanceOf(app.address)).toString()).to.equal('0');
+  // });
+
+  // it('should emergency close stream if app jailed', async () => {
+  //   const inflowRate = '100000000'; // ~200 * 1e18 per month
+  //   await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+  //   expect(await app.getStreamRate(u.admin.address)).to.equal(inflowRate);
+  //   await expect(
+  //     app.emergencyCloseStream(u.admin.address),
+  //   ).to.be.revertedWith('!jailed');
+
+  //   await impersonateAndSetBalance(sf.agreements.cfa.address);
+  //   await web3tx(
+  //     sf.host.jailApp,
+  //     'CFA jails App',
+  //   )(
+  //     '0x',
+  //     app.address,
+  //     0,
+  //     {
+  //       from: sf.agreements.cfa.address,
+  //     },
+  //   );
+
+  //   expect(await sf.host.isAppJailed(app.address)).to.equal(true);
+
+  //   await app.emergencyCloseStream(u.admin.address);
+
+  //   expect(await app.getStreamRate(u.admin.address)).to.equal('0');
+  // });
+
+  // it('should distribute tokens to streamers correctly', async () => {
+  //   const inflowRate1 = '77160493827160'; // ~200 * 1e18 per month
+  //   const inflowRate2 = '964506172839506'; // ~2500 per month
+  //   const inflowRate3 = '38580246913580'; // ~100 per month
+  //   const inflowRateIDAShares1 = '77160';
+  //   const inflowRateIDAShares2 = '964506';
+  //   const inflowRateIDAShares3 = '38580';
+
+  //   await approveSubscriptions();
+
+  //   console.log('Transfer bob');
+  //   await usdcx.transfer(u.bob.address, toWad(400), { from: u.spender.address });
+  //   console.log('Transfer alice');
+  //   await usdcx.transfer(u.alice.address, toWad(400), { from: u.spender.address });
+  //   console.log('Transfer admin');
+  //   await usdcx.transfer(u.admin.address, toWad(400), { from: u.spender.address });
+  //   console.log('Done');
+
+  //   //await takeMeasurements();
+
+  //   // Test `closeStream`
+  //   // Try close stream and expect revert
+  //   await expect(
+  //     u.admin.flow({ flowRate: toWad(10000), recipient: u.app }),
+  //   ).to.be.revertedWith('!enoughTokens');
+
+  //   await u.admin.flow({ flowRate: inflowRate1, recipient: u.app });
+  //   // Expect the parameters are correct
+  //   expect(await app.getStreamRate(u.admin.address)).to.equal(inflowRate1);
+  //   expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares1},0`);
+  //   await traveler.advanceTimeAndBlock(60 * 60 * 12);
+  //   await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+  //   await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+  //   await app.updateTokenPrice(usdcx.address);
+  //   await app.updateTokenPrice(ethx.address);
+  //   await app.distribute();
+  //   console.log('Distribution.');
+  //   await traveler.advanceTimeAndBlock(60 * 60 * 1);
+  //   await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+  //   await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+  //   await app.updateTokenPrice(usdcx.address);
+  //   await app.updateTokenPrice(ethx.address);
+
+  //   // Connect Admin and Bob
+  //   await u.admin.flow({ flowRate: inflowRate2, recipient: u.app });
+  //   // Expect the parameters are correct
+  //   expect(await app.getStreamRate(u.admin.address)).to.equal(inflowRate2);
+  //   expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares2},0`);
+  //   expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares2},0`);
+  //   await traveler.advanceTimeAndBlock(60 * 60 * 2);
+  //   await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+  //   await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+  //   await app.updateTokenPrice(usdcx.address);
+  //   await app.updateTokenPrice(ethx.address);
+  //   await app.distribute();
+  //   console.log('Distribution.');
+
+  // });
 });
