@@ -76,94 +76,6 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
-  // function afterAgreementCreated(
-  //     ISuperToken _superToken,
-  //     address _agreementClass,
-  //     bytes32, //_agreementId,
-  //     bytes calldata _agreementData,
-  //     bytes calldata, //_cbdata,
-  //     bytes calldata _ctx
-  // ) external override returns (bytes memory _newCtx) {
-  //     console.log("afterAgreementCreated");
-  //     _onlyHost();
-  //     _onlyExpected(_superToken, _agreementClass);
-  //
-  //     if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-  //         return _ctx;
-  //
-  //     _newCtx = _ctx;
-  //
-  //     if (_shouldDistribute()) {
-  //         _newCtx = distribute(_newCtx);
-  //     }
-  //
-  //     (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-  //         _agreementData, _superToken
-  //     );
-  //
-  //
-  //     _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
-  // }
-
-// function afterAgreementUpdated(
-//       ISuperToken _superToken,
-//       address _agreementClass,
-//       bytes32, //_agreementId,
-//       bytes calldata _agreementData,
-//       bytes calldata, //_cbdata,
-//       bytes calldata _ctx
-//   ) external override returns (bytes memory _newCtx) {
-//       _onlyHost();
-//       _onlyExpected(_superToken, _agreementClass);
-//
-//       console.log("afterAgreementUpdated");
-//
-//       _newCtx = _ctx;
-//
-//       if (_shouldDistribute()) {
-//           _newCtx = distribute(_newCtx);
-//       }
-//
-//       (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-//           _agreementData, _superToken
-//       );
-//
-//       ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-//         _shareholder, int96(_beforeFlowRate), 0, _superToken
-//       );
-//
-//       _newCtx = _updateShareholder(_newCtx, _shareholder, _flowRate, _superToken);
-//   }
-
-
-  //
-  // function afterAgreementTerminated(
-  //     ISuperToken _superToken,
-  //     address, //_agreementClass
-  //     bytes32, //_agreementId,
-  //     bytes calldata _agreementData,
-  //     bytes calldata _cbdata, //_cbdata,
-  //     bytes calldata _ctx
-  // ) external override returns (bytes memory _newCtx) {
-  //     _onlyHost();
-  //     console.log("afterAgreementTerminated");
-  //
-  //     _newCtx = _ctx;
-  //     (address _shareholder, ,) = _getShareholderInfo(_agreementData, _superToken);
-  //
-  //     uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
-  //
-  //     console.log("Refunding", _uninvestAmount);
-  //
-  //     // Refund the unswapped amount back to the person who started the stream
-  //     market.inputToken.transferFrom(
-  //         address(this),
-  //         _shareholder,
-  //         _uninvestAmount
-  //     );
-  //
-  //     _newCtx = _updateShareholder(_newCtx, _shareholder, 0, _superToken);
-  // }
 
   function distribute(bytes memory ctx) public override returns (bytes memory newCtx) {
 
@@ -173,28 +85,19 @@ contract REXTwoWayMarket is REXMarket {
     require(market.oracles[market.outputPools[OUTPUTB_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValueB");
 
     // Figure out the surplus and make the swap needed to fulfill this distribution
-    console.log("inputTokenA Balance: ", inputTokenA.balanceOf(address(this)));
-    console.log("inputTokenB Balance: ", inputTokenB.balanceOf(address(this)));
 
     // Check how much inputTokenA we have already from tokenB
     uint256 tokenHave = inputTokenB.balanceOf(address(this)) * market.oracles[inputTokenB].usdPrice / market.oracles[inputTokenA].usdPrice;
-    console.log("Initial tokenHave A", tokenHave);
     // If we have more tokenA than we need, swap the surplus to inputTokenB
     if (tokenHave < inputTokenA.balanceOf(address(this))) {
       tokenHave = inputTokenA.balanceOf(address(this)) - tokenHave;
-      console.log("Surplus to swap inputTokenA", tokenHave);
-      console.log("Swapped:", _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600));
+      _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
       // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
     } else {
       tokenHave = inputTokenA.balanceOf(address(this)) * market.oracles[inputTokenA].usdPrice / market.oracles[inputTokenB].usdPrice;
-      console.log("Initial tokenHave B", tokenHave);
       tokenHave = inputTokenB.balanceOf(address(this)) - tokenHave;
-      console.log("Surplus to swap inputTokenB", tokenHave);
-      console.log("Swapped:", _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600));
+      _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
     }
-
-    console.log("inputTokenA Balance: ", inputTokenA.balanceOf(address(this)));
-    console.log("inputTokenB Balance: ", inputTokenB.balanceOf(address(this)));
 
      // At this point, we've got enough of tokenA and tokenB to perform the distribution
      uint256 tokenAAmount = inputTokenA.balanceOf(address(this));
@@ -221,8 +124,6 @@ contract REXTwoWayMarket is REXMarket {
 
         // Distribute TokenA
         (feeCollected, distAmount) = _getFeeAndDist(tokenAAmount, market.outputPools[OUTPUTA_INDEX].feeRate);
-        console.log("Distributing tokenA distAmount", distAmount);
-        console.log("Distributing tokenA feeCollected", feeCollected);
         require(inputTokenA.balanceOf(address(this)) >= tokenAAmount, "!enough");
         newCtx = _idaDistribute(OUTPUTA_INDEX, uint128(distAmount), inputTokenA, newCtx);
         inputTokenA.transfer(owner(), feeCollected);
@@ -245,8 +146,6 @@ contract REXTwoWayMarket is REXMarket {
 
         // Distribute TokenB
         (feeCollected, distAmount) = _getFeeAndDist(tokenBAmount, market.outputPools[OUTPUTB_INDEX].feeRate);
-        console.log("Distributing tokenB distAmount", distAmount);
-        console.log("Distributing tokenB feeCollected", feeCollected);
         require(inputTokenB.balanceOf(address(this)) >= tokenBAmount, "!enough");
         newCtx = _idaDistribute(OUTPUTB_INDEX, uint128(distAmount), inputTokenB, newCtx);
         inputTokenB.transfer(owner(), feeCollected);
@@ -279,13 +178,11 @@ contract REXTwoWayMarket is REXMarket {
 
    inputToken = input.getUnderlyingToken();
    outputToken = output.getUnderlyingToken();
-   console.log("amount", amount);
 
    // Downgrade and scale the input amount
    input.downgrade(amount);
    // Scale it to 1e18 for calculations
    amount = ERC20(inputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(inputToken).decimals()));
-   console.log("amount", amount);
 
    minOutput = amount * market.oracles[input].usdPrice / market.oracles[output].usdPrice;
    minOutput = minOutput * (1e6 - market.rateTolerance) / 1e6;
@@ -294,8 +191,6 @@ contract REXTwoWayMarket is REXMarket {
    minOutput = minOutput * (10 ** (ERC20(outputToken).decimals())) / 1e18;
    // Scale it back to inputToken decimals
    amount = amount / (10 ** (18 - ERC20(inputToken).decimals()));
-
-   console.log("amount", amount);
 
    // Assumes a direct path to swap input/output
    path = new address[](2);
@@ -309,9 +204,7 @@ contract REXTwoWayMarket is REXMarket {
       deadline
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
-   // console.log("minOutput", minOutput);
    outputAmount = ERC20(outputToken).balanceOf(address(this));
-   // console.log("outputAmount", outputAmount);
    // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
@@ -337,11 +230,8 @@ contract REXTwoWayMarket is REXMarket {
        _shareholderUpdate.token = inputTokenA;
      }
 
-     // console.log("start share dist.");
      (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
-     console.log("userShares:", uint(userShares));
 
-     // console.log("end share dist.");
      _newCtx = _ctx;
 
      // TODO: Update the fee taken by the DAO, Affiliate
