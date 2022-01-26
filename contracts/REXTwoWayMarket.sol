@@ -172,6 +172,7 @@ contract REXTwoWayMarket is REXMarket {
         console.log("distributing subsidies to index a");
         distAmount = (block.timestamp - lastDistributionTokenAAt) * market.outputPools[SUBSIDYA_INDEX].emissionRate;
         if (distAmount < market.outputPools[SUBSIDYA_INDEX].token.balanceOf(address(this))) {
+          console.log("distributing subsidies to index a");
           newCtx = _idaDistribute(SUBSIDYA_INDEX, uint128(distAmount), market.outputPools[SUBSIDYA_INDEX].token, newCtx);
           emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYA_INDEX].token));
         }
