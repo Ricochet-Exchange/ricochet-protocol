@@ -75,6 +75,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
+    uint8 internal constant MAX_OUTPUT_POOLS = 5;
     IREXReferral internal referrals;
 
     // TODO: Emit these events where appropriate
@@ -296,6 +297,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // NOTE: Careful how many output pools, theres a loop over these pools
         require(_requestId != 0, "!validReqId");
         require(market.oracles[_token].requestId == 0, "!unique");
+        require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
         //
         OutputPool memory _newPool = OutputPool(
             _token,
@@ -752,6 +754,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       } else {
         affiliateId = "";
       }
+
+
       referrals.safeRegisterCustomer(_shareholder, affiliateId);
     }
 
