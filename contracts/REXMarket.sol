@@ -855,13 +855,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-        console.log("transferring");
         // Refund the unswapped amount back to the person who started the stream
-        market.inputToken.transferFrom(
-            address(this),
-            _shareholder,
-            _uninvestAmount
-        );
-        console.log("transfered");
+        try market.inputToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        // solhint-disable-next-line no-empty-blocks
+        {} catch {
+            // Nothing to do, pass
+        }
     }
 }
