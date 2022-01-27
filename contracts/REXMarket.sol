@@ -457,9 +457,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // Add new shares to the DAO
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
         if (address(0) != affiliateAddress) {
-          daoShares += feeShares * (1e6 - market.affiliateFee) / 1e6;
           affiliateShares += feeShares * market.affiliateFee / 1e6;
-          // TODO: Handle Dust
+          feeShares -= feeShares * market.affiliateFee / 1e6;
+          daoShares += feeShares;
         } else {
           daoShares += feeShares;
         }
@@ -468,14 +468,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         changeInFlowRate = -1 * changeInFlowRate;
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
         if (address(0) != affiliateAddress) {
-          daoShares -= feeShares * (1e6 - market.affiliateFee) / 1e6;
-          console.log("daoShares", uint(daoShares));
-          console.log("math", uint(feeShares * market.affiliateFee / 1e6));
           affiliateShares -= feeShares * market.affiliateFee / 1e6;
-          console.log("affiliateShares", uint(affiliateShares));
-          // TODO: Handle Dust
+          feeShares -= feeShares * market.affiliateFee / 1e6;
+          daoShares -= feeShares;
         } else {
-
           daoShares -= feeShares;
         }
       }
