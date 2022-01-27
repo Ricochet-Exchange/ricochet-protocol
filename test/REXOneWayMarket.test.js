@@ -623,6 +623,38 @@ describe('REXOneWayMarket', () => {
 
 
     });
+   it("should check subsidy and output tokens distributions", async () => {
+      // The token with feeRate != 0 is output token in this case that is ethx 
+      // The token with emissionRate != 0 is subsisdy token in this case that ric tokens. 
+      // 0. Approve subscriptions
+      await approveSubscriptions([u.admin.address, u.bob.address]);
+
+      // 1. Check balance for output and subsidy tokens and usdcx
+      await takeMeasurements();
+      await checkBalance(u.admin);
+
+      // 2. Create a stream from an account to app to excahnge tokens
+      const inflowRate = '77160493827160';
+      await u.admin.flow({ flowRate: inflowRate, recipient: u.app });
+
+      // 3. Increase time by 1 hour
+      await traveler.advanceTimeAndBlock(3600);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(outputx.address);
+
+      let deltaOwner = await delta('owner', ownerBalances);
+      console.log(deltaOwner);
+      // 4. Distribute tokens 
+      await app.distribute('0x');
+      await checkBalance(u.admin);
+      // 5. Check balance for output and subsidy tokens
+      await takeMeasurements();
+
+
+  });
+
 
     xit('getters and setters should work properly', async () => {
       await app.connect(owner).setFeeRate(30000);
