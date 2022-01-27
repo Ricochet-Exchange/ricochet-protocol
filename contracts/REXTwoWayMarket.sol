@@ -210,6 +210,23 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
+  function beforeAgreementCreated(
+      ISuperToken _superToken,
+      address _agreementClass,
+      bytes32, //_agreementId,
+      bytes calldata _agreementData,
+      bytes calldata // _ctx
+  ) external view virtual override returns (bytes memory _cbdata) {
+    // _onlyHost();
+    if(_isCFAv1(_agreementClass)) {
+      (address shareholder, ) = abi.decode(_agreementData, (address, address));
+      (,,uint128 shares,) = getIDAShares(OUTPUTA_INDEX, shareholder);
+      require(shares == 0, "Already streaming");
+      (,,shares,) = getIDAShares(OUTPUTB_INDEX, shareholder);
+      require(shares == 0, "Already streaming");
+    }
+  }
+
   function beforeAgreementTerminated(
       ISuperToken _superToken,
       address _agreementClass,
@@ -232,9 +249,6 @@ contract REXTwoWayMarket is REXMarket {
 
   }
 
-  function _getLastDistributionAt(ISuperToken _token) internal view returns (uint256) {
-    return market.outputPoolIndicies[_token] == OUTPUTA_INDEX ? lastDistributionTokenBAt : lastDistributionTokenAAt;
-  }
 
   function afterAgreementTerminated(
       ISuperToken _superToken,
@@ -367,7 +381,7 @@ contract REXTwoWayMarket is REXMarket {
          market.outputPools[outputIndex].token
      );
      // Owner is not added to subsidy pool
-     
+
      _newCtx = _updateSubscriptionWithContext(
          _newCtx,
          outputIndex,
@@ -391,6 +405,10 @@ contract REXTwoWayMarket is REXMarket {
      returns (bool)
  {
      return address(_superToken) == address(inputTokenA) || address(_superToken) == address(inputTokenB);
+ }
+
+ function _getLastDistributionAt(ISuperToken _token) internal view returns (uint256) {
+   return market.outputPoolIndicies[_token] == OUTPUTA_INDEX ? lastDistributionTokenBAt : lastDistributionTokenAAt;
  }
 
  function _shouldDistribute() internal override returns (bool) {

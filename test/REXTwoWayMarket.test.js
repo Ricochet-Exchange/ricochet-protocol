@@ -421,6 +421,33 @@ describe('REXTwoWayMarket', () => {
 
   describe('REXTwoWayMarket', async () => {
 
+    it('should not allow two streams', async () => {
+      const inflowRateUsdc = '1000000000000000';
+      const inflowRateEth  = '10000000000000';
+      const inflowRateIDASharesUsdc = '1000000';
+      const inflowRateIDASharesEth = '10000';
+
+
+      console.log('Transfer alice');
+      await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
+      console.log('Transfer bob');
+      await ethx.transfer(u.alice.address, toWad(5), { from: u.ethspender.address });
+      console.log('Done');
+
+      await approveSubscriptions([u.alice.address, u.bob.address]);
+
+      await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app });
+      const aliceEth = await sf.user({
+        address: u.alice.address,
+        token: ethx.address,
+      });
+
+      await expect(
+        aliceEth.flow({ flowRate: inflowRateEth, recipient: u.app })
+      ).to.be.revertedWith("Already streaming");
+
+    });
+
     xit('should create a stream exchange with the correct parameters', async () => {
       const inflowRate = '77160493827160';
       const inflowRateIDAShares = '77160';
@@ -457,7 +484,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it('should distribute tokens to streamers', async () => {
+    xit('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
