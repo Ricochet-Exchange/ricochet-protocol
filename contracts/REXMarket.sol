@@ -776,7 +776,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
           _agreementData, _superToken
       );
 
-      _cbdata = abi.encode(int(_flowRate));
+      _cbdata = abi.encode(_flowRate);
     }
 
 
@@ -831,7 +831,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256(uint96(_flowRateMain)),
             market.lastDistributionAt
         );
-        _cbdata = abi.encode(_uinvestAmount, int(_flowRateMain));
+        _cbdata = abi.encode(_uinvestAmount, _flowRateMain);
 
     }
 
