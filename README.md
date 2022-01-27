@@ -1,22 +1,28 @@
 # Rex Markets
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+This project has all the smart contracts used by the [ricochet exchange application](https://app.ricochet.exchange). 
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+## Tasks
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
+- Compile the Solidity code 
+```
 npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.js
-node scripts/deploy.js
+```
+
+- Run all the test cases included in a file
+```
+npx hardhat test test/bankFactory.ts
+```
+
+- Run all the test cases included in a file and reports the code coverage on a web page inside the *coverage* directory
+```
+npx hardhat coverage --testfiles test/bankFactory.ts
+```
+Coverage runs tests a little more slowly, **distorts gas consumption** and contracts are compiled **without optimization**.
+More info [here](https://github.com/sc-forks/solidity-coverage/).
+
+- Other tasks
+```
 npx eslint '**/*.js'
 npx eslint '**/*.js' --fix
 npx prettier '**/*.{json,sol,md}' --check
