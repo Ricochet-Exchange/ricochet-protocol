@@ -50,10 +50,6 @@ contract REXOneWayMarket is REXMarket {
         2**256 - 1
     );
 
-    ERC20(_outputToken.getUnderlyingToken()).safeIncreaseAllowance(
-        address(this),
-        2**256 - 1
-    );
     ERC20(market.outputPools[0].token.getUnderlyingToken()).safeIncreaseAllowance(
         address(router),
         2**256 - 1
