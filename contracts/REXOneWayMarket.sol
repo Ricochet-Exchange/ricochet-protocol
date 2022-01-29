@@ -41,8 +41,6 @@ contract REXOneWayMarket is REXMarket {
     REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId, 100000, _feeRate);
     addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId);
 
-    //ERC20(rexToken.getUnderlyingToken()).approve(address(masterChef), slpBalance);
-
     // Approvals
     // Unlimited approve for sushiswap
     ERC20(market.inputToken.getUnderlyingToken()).safeIncreaseAllowance(
@@ -77,7 +75,7 @@ contract REXOneWayMarket is REXMarket {
     newCtx = ctx;
 
     require(market.oracles[market.outputPools[OUTPUT_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
-    _swap(market.inputToken, market.outputPools[OUTPUT_INDEX].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 360000);
+    _swap(market.inputToken, market.outputPools[OUTPUT_INDEX].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 3600);
 
     // market.outputPools[0] MUST be the output token of the swap
     uint256 outputBalance = market.outputPools[OUTPUT_INDEX].token.balanceOf(address(this));
