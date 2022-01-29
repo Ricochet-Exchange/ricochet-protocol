@@ -20,6 +20,7 @@ const deploySuperToken = require('@superfluid-finance/ethereum-contracts/scripts
 const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 const traveler = require('ganache-time-traveler');
 const SuperfluidGovernanceBase = require('./artifacts/superfluid/SuperfluidGovernanceII.json');
+const { check } = require('prettier');
 
 const TEST_TRAVEL_TIME = 3600 * 2; // 1 hours
 
@@ -110,6 +111,7 @@ describe('REXOneWayMarket', () => {
   let bob;
   let carl;
   let spender;
+  let ricx;
   const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
@@ -126,7 +128,7 @@ describe('REXOneWayMarket', () => {
 
 
   const CARL_ADDRESS = '0x8c3bf3EB2639b2326fF937D041292dA2e79aDBbf';
-  const BOB_ADDRESS = '0x00Ce20EC71942B41F50fF566287B811bbef46DC8';
+  const BOB_ADDRESS = '0x0154d25120Ed20A516fE43991702e7463c5A6F6e';
   const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
   const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
   const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
@@ -175,7 +177,7 @@ describe('REXOneWayMarket', () => {
 
   async function approveSubscriptions(
     users = [u.alice.address, u.bob.address, u.admin.address],
-    tokens = [ricAddress],
+    tokens = [ethx.address, ricAddress],
   ) {
     // Do approvals
     // Already approved?
@@ -184,9 +186,9 @@ describe('REXOneWayMarket', () => {
     for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
       for (let userIndex = 0; userIndex < users.length; userIndex += 1) {
         let index = 0;
-        // if (tokens[tokenIndex] === ricAddress) {
-        //   index = 1;
-        // }
+         if (tokens[tokenIndex] === ricAddress) {
+           index = 1;
+         }
 
         await web3tx(
           sf.host.callAgreement,
@@ -194,7 +196,7 @@ describe('REXOneWayMarket', () => {
         )(
           sf.agreements.ida.address,
           sf.agreements.ida.contract.methods
-            .approveSubscription(tokens[tokenIndex], app.address, tokenIndex, '0x')
+            .approveSubscription(tokens[tokenIndex], app.address, index, '0x')
             .encodeABI(),
           '0x', // user data
           {
@@ -232,7 +234,7 @@ describe('REXOneWayMarket', () => {
     sf = new SuperfluidSDK.Framework({
       web3,
       resolverAddress: SF_RESOLVER,
-      tokens: ['WBTC', 'DAI', 'USDC', 'ETH'],
+      tokens: ['WBTC', 'DAI', 'USDC', 'ETH', 'RIC'],
       version: 'v1',
     });
     await sf.initialize();
@@ -240,6 +242,7 @@ describe('REXOneWayMarket', () => {
     wbtcx = sf.tokens.WBTCx;
     daix = sf.tokens.DAIx;
     usdcx = sf.tokens.USDCx;
+    ricx = sf.tokens.RIC;
 
     // ==============
     // Init SF users
@@ -272,8 +275,8 @@ describe('REXOneWayMarket', () => {
     ric = ric.connect(owner);
 
     // Attach alice to the SLP token
-    outputx = ric;
-    // output = await ERC20.attach(await outputx.getUnderlyingToken());
+    outputx = ethx;
+    output = await ERC20.attach(await outputx.getUnderlyingToken());
 
 
   });
@@ -320,7 +323,7 @@ describe('REXOneWayMarket', () => {
     )
 
     // Add subsidy pool
-    // await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
+    await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);
@@ -352,6 +355,7 @@ describe('REXOneWayMarket', () => {
     console.log('Balance of ', user.alias);
     console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
     console.log('outputx: ', (await outputx.balanceOf(user.address)).toString());
+    console.log('ric tokens: ', (await ric.balanceOf(user.address)).toString());
   }
 
   async function delta(account, balances) {
@@ -621,6 +625,55 @@ describe('REXOneWayMarket', () => {
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
 
 
+
+    });
+
+    it.only("should make sure subsidy tokens and output tokens are correct" , async () => {
+      // The token with feeRate != 0 is output token in this case that is ethx 
+      // The token with emissionRate != 0 is subsisdy token in this case that ric tokens. 
+      // 0. Approve subscriptions
+      await usdcx.transfer(u.alice.address, toWad(400).toString(), { from: u.spender.address });
+      //console.log("transfer?");
+      await ricx.transfer(u.app.address, toWad(400).toString(), { from: u.admin.address });
+      //console.log("ric transfer");
+      //checkBalance(u.bob);
+      //checkBalance(u.alice);
+      //checkBalance(u.spender);
+      //checkBalance(u.admin);
+      //console.log(toWad(10).toString());
+      await ethx.transfer(u.app.address, toWad(10).toString(), { from: u.bob.address });
+      //console.log("ethx transfer");
+      await approveSubscriptions();
+      // 1. Check balance for output and subsidy tokens and usdcx
+      //await takeMeasurements();
+      await checkBalance(u.alice);
+
+      // 2. Create a stream from an account to app to excahnge tokens
+      let aliceBeforeBalance = parseInt(await ric.balanceOf(u.alice.address));
+      console.log(aliceBeforeBalance);
+
+      await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
+      // 3. Increase time by 1 hour
+      await traveler.advanceTimeAndBlock(60*60);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(outputx.address);
+      // 4. Stop the flow 
+      //await u.alice.flow({ flowRate: '0', recipient: u.app });
+      let deltaAlice = await delta('alice', aliceBalances );
+      console.log(deltaAlice);
+      // 4. Distribute tokens 
+      await checkBalance(u.alice);
+      await app.distribute('0x');
+      await checkBalance(u.alice);
+      // 5. Check balance for output and subsidy tokens
+      let ricEmissionRate = await app.getEmissionRate(1);
+      expect(ricEmissionRate).equal(1000000000);
+      let expectAliceRicRewards = 60 * 60 * ricEmissionRate * 1e8;
+      let aliceAfterBalance = (await ric.balanceOf(u.alice.address)).toString();
+      console.log(aliceAfterBalance);
+      expect(parseInt(aliceAfterBalance)).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.100));
 
     });
 
