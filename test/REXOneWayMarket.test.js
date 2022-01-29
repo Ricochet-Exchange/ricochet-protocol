@@ -651,13 +651,12 @@ describe('REXOneWayMarket', () => {
       await checkBalance(u.alice);
 
       // 2. Create a stream from an account to app to excahnge tokens
-      const inflowRate = 24*60*60*30;
       let aliceBeforeBalance = parseInt(await ric.balanceOf(u.alice.address));
       console.log(aliceBeforeBalance);
 
       await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
       // 3. Increase time by 1 hour
-      await traveler.advanceTimeAndBlock(3600*24*30);
+      await traveler.advanceTimeAndBlock(60*60);
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
@@ -673,11 +672,10 @@ describe('REXOneWayMarket', () => {
       // 5. Check balance for output and subsidy tokens
       let ricEmissionRate = await app.getEmissionRate(1);
       expect(ricEmissionRate).equal(1000000000);
-      let expectAliceRicRewards = 30 * 24 * 60 * 60 * ricEmissionRate;
+      let expectAliceRicRewards = 60 * 60 * ricEmissionRate * 1e8;
       let aliceAfterBalance = (await ric.balanceOf(u.alice.address)).toString();
       console.log(aliceAfterBalance);
-      expect(parseInt(aliceAfterBalance)).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.001));
-      await takeMeasurements();
+      expect(parseInt(aliceAfterBalance)).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.100));
 
     });
 
