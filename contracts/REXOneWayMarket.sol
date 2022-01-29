@@ -55,12 +55,13 @@ contract REXOneWayMarket is REXMarket {
         2**256 - 1
     );
     // and Supertoken upgrades
+    
     ERC20(market.inputToken.getUnderlyingToken()).safeIncreaseAllowance(
         address(market.inputToken),
         2**256 - 1
     );
 
-    ERC20(address(market.outputPools[OUTPUT_INDEX].token)).safeIncreaseAllowance(
+    ERC20(market.outputPools[OUTPUT_INDEX].token.getUnderlyingToken()).safeIncreaseAllowance(
         address(market.outputPools[OUTPUT_INDEX].token),
         2**256 - 1
     );
@@ -76,15 +77,10 @@ contract REXOneWayMarket is REXMarket {
     newCtx = ctx;
 
     require(market.oracles[market.outputPools[OUTPUT_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValue");
-    console.log(OUTPUT_INDEX);
-    console.log(market.outputPools[OUTPUT_INDEX].token.balanceOf(address(this)));
-    console.log(ISuperToken(market.inputToken).balanceOf(address(this)));
     _swap(market.inputToken, market.outputPools[OUTPUT_INDEX].token, ISuperToken(market.inputToken).balanceOf(address(this)), block.timestamp + 360000);
-    console.log("token swap function completed!");
 
     // market.outputPools[0] MUST be the output token of the swap
     uint256 outputBalance = market.outputPools[OUTPUT_INDEX].token.balanceOf(address(this));
-    console.log("outputBalance", outputBalance);
     (uint256 actualAmount,) = ida.calculateDistribution(
         market.outputPools[0].token,
         address(this),
@@ -170,13 +166,10 @@ contract REXOneWayMarket is REXMarket {
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
    outputAmount = ERC20(outputToken).balanceOf(address(this));
-   console.log("output amount",outputAmount);
-   console.log("minimum amount", minOutput);
    //require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
     output.upgrade(outputAmount * (10 ** (18 - ERC20(outputToken).decimals())));
-  console.log("upggraded");
 
    return outputAmount;
  }
