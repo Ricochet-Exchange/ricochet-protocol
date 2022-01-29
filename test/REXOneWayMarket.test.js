@@ -674,7 +674,8 @@ describe('REXOneWayMarket', () => {
       let ricEmissionRate = await app.getEmissionRate(1);
       expect(ricEmissionRate).equal(1000000000);
       let expectAliceRicRewards = 1 * 60 * 60 * ricEmissionRate;
-      expect(aliceBeforeBalance).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.001));
+      let aliceAfterBalance = parseInt(await ric.balanceOf(u.alice.address));
+      expect(aliceAfterBalance).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.001));
       await takeMeasurements();
 
     });
