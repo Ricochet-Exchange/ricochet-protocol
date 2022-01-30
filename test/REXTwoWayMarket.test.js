@@ -338,12 +338,12 @@ describe('REXTwoWayMarket', () => {
     console.log('Deployed REXTwoWayMarket');
 
     await app.initializeTwoWayMarket(
-      SUSHISWAP_ROUTER_ADDRESS,
-      TELLOR_ORACLE_ADDRESS,
       usdcx.address,
       TELLOR_USDC_REQUEST_ID,
+      1e9,
       ethx.address,
       TELLOR_ETH_REQUEST_ID,
+      1e9,
       20000,
       20000
     )
@@ -421,7 +421,7 @@ describe('REXTwoWayMarket', () => {
 
   describe('REXTwoWayMarket', async () => {
 
-    it('should not allow two streams', async () => {
+    xit('should not allow two streams', async () => {
       const inflowRateUsdc = '1000000000000000';
       const inflowRateEth  = '10000000000000';
       const inflowRateIDASharesUsdc = '1000000';
@@ -484,7 +484,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    xit('should distribute tokens to streamers', async () => {
+    it('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');

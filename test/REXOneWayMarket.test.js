@@ -280,6 +280,13 @@ describe('REXOneWayMarket', () => {
 
   beforeEach(async () => {
 
+    // Get actual price, set oracle
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1.01 * 1000000).toString();
+    console.log('oraclePrice', oraclePrice);
+    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+    await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+
     // Deploy REXReferral
     RexReferral = await ethers.getContractFactory("REXReferral", {
       signer: owner,
@@ -309,14 +316,14 @@ describe('REXOneWayMarket', () => {
     console.log('Deployed REXOneWayMarket');
 
     await app.initializeOneWayMarket(
-      SUSHISWAP_ROUTER_ADDRESS,
       TELLOR_ORACLE_ADDRESS,
       usdcx.address,
       30000,
       TELLOR_USDC_REQUEST_ID,
       outputx.address,
       20000,
-      TELLOR_ETH_REQUEST_ID
+      TELLOR_ETH_REQUEST_ID,
+      1e9
     )
 
     // Add subsidy pool
@@ -339,12 +346,7 @@ describe('REXOneWayMarket', () => {
     });
     u.app.alias = 'App';
     // ==============
-    // Get actual price
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1.01 * 1000000).toString();
-    console.log('oraclePrice', oraclePrice);
-    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-    await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+
 
   });
 

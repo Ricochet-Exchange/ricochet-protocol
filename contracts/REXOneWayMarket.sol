@@ -11,7 +11,8 @@ contract REXOneWayMarket is REXMarket {
   using SafeERC20 for ERC20;
 
   uint32 constant OUTPUT_INDEX = 0;
-  IUniswapV2Router02 router;
+  IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+
     // REX One Way Market Contracts
     // - Swaps the accumulated input tokens for output token
     // - Option to add subsidy tokens (can't be the same as the output token)
@@ -28,18 +29,17 @@ contract REXOneWayMarket is REXMarket {
   }
 
   function initializeOneWayMarket(
-    IUniswapV2Router02 _router,
     ITellor _tellor,
     ISuperToken _inputToken,
     uint256 _rateTolerance,
     uint256 _inputTokenRequestId,
     ISuperToken _outputToken,
     uint128 _feeRate,
-    uint256 _ouptutTokenRequestId) public onlyOwner initializer {
+    uint256 _ouptutTokenRequestId,
+    uint128 _shareScaler) public onlyOwner initializer {
 
-    router = _router;
     REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId, 100000, _feeRate);
-    addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId);
+    addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId, _shareScaler);
 
     // Approvals
     // Unlimited approve for sushiswap

@@ -54,6 +54,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken token;
         uint128 feeRate; // Fee taken by the DAO on each output distribution
         uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
+        uint128 shareScaler;  // The amount to scale back IDA shares of this output pool
     }
 
     struct Market {
@@ -292,17 +293,19 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId
+        uint256 _requestId,
+        uint128 _shareScaler
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
         require(_requestId != 0, "!validReqId");
         require(market.oracles[_token].requestId == 0, "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
-        //
+
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
-            _emissionRate
+            _emissionRate,
+            _shareScaler
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
@@ -442,12 +445,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
      internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
     {
       (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
-      daoShares *= 1e9; // Scale back up to same percision as the flowRate
+      daoShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
 
       address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
       if (address(0) != affiliateAddress) {
         (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], affiliateAddress);
-        affiliateShares *= 1e9;
+        affiliateShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
       }
 
       // Compute the change in flow rate, will be negative is slowing the flow rate
@@ -575,7 +578,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 index,
                 // one share for the to get it started
                 subscriber,
-                shares / 1e9,
+                shares / market.outputPools[uint32(index)].shareScaler,
                 new bytes(0) // placeholder ctx
             ),
             new bytes(0) // user data
@@ -604,7 +607,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 distToken,
                 index,
                 subscriber,
-                shares / 1e9, // Number of shares is proportional to their rate
+                shares / market.outputPools[uint32(index)].shareScaler, // Number of shares is proportional to their rate
                 new bytes(0)
             ),
             new bytes(0), // user data

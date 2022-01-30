@@ -20,7 +20,9 @@ contract REXTwoWayMarket is REXMarket {
   address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
   ISuperToken subsidyToken = ISuperToken(ric);
   uint256 ricRequestId = 77;
-  IUniswapV2Router02 router;
+  IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+  ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
+
 
   // REX Two Way Market Contracts
   // - Swaps the accumulated input tokens for output tokens
@@ -37,26 +39,25 @@ contract REXTwoWayMarket is REXMarket {
   }
 
   function initializeTwoWayMarket(
-    IUniswapV2Router02 _router,
-    ITellor _tellor,
     ISuperToken _inputTokenA,
     uint256 _inputTokenARequestId,
+    uint128 _inputTokenAShareScaler,
     ISuperToken _inputTokenB,
     uint256 _inputTokenBRequestId,
+    uint128 _inputTokenBShareScaler,
     uint128 _feeRate,
     uint256 _rateTolerance
   ) public onlyOwner initializer {
 
-    router = _router;
     inputTokenA = _inputTokenA;
     inputTokenB = _inputTokenB;
     market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
     market.rateTolerance = _rateTolerance;
-    oracle = _tellor;
+    oracle = tellor;
     market.feeRate = _feeRate;
     market.affiliateFee = 100000;
-    addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId);
-    addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId);
+    addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId, _inputTokenAShareScaler);
+    addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId, _inputTokenBShareScaler);
     market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
     market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
@@ -86,8 +87,8 @@ contract REXTwoWayMarket is REXMarket {
     uint256 _emissionRate
   ) public onlyOwner {
     require(address(market.outputPools[SUBSIDYA_INDEX].token) == address(0) && address(market.outputPools[SUBSIDYB_INDEX].token) == address(0), "already initialized");
-    addOutputPool(subsidyToken, 0, _emissionRate, 77);
-    addOutputPool(subsidyToken, 0, _emissionRate, 77);
+    addOutputPool(subsidyToken, 0, _emissionRate, 77, market.outputPools[OUTPUTB_INDEX].shareScaler);
+    addOutputPool(subsidyToken, 0, _emissionRate, 77,  market.outputPools[OUTPUTA_INDEX].shareScaler);
     lastDistributionTokenAAt = block.timestamp;
     lastDistributionTokenBAt = block.timestamp;
     // Does not need to add subsidy token to outputPoolIndicies
@@ -98,7 +99,8 @@ contract REXTwoWayMarket is REXMarket {
       ISuperToken _token,
       uint128 _feeRate,
       uint256 _emissionRate,
-      uint256 _requestId
+      uint256 _requestId,
+      uint128 _shareScaler
   ) public override onlyOwner {
       // Only Allow 4 output pools, this overrides the block in REXMarket
       // where there can't be two output pools of the same token
@@ -107,7 +109,8 @@ contract REXTwoWayMarket is REXMarket {
       OutputPool memory _newPool = OutputPool(
           _token,
           _feeRate,
-          _emissionRate
+          _emissionRate,
+          _shareScaler
       );
       market.outputPools[market.numOutputPools] = _newPool;
       market.outputPoolIndicies[_token] = market.numOutputPools;
