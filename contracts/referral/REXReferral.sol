@@ -27,6 +27,8 @@ contract REXReferral is AccessControlEnumerable {
 
     event AffiliateApplied(string name, string id);
     event AffiliateWithdrawn(string affiliateId);
+    event ReferredCustomerRegistered(address customer, address affiliate, string affiliateId);
+    event OrganicCustomerRegistered(address customer);
 
     // Roles
     bytes32 public constant APP_ROLE =
@@ -171,6 +173,7 @@ contract REXReferral is AccessControlEnumerable {
 
         customerToAffiliate[customerAddr] = affiliateIdx;
         affiliates[affiliateIdx].totalRef += 1;
+        emit ReferredCustomerRegistered(customerAddr, affiliates[affiliateIdx].addr, affiliateId);
     }
 
     // Register a customer as organic
@@ -180,6 +183,7 @@ contract REXReferral is AccessControlEnumerable {
             "Already registered to affiliate"
         );
         isCustomerOrganic[customerAddr] = true;
+        emit OrganicCustomerRegistered(customerAddr);
     }
 
     // Get affiliate address for customer - returns 0 if customer is organic
