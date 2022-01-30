@@ -330,7 +330,7 @@ describe('REXOneWayMarket', () => {
     )
 
     // Add subsidy pool
-    await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
+    await app.addOutputPool(RIC_TOKEN_ADDRESS, 0, 1000000000, 77, 1e9);
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);
@@ -631,8 +631,8 @@ describe('REXOneWayMarket', () => {
     });
 
     it.only("should make sure subsidy tokens and output tokens are correct" , async () => {
-      // The token with feeRate != 0 is output token in this case that is ethx 
-      // The token with emissionRate != 0 is subsisdy token in this case that ric tokens. 
+      // The token with feeRate != 0 is output token in this case that is ethx
+      // The token with emissionRate != 0 is subsisdy token in this case that ric tokens.
       // 0. Approve subscriptions
       await usdcx.transfer(u.alice.address, toWad(400).toString(), { from: u.spender.address });
       //console.log("transfer?");
@@ -661,11 +661,11 @@ describe('REXOneWayMarket', () => {
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
-      // 4. Stop the flow 
+      // 4. Stop the flow
       //await u.alice.flow({ flowRate: '0', recipient: u.app });
       let deltaAlice = await delta('alice', aliceBalances );
       console.log(deltaAlice);
-      // 4. Distribute tokens 
+      // 4. Distribute tokens
       await checkBalance(u.alice);
       await app.distribute('0x');
       await checkBalance(u.alice);
