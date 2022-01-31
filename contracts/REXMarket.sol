@@ -484,6 +484,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
       console.log("userShares", uint(userShares));
 
+      // Scale back shares
+      affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      daoShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      userShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
 
     }
 
@@ -576,9 +580,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 ida.updateSubscription.selector,
                 distToken,
                 index,
-                // one share for the to get it started
                 subscriber,
-                shares / market.outputPools[uint32(index)].shareScaler,
+                shares,
                 new bytes(0) // placeholder ctx
             ),
             new bytes(0) // user data
@@ -607,7 +610,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 distToken,
                 index,
                 subscriber,
-                shares / market.outputPools[uint32(index)].shareScaler, // Number of shares is proportional to their rate
+                shares, 
                 new bytes(0)
             ),
             new bytes(0), // user data
