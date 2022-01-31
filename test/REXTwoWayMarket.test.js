@@ -447,6 +447,53 @@ describe('REXTwoWayMarket', () => {
       ).to.be.revertedWith("Already streaming");
 
     });
+    it.only("should make sure subsidy tokens and output tokens are correct" , async () => {
+      // The token with feeRate != 0 is output token in this case that is ethx 
+      // The token with emissionRate != 0 is subsisdy token in this case that ric tokens. 
+      // 0. Approve subscriptions
+      await usdcx.transfer(u.alice.address, toWad(400).toString(), { from: u.usdcspender.address });
+      //console.log("transfer?");
+      //await ricx.transfer(u.app.address, toWad(400).toString(), { from: u.admin.address });
+      //console.log("ric transfer");
+      //checkBalance(u.bob);
+      //checkBalance(u.alice);
+      //checkBalance(u.spender);
+      //checkBalance(u.admin);
+      //console.log(toWad(10).toString());
+      //await ethx.transfer(u.app.address, toWad(10).toString(), { from: u.bob.address });
+      //console.log("ethx transfer");
+      await approveSubscriptions();
+      // 1. Check balance for output and subsidy tokens and usdcx
+      //await takeMeasurements();
+      await checkBalance(u.alice);
+
+      // 2. Create a stream from an account to app to excahnge tokens
+      let aliceBeforeBalance = parseInt(await ric.balanceOf(u.alice.address));
+      console.log(aliceBeforeBalance);
+
+      await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
+      // 3. Increase time by 1 hour
+      await traveler.advanceTimeAndBlock(60*60);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await app.updateTokenPrice(usdcx.address);
+      await app.updateTokenPrice(outputx.address);
+      // 4. Stop the flow 
+      //await u.alice.flow({ flowRate: '0', recipient: u.app });
+      let deltaAlice = await delta('alice', aliceBalances );
+      console.log(deltaAlice);
+      // 4. Distribute tokens 
+      await checkBalance(u.alice);
+      await app.distribute('0x');
+      await checkBalance(u.alice);
+      // 5. Check balance for output and subsidy tokens
+      let ricEmissionRate = 10000000000000;
+      let expectAliceRicRewards = 60 * 60 * ricEmissionRate;
+      let aliceAfterBalance = (await ric.balanceOf(u.alice.address)).toString();
+      console.log(aliceAfterBalance);
+      expect(parseInt(aliceAfterBalance)).to.within(aliceBeforeBalance + (expectAliceRicRewards * 0.999), aliceBeforeBalance + (expectAliceRicRewards * 1.06));
+
+    });
 
     xit('should create a stream exchange with the correct parameters', async () => {
       const inflowRate = '77160493827160';
