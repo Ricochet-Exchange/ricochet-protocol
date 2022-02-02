@@ -266,10 +266,10 @@ contract REXTwoWayMarket is REXMarket {
 
       _newCtx = _ctx;
       (address _shareholder, ) = abi.decode(_agreementData, (address, address));
-      (uint256 _uninvestAmount, int _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int));
+      (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
 
       ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-        _shareholder, int96(_beforeFlowRate), 0, _superToken
+        _shareholder, _beforeFlowRate, 0, _superToken
       );
 
       _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
