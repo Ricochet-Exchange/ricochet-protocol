@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import { ISuperAgreement } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
+import { ISuperAgreement } from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
 
 
 /**

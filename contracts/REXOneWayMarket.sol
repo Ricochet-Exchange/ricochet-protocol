@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import './REXMarket.sol';
-import './referral/IREXReferral.sol';
-import 'hardhat/console.sol';
+import "./REXMarket.sol";
+import "./referral/IREXReferral.sol";
+import "hardhat/console.sol";
 contract REXOneWayMarket is REXMarket {
   using SafeERC20 for ERC20;
 
