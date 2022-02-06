@@ -8,6 +8,7 @@ import { Framework } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 // import { SuperfluidToken, TellorPlayground, REXTwoWayMarket, ERC20 } from "../typechain";
 import { SuperfluidToken, TellorPlayground, REXTwoWayMarket } from "../typechain";
+import { names } from "../misc/setup";
 
 import {
     getSeconds,
@@ -26,6 +27,7 @@ const {
     BN,
 } = require("@decentral.ee/web3-helpers");
 
+// names[0] = "sdf";
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 
@@ -325,7 +327,7 @@ let sf: Framework,
     app: any,
     tokenss: { [key: string]: any },
     sfRegistrationKey: any,
-    accountss: SignerWithAddress[],
+    userAccounts: { [key: string]: SignerWithAddress },
     constant: { [key: string]: string },
     tp: any,
     approveSubscriptions: any,
@@ -432,7 +434,7 @@ describe("REXTwoWayMarket", function () {
         sf = superfluid;
         superT = superTokens;
         tokenss = tokens;
-        accountss = accounts;
+        userAccounts = accounts;
         sfRegistrationKey = createSFRegistrationKey;
         constant = constants;
         tp = tellor;
@@ -460,7 +462,7 @@ describe("REXTwoWayMarket", function () {
         console.log("Deploying REXTwoWayMarket...");
         const REXMarketFactory = await ethers.getContractFactory(
             "REXTwoWayMarket",
-            accountss[0]
+            userAccounts["admin"]
         );
         app = await REXMarketFactory.deploy(
             u.admin.address,
@@ -558,7 +560,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRateUsdc,
                 receiver: u.app.address,
                 superToken: usdcx.address
-            }).exec(accountss[0]);
+            }).exec(userAccounts["alice"]);
         const txnReceipt = await txnResponse.wait();
 
         await expect(
@@ -594,7 +596,7 @@ describe("REXTwoWayMarket", function () {
                 publisher: u.app.address,
                 userData: "0x",
             })
-            .exec(accountss[0]);
+            .exec(userAccounts["admin"]);
 
         // 1. Check balance for output and subsidy tokens and usdcx
         //await takeMeasurements();
@@ -612,7 +614,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: myFlowRate,
                 receiver: u.app.address,
                 superToken: ethx.address
-            }).exec(accountss[0]);
+            }).exec(userAccounts["admin"]);
 
         // 3. Increase time by 1 hour
         await increaseTime(60 * 60);
@@ -626,12 +628,12 @@ describe("REXTwoWayMarket", function () {
         console.log(deltaAlice);
         // 4. Distribute tokens 
         await checkBalance(alice);
-        await app.distribute("0x");  /// AM
+        await app.distribute("0x");
         await checkBalance(alice);
         // 5. Check balance for output and subsidy tokens
         let ricEmissionRate = 10000000000000;
         let expectAliceRicRewards = 60 * 60 * ricEmissionRate;
-        let aliceAfterBalance = await ric.balanceOf(alice.address);    // AM --> I removed the conversion to string
+        let aliceAfterBalance = await ric.balanceOf(alice.address);    // JR --> I removed the conversion to string
         console.log(aliceAfterBalance);
         let aliceBeforeBalanceInNumber: number = aliceBeforeBalance.toNumber();
         expect(aliceAfterBalance).to.within(
@@ -660,7 +662,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRate,
                 receiver: u.app.address,
                 superToken: ethx.address
-            }).exec(accountss[0]);
+            }).exec(userAccounts["admin"]);
 
         // await alice.flow({ flowRate: inflowRate, recipient: u.app });
         const txnResponseBob = await sf.cfaV1
@@ -669,7 +671,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRate,
                 receiver: u.app.address,
                 superToken: ethx.address
-            }).exec(accountss[0]);
+            }).exec(userAccounts["admin"]);
 
         // await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
         // Expect the parameters are correct       // TODO
@@ -690,7 +692,7 @@ describe("REXTwoWayMarket", function () {
                 publisher: u.app.address,
                 userData: "0x",
             })
-            .exec(accountss[0]);
+            .exec(userAccounts["admin"]);
         // TODO
         expect(await output.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
             .to.be.equal(ethers.constants.MaxUint256);
@@ -711,7 +713,7 @@ describe("REXTwoWayMarket", function () {
                 publisher: u.app.address,
                 userData: "0x",
             })
-            .exec(accountss[1]);
+            .exec(userAccounts["bob"]);
 
         await sf.idaV1
             .approveSubscription({
@@ -720,7 +722,7 @@ describe("REXTwoWayMarket", function () {
                 publisher: u.app.address,
                 userData: "0x",
             })
-            .exec(accountss[2]);    // Ask Vaib
+            .exec(userAccounts[""]);    // TODO
 
         console.log("Transfer alice");
         await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
@@ -742,7 +744,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRateUsdc,
                 receiver: u.app.address,
                 superToken: superT.usdcx.address
-            }).exec(accountss[1]);
+            }).exec(userAccounts["alice"]);
         const txnReceiptAlice = await txnResponseAlice.wait();
         // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
         const txnResponseBob = await sf.cfaV1
@@ -751,7 +753,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRateEth,
                 receiver: u.app.address,
                 superToken: superT.ethx.address
-            }).exec(accountss[1]);
+            }).exec(userAccounts["bob"]);
         const txnReceiptBob = await txnResponseAlice.wait();
 
         await takeMeasurements();
@@ -819,7 +821,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: (parseInt(inflowRateUsdc) * 10).toString(),
                 receiver: u.app.address,
                 superToken: superT.usdcx.address
-            }).exec(accountss[1]);    // TODO 0 or 1 ?????
+            }).exec(userAccounts["alice"]);    
 
         // await alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: app });
 
@@ -867,7 +869,7 @@ describe("REXTwoWayMarket", function () {
                 flowRate: inflowRateUsdc,
                 receiver: u.app.address,
                 superToken: superT.usdcx.address
-            }).exec(accountss[1]);
+            }).exec(userAccounts["alice"]);
 
         // await karen.flow({ flowRate: inflowRateUsdc, recipient: app });    
         expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");

@@ -2,6 +2,7 @@ import { parseEther } from "@ethersproject/units";
 import { hexValue } from "@ethersproject/bytes";
 import { network, ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { names } from "../misc/setup";
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
@@ -13,21 +14,25 @@ export const getDate = (timestamp: number) => new Date(timestamp * 1000).toDateS
 
 export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to seconds
 
-export const impersonateAccounts = async (accounts: any) => {
-    let signers = [];
+// export const impersonateAccounts = async (accounts: AccountsWithUserKey[]) => {
+// export const impersonateAccounts = async (accounts: { [key: string]: string }) => {
+export async function impersonateAccounts(accounts: { [key: string]: string }): Promise<{ [key: string]: SignerWithAddress }> {
 
-    for (let i = 0; i < accounts.length; ++i) {
+    let signers: { [key: string]: SignerWithAddress };
+
+    for (let i = 0; i < names.length; ++i) {
         await network.provider.request({
             method: "hardhat_impersonateAccount",
-            params: [accounts[i]]
+            params: [accounts[names[i]]]
         });
 
         await network.provider.send("hardhat_setBalance", [
-            accounts[i],
+            accounts[names[i]],
             hexValue(parseEther("1000")),
         ]);
 
-        signers[i] = await ethers.getSigner(accounts[i]);
+        signers[names[i]] = await ethers.getSigner(accounts[names[i]]);
+        console.log("AAAAAAAA - accounts[names[i]: " + accounts[names[i]] + " BBBB - : getSigner(accounts[names[i]]): " + signers[names[i]]);
     }
 
     return signers;

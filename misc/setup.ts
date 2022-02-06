@@ -51,37 +51,61 @@ export interface IUser {
   alias?: string;
 }
 
+// export interface AccountsWithUserKey {
+//   [index: string]: string;
+// }
+
+export const names = ["admin", "alice", "bob", "carl", "spender"];
+
 export const setup = async () => {
   const users: { [key: string]: IUser } = {};
-  const tokens: {[key: string]: any} = {};
+  const tokens: { [key: string]: any } = {};
 
-  const contracts: any = {};
-  const constants: {[key: string] : string} = {
+  // const contracts: any = {};
+  const contracts: { [key: string]: string } = {};
+  // const accounts: SignerWithAddress[] = await impersonateAccounts(userAccounts);
+
+  const constants: { [key: string]: string } = {
     "OWNER_ADDRESS": OWNER_ADDRESS,
-    "ALICE_ADDRESS":ALICE_ADDRESS,
-    "CARL_ADDRESS":CARL_ADDRESS,
-    "BOB_ADDRESS":BOB_ADDRESS,
-    "RIC_TOKEN_ADDRESS":RIC_TOKEN_ADDRESS,
-    "SF_RESOLVER":SF_RESOLVER,
-    "USDCX_SOURCE_ADDRESS":USDCX_SOURCE_ADDRESS,
-    "TELLOR_ORACLE_ADDRESS":TELLOR_ORACLE_ADDRESS,
-    "SUSHISWAP_ROUTER_ADDRESS":SUSHISWAP_ROUTER_ADDRESS,
-    "TELLOR_ETH_REQUEST_ID":TELLOR_ETH_REQUEST_ID,
-    "TELLOR_USDC_REQUEST_ID":TELLOR_USDC_REQUEST_ID,
-    "IDA_SUPERFLUID_ADDRESS":IDA_SUPERFLUID_ADDRESS,
-    "CFA_SUPERFLUID_ADDRESS":CFA_SUPERFLUID_ADDRESS,
+    "ALICE_ADDRESS": ALICE_ADDRESS,
+    "CARL_ADDRESS": CARL_ADDRESS,
+    "BOB_ADDRESS": BOB_ADDRESS,
+    "RIC_TOKEN_ADDRESS": RIC_TOKEN_ADDRESS,
+    "SF_RESOLVER": SF_RESOLVER,
+    "USDCX_SOURCE_ADDRESS": USDCX_SOURCE_ADDRESS,
+    "TELLOR_ORACLE_ADDRESS": TELLOR_ORACLE_ADDRESS,
+    "SUSHISWAP_ROUTER_ADDRESS": SUSHISWAP_ROUTER_ADDRESS,
+    "TELLOR_ETH_REQUEST_ID": TELLOR_ETH_REQUEST_ID,
+    "TELLOR_USDC_REQUEST_ID": TELLOR_USDC_REQUEST_ID,
+    "IDA_SUPERFLUID_ADDRESS": IDA_SUPERFLUID_ADDRESS,
+    "CFA_SUPERFLUID_ADDRESS": CFA_SUPERFLUID_ADDRESS,
   };
 
-  const accountAddrs = [
-    OWNER_ADDRESS,
-    ALICE_ADDRESS,
-    BOB_ADDRESS,
-    CARL_ADDRESS,
-    USDCX_SOURCE_ADDRESS,
-    SF_RESOLVER,
-  ];
-  const accounts : SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "spender"];
+  // let userAccounts: AccountsWithUserKey[] = {
+  let userAccounts: { [key: string]: string } = {
+    "admin": OWNER_ADDRESS,
+    "alice": ALICE_ADDRESS,
+    "bob": BOB_ADDRESS,
+    "carl": CARL_ADDRESS,
+    "spender": USDCX_ADDRESS,
+  };
+
+  // const myArray: StringArray = getStringArray();
+  // const secondItem = myArray[1];
+  // const accountAddrs = [
+  //   OWNER_ADDRESS,
+  //   ALICE_ADDRESS,
+  //   BOB_ADDRESS,
+  //   CARL_ADDRESS,
+  //   USDCX_SOURCE_ADDRESS,
+  //   SF_RESOLVER,
+  // ];
+
+  // let accountAddrs: string[];
+  // for (let i = 0; i < names.length; ++i) {
+  //   accountAddrs[i] = userAccounts[names[0]];
+  // }
+  let accounts: { [key: string]: SignerWithAddress } = await impersonateAccounts(userAccounts);
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -117,11 +141,11 @@ export const setup = async () => {
     };
   }
 
-  // Decalare ERC 20 tokens
+  // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
     "ERC20",
     RIC_TOKEN_ADDRESS
-      );
+  );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
     await superTokens.ethx.underlyingToken.address
@@ -134,12 +158,12 @@ export const setup = async () => {
     "ERC20",
     await superTokens.usdcx.underlyingToken.address
   );
-  tokens.ric = tokens.ric.connect(accounts[0]);
+  tokens.ric = tokens.ric.connect(accounts["admin"]);
 
   // Trellor Protocol to determine the price
   const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
   let tellor = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
-  tellor = tellor.connect(accounts[0]);
+  tellor = tellor.connect(accounts["admin"]);
 
   return {
     superfluid,
