@@ -324,7 +324,7 @@ describe('REXTwoWayMarket', () => {
       signer: owner,
     });
 
-    const registrationKey = 'ricochetftw-010222-2'; //await createSFRegistrationKey(sf, u.admin.address);
+    const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
     console.log(registrationKey);
     console.log('Deploying REXTwoWayMarket...');
     app = await REXTwoWayMarket.deploy(
@@ -555,6 +555,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
@@ -632,17 +633,17 @@ describe('REXTwoWayMarket', () => {
 
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
-      await u.karen.flow({ flowRate: inflowRateUsdc, recipient: u.app });
+      await u.karen.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') });
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,22000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,200,0`);
       expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,980000,0`);
-      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,200000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,198000,0`);
 
 
       await takeMeasurements();
@@ -717,6 +718,8 @@ describe('REXTwoWayMarket', () => {
       await u.karen.flow({ flowRate: '0', recipient: u.app });
       expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(0);
       expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
 
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
