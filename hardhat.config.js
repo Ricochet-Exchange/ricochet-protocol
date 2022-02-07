@@ -36,7 +36,8 @@ module.exports = {
       url: process.env.POLYGON_NODE_URL,
       accounts: [process.env.POLYGON_PRIVATE_KEY],
       blockGasLimit: 20000000,
-      gasPrice: 55000000000 // 35 Gwei
+      gasPrice: 65000000000, 
+      gas: 2000000
     }
   },
   mocha: {
