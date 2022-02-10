@@ -18,7 +18,7 @@ export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to
 // export const impersonateAccounts = async (accounts: { [key: string]: string }) => {
 export async function impersonateAccounts(accounts: { [key: string]: string }): Promise<{ [key: string]: SignerWithAddress }> {
 
-    let signers: { [key: string]: SignerWithAddress };
+    let signers: { [key: string]: SignerWithAddress } = {};
 
     for (let i = 0; i < names.length; ++i) {
         await network.provider.request({
