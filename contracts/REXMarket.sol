@@ -828,6 +828,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata // _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
         _onlyHost();
+        _onlyExpected(_superToken, _agreementClass);
 
         (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
@@ -849,6 +850,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
+        _onlyExpected(_superToken, _agreementClass);
 
         _newCtx = _ctx;
         (address _shareholder, ) = abi.decode(_agreementData, (address, address));

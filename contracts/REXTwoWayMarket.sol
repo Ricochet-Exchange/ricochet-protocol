@@ -232,14 +232,15 @@ contract REXTwoWayMarket is REXMarket {
 
   function beforeAgreementTerminated(
       ISuperToken _superToken,
-      address _agreementClass,
+      address,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
       bytes calldata // _ctx
   ) external view virtual override returns (bytes memory _cbdata) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
-
+      if (_superToken != inputTokenA && _superToken != inputTokenB) {
+        return _cbdata;
+      }
       (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
       uint256 _uinvestAmount = _calcUserUninvested(
@@ -255,15 +256,16 @@ contract REXTwoWayMarket is REXMarket {
 
   function afterAgreementTerminated(
       ISuperToken _superToken,
-      address _agreementClass,
+      address,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
       bytes calldata _cbdata, //_cbdata,
       bytes calldata _ctx
   ) external virtual override returns (bytes memory _newCtx) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
-
+      if (_superToken != inputTokenA && _superToken != inputTokenB) {
+        return _ctx;
+      }
       _newCtx = _ctx;
       (address _shareholder, ) = abi.decode(_agreementData, (address, address));
       (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
