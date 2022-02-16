@@ -461,6 +461,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       if(changeInFlowRate > 0) {
         // Add new shares to the DAO
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        userShares = uint128(uint256(int256(changeInFlowRate)) - feeShares);
         if (address(0) != affiliateAddress) {
           affiliateShares += feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
@@ -472,17 +473,15 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // Make the rate positive
         changeInFlowRate = -1 * changeInFlowRate;
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        userShares = uint128(uint256(int256(changeInFlowRate)) - feeShares);
         if (address(0) != affiliateAddress) {
-          affiliateShares -= feeShares * market.affiliateFee / 1e6;
+          affiliateShares -= (feeShares * market.affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
-          daoShares -= feeShares;
+          daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
         } else {
           daoShares -= feeShares;
         }
       }
-
-      userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
-      console.log("userShares", uint(userShares));
 
       // Scale back shares
       affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
@@ -549,8 +548,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-      console.log("index", index);
-      console.log("distToken", address(distToken));
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
@@ -739,6 +736,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData, _superToken
         );
+
+        // Enforce speed limit on flowRate
+        require(uint128(uint(int(_flowRate))) % market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler == 0, "notScaled");
+        require(uint128(uint(int(_flowRate))) > market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3, "tooLow");
 
         _registerReferral(_newCtx, _shareholder);
 
