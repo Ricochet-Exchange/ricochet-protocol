@@ -15,7 +15,7 @@ import {
     increaseTime,
     // impersonateAccount,
     impersonateAccounts,
-    // impersonateAndSetBalance,
+    impersonateAndSetBalance,
 } from "./../misc/helpers";
 // const { loadFixture } = waffle;
 /* eslint-disable no-await-in-loop */
@@ -35,960 +35,907 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 //     return new Promise((resolve) => setTimeout(resolve, ms));
 // }
 
-// async function impersonateAccount(account) {
-//     await hre.network.provider.request({
-//         method: 'hardhat_impersonateAccount',
-//         params: [account],
-//     });
-// }
+describe('REXTwoWayMarket', () => {
+    const errorHandler = (err) => {
+        if (err) throw err;
+    };
 
-// async function setBalance(account, balance) {
-//     const hexBalance = numberToHex(toWad(balance));
-//     await hre.network.provider.request({
-//         method: 'hardhat_setBalance',
-//         params: [
-//             account,
-//             hexBalance,
-//         ],
-//     });
-// }
+    // const ERC20 = await ethers.getContractFactory("IERC20");
+    const names: string[] = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
 
-// async function impersonateAndSetBalance(account) {
-//     await impersonateAccount(account);
-//     await setBalance(account, 10000);
-// }
+    // let sf;
+    // // let dai;
+    // // let daix;
+    // let ethx: ISuperToken;
+    // // let wbtc;
+    // let wbtcx: ISuperToken;
+    // // let usd;
+    // let usdcx: ISuperToken;
+    // let ric: ISuperToken;
+    // let daix: ISuperToken;
+    // let usdc;
+    // // let eth;
+    // // let weth;
+    // let app;
+    // let outputx;
+    // let tp; // Tellor playground
+    // // let usingTellor;
+    // // let sr; // Mock Sushi Router
+    // const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
+    // // const u = {}; // object with all users
+    // let owner;
+    // let alice: SignerWithAddress;
+    // let bob: SignerWithAddress;
+    // let carl: SignerWithAddress;
+    // let karen: SignerWithAddress;
+    // let admin: SignerWithAddress;
+    // let usdcSpender;
+    // let ethSpender; // u: { [key: string]: IUser },
+    // let users: SignerWithAddress[] = [alice, bob, carl, karen, admin]; // object with all users
+    // interface UserAndAddress {
+    //     user: SignerWithAddress;
+    //     address: string;
+    //     alias?: string;
+    // };
+    // let usersAddresses: { [user: string]: string } = [        //alice.address, bob.address, carl.address, karen.address, admin.address];
+    // let aliceAndAddress: UserAndAddress = {
+    //     user: alice, address: alice.address,
+    // }
+    // let bobAndAddress: UserAndAddress = {
+    //     user: bob, address: bob.address,
+    // }
+    // let carlAndAddress: UserAndAddress = {
+    //     user: carl, address: carl.address,
+    // }
+    // let karenAndAddress: UserAndAddress = {
+    //     user: karen, address: karen.address,
+    // }
+    // let adminAndAddress: UserAndAddress = {
+    //     user: admin, address: admin.address,
+    // }
+    // let usersAndAddresses: UserAndAddress[] = [aliceAndAddress, bobAndAddress, carlAndAddress, karenAndAddress, adminAndAddress];
 
-// async function createSFRegistrationKey(sf, deployer) {
-//     const registrationKey = `testKey-${Date.now()}`;
-//     const appKey = web3.utils.sha3(
-//         web3.eth.abi.encodeParameters(
-//             ['string', 'address', 'string'],
-//             [
-//                 'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
-//                 deployer,
-//                 registrationKey,
-//             ],
-//         ),
-//     );
+    // interface SuperTokensBalances {
+    //     outputx: string[];
+    //     ethx: string[];
+    //     wbtcx: string[];
+    //     daix: string[];
+    //     usdcx: string[];
+    //     ric: string[];
+    // };
 
-//     const governance = await sf.host.getGovernance.call();
-//     console.log(`SF Governance: ${governance}`);
+    // let appBalances: SuperTokensBalances;
+    // let ownerBalances: SuperTokensBalances;
+    // let aliceBalances: SuperTokensBalances;
+    // let bobBalances: SuperTokensBalances;
+    // let carlBalances: SuperTokensBalances;
+    // let karenBalances: SuperTokensBalances;
 
-//     const sfGovernanceRO = await ethers
-//         .getContractAt(SuperfluidGovernanceBase.abi, governance);
+    // before(async () => {
+    //     // ==============
+    //     // impersonate accounts and set balances
 
-//     const govOwner = await sfGovernanceRO.owner();
-//     await impersonateAndSetBalance(govOwner);
+    //     const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
 
-//     const sfGovernance = await ethers
-//         .getContractAt(SuperfluidGovernanceBase.abi, governance, await ethers.getSigner(govOwner));
+    //     accountAddrs.forEach(async (account) => {
+    //         await impersonateAndSetBalance(account);
+    //     });
 
-//     await sfGovernance.whiteListNewApp(sf.host.address, appKey);
+    //     // ==============
+    //     // get signers
+    //     // owner = await ethers.provider.getSigner(OWNER_ADDRESS);
+    //     let owner = await ethers.provider.getSigner(OWNER_ADDRESS);
+    //     let reporter = await ethers.provider.getSigner(REPORTER_ADDRESS);
+    //     let alice = await ethers.provider.getSigner(ALICE_ADDRESS);
+    //     let bob = await ethers.provider.getSigner(BOB_ADDRESS);
+    //     let carl = await ethers.provider.getSigner(CARL_ADDRESS);
+    //     let karen = await ethers.provider.getSigner(KAREN_ADDRESS);
+    //     usdcSpender = await ethers.provider.getSigner(USDCX_SOURCE_ADDRESS);
+    //     ethSpender = await ethers.provider.getSigner(ETHX_SOURCE_ADDRESS);
+    //     const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender];
 
-//     return registrationKey;
-// }
+    //     // ==============
+    //     // Init Superfluid Framework
 
-// describe('REXTwoWayMarket', () => {
-//     const errorHandler = (err) => {
-//         if (err) throw err;
-//     };
-
-// const ERC20 = await ethers.getContractFactory("IERC20");
-// const names: string[] = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
-
-// let sf;
-// // let dai;
-// // let daix;
-// let ethx: ISuperToken;
-// // let wbtc;
-// let wbtcx: ISuperToken;
-// // let usd;
-// let usdcx: ISuperToken;
-// let ric: ISuperToken;
-// let daix: ISuperToken;
-// let usdc;
-// // let eth;
-// // let weth;
-// let app;
-// let outputx;
-// let tp; // Tellor playground
-// // let usingTellor;
-// // let sr; // Mock Sushi Router
-// const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
-// // const u = {}; // object with all users
-// let owner;
-// let alice: SignerWithAddress;
-// let bob: SignerWithAddress;
-// let carl: SignerWithAddress;
-// let karen: SignerWithAddress;
-// let admin: SignerWithAddress;
-// let usdcSpender;
-// let ethSpender; // u: { [key: string]: IUser },
-// let users: SignerWithAddress[] = [alice, bob, carl, karen, admin]; // object with all users
-// interface UserAndAddress {
-//     user: SignerWithAddress;
-//     address: string;
-//     alias?: string;
-// };
-// let usersAddresses: { [user: string]: string } = [        //alice.address, bob.address, carl.address, karen.address, admin.address];
-// let aliceAndAddress: UserAndAddress = {
-//     user: alice, address: alice.address,
-// }
-// let bobAndAddress: UserAndAddress = {
-//     user: bob, address: bob.address,
-// }
-// let carlAndAddress: UserAndAddress = {
-//     user: carl, address: carl.address,
-// }
-// let karenAndAddress: UserAndAddress = {
-//     user: karen, address: karen.address,
-// }
-// let adminAndAddress: UserAndAddress = {
-//     user: admin, address: admin.address,
-// }
-// let usersAndAddresses: UserAndAddress[] = [aliceAndAddress, bobAndAddress, carlAndAddress, karenAndAddress, adminAndAddress];
-
-// interface SuperTokensBalances {
-//     outputx: string[];
-//     ethx: string[];
-//     wbtcx: string[];
-//     daix: string[];
-//     usdcx: string[];
-//     ric: string[];
-// };
-
-// let appBalances: SuperTokensBalances;
-// let ownerBalances: SuperTokensBalances;
-// let aliceBalances: SuperTokensBalances;
-// let bobBalances: SuperTokensBalances;
-// let carlBalances: SuperTokensBalances;
-// let karenBalances: SuperTokensBalances;
-
-// before(async () => {
-//     // ==============
-//     // impersonate accounts and set balances
-
-//     const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
-
-//     accountAddrs.forEach(async (account) => {
-//         await impersonateAndSetBalance(account);
-//     });
-
-//     // ==============
-//     // get signers
-//     // owner = await ethers.provider.getSigner(OWNER_ADDRESS);
-//     let owner = await ethers.provider.getSigner(OWNER_ADDRESS);
-//     let reporter = await ethers.provider.getSigner(REPORTER_ADDRESS);
-//     let alice = await ethers.provider.getSigner(ALICE_ADDRESS);
-//     let bob = await ethers.provider.getSigner(BOB_ADDRESS);
-//     let carl = await ethers.provider.getSigner(CARL_ADDRESS);
-//     let karen = await ethers.provider.getSigner(KAREN_ADDRESS);
-//     usdcSpender = await ethers.provider.getSigner(USDCX_SOURCE_ADDRESS);
-//     ethSpender = await ethers.provider.getSigner(ETHX_SOURCE_ADDRESS);
-//     const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender];
-
-//     // ==============
-//     // Init Superfluid Framework
-
-//     // sf = new SuperfluidSDK.Framework({
-//     //     web3,
-//     //     resolverAddress: SF_RESOLVER,
-//     //     tokens: ['WBTC', 'DAI', 'USDC', 'ETH'],
-//     //     version: 'v1',
-//     // });
-//     // await sf.initialize();
-//     // ethx = sf.tokens.ETHx;
-//     // wbtcx = sf.tokens.WBTCx;
-//     // daix = sf.tokens.DAIx;
-//     // usdcx = sf.tokens.USDCx;
-//     const superfluid = await Framework.create({
-//         provider: provider,  // PROVIDER
-//         resolverAddress: SF_RESOLVER,
-//         networkName: "hardhat",
-//         dataMode: "WEB3_ONLY",
-//         protocolReleaseVersion: "v2"   // TODO It was v1
-//     });
+    //     // sf = new SuperfluidSDK.Framework({
+    //     //     web3,
+    //     //     resolverAddress: SF_RESOLVER,
+    //     //     tokens: ['WBTC', 'DAI', 'USDC', 'ETH'],
+    //     //     version: 'v1',
+    //     // });
+    //     // await sf.initialize();
+    //     // ethx = sf.tokens.ETHx;
+    //     // wbtcx = sf.tokens.WBTCx;
+    //     // daix = sf.tokens.DAIx;
+    //     // usdcx = sf.tokens.USDCx;
+    //     const superfluid = await Framework.create({
+    //         provider: provider,  // PROVIDER
+    //         resolverAddress: SF_RESOLVER,
+    //         networkName: "hardhat",
+    //         dataMode: "WEB3_ONLY",
+    //         protocolReleaseVersion: "v2"   // TODO It was v1
+    //     });
 
 
-//     // ==============
-//     // Init SF users
+    //     // ==============
+    //     // Init SF users
 
-//     // for (let i = 0; i < names.length; i += 1) {
-//     for (let i = 0; i < usersAndAddresses.length; i += 1) {
-//         // Bob will be the ETHx streamer
-//         if (usersAndAddresses[i].user == bob) { //}  .toLowerCase() == "bob") {
-//             u[names[i].toLowerCase()] = sf.user({
-//                 address: accounts[i]._address || accounts[i].address,
-//                 token: ethx.address,
-//             });
-//         } else {
-//             u[names[i].toLowerCase()] = sf.user({
-//                 address: accounts[i]._address || accounts[i].address,
-//                 token: usdcx.address,
-//             });
-//         }
+    //     // for (let i = 0; i < names.length; i += 1) {
+    //     for (let i = 0; i < usersAndAddresses.length; i += 1) {
+    //         // Bob will be the ETHx streamer
+    //         if (usersAndAddresses[i].user == bob) { //}  .toLowerCase() == "bob") {
+    //             u[names[i].toLowerCase()] = sf.user({
+    //                 address: accounts[i]._address || accounts[i].address,
+    //                 token: ethx.address,
+    //             });
+    //         } else {
+    //             u[names[i].toLowerCase()] = sf.user({
+    //                 address: accounts[i]._address || accounts[i].address,
+    //                 token: usdcx.address,
+    //             });
+    //         }
 
-//         u[names[i].toLowerCase()].alias = names[i];
-//         // aliases[u[names[i].toLowerCase()].address] = names[i];
-//         // usersAndAddresses[i].alias = usersAndAddresses[i].
-//     }
+    //         u[names[i].toLowerCase()].alias = names[i];
+    //         // aliases[u[names[i].toLowerCase()].address] = names[i];
+    //         // usersAndAddresses[i].alias = usersAndAddresses[i].
+    //     }
 
-//     // ==============
-//     // NOTE: Assume the oracle is up to date
-//     // Deploy Tellor Oracle contracts
+    //     // ==============
+    //     // NOTE: Assume the oracle is up to date
+    //     // Deploy Tellor Oracle contracts
 
-//     const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
-//     tp = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
-//     tp = tp.connect(owner);
+    //     const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
+    //     tp = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
+    //     tp = tp.connect(owner);
 
-//     // ==============
-//     // Setup tokens
+    //     // ==============
+    //     // Setup tokens
 
-//     const ERC20 = await ethers.getContractFactory('ERC20');
-//     let ric = await ERC20.attach(RIC_TOKEN_ADDRESS);
-//     let weth = await ERC20.attach(await ethx.getUnderlyingToken());
-//     let wbtc = await ERC20.attach(await wbtcx.getUnderlyingToken());
-//     usdc = await ERC20.attach(await usdcx.getUnderlyingToken());
-//     ric = ric.connect(owner);
+    //     const ERC20 = await ethers.getContractFactory('ERC20');
+    //     let ric = await ERC20.attach(RIC_TOKEN_ADDRESS);
+    //     let weth = await ERC20.attach(await ethx.getUnderlyingToken());
+    //     let wbtc = await ERC20.attach(await wbtcx.getUnderlyingToken());
+    //     usdc = await ERC20.attach(await usdcx.getUnderlyingToken());
+    //     ric = ric.connect(owner);
 
-//     // Attach alice to the SLP token
-//     let outputx = ethx;
-//     let output = await ERC20.attach(await outputx.getUnderlyingToken());
+    //     // Attach alice to the SLP token
+    //     let outputx = ethx;
+    //     let output = await ERC20.attach(await outputx.getUnderlyingToken());
 
-// });
+    // });
 
-let ethx: any;  //: SuperfluidToken;
-let wbtcx: any; //: SuperfluidToken;
-let usdcx: any; //: SuperfluidToken;
-let ric: any; //: SuperfluidToken;
-let daix: any; //: SuperfluidToken;
-let outputx: any; //: SuperfluidToken;
+    let ethx: any;  //: SuperfluidToken;
+    let wbtcx: any; //: SuperfluidToken;
+    let usdcx: any; //: SuperfluidToken;
+    let ric: any; //: SuperfluidToken;
+    let daix: any; //: SuperfluidToken;
+    let outputx: any; //: SuperfluidToken;
 
-let rexReferral: any;
+    let rexReferral: any;
 
-// let sr; // Mock Sushi Router
-const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
-let owner: SignerWithAddress;
-let alice: SignerWithAddress;
-let bob: SignerWithAddress;
-let carl: SignerWithAddress;
-let karen: SignerWithAddress;
-let admin: SignerWithAddress;
-let usdcSpender: SignerWithAddress;
-let ethSpender: SignerWithAddress;
-let usdc: any;  //: ERC20;
-let output: any;  //: ERC20;
+    // let sr; // Mock Sushi Router
+    const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
+    let owner: SignerWithAddress;
+    let alice: SignerWithAddress;
+    let bob: SignerWithAddress;
+    let carl: SignerWithAddress;
+    let karen: SignerWithAddress;
+    let admin: SignerWithAddress;
+    let usdcSpender: SignerWithAddress;
+    let ethSpender: SignerWithAddress;
+    let usdc: any;  //: ERC20;
+    let output: any;  //: ERC20;
 
-const aliases = {};
-const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
-const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
-const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
-const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
-const TELLOR_ETH_REQUEST_ID = 1;
-const TELLOR_USDC_REQUEST_ID = 78;
-const TELLOR_RIC_REQUEST_ID = 77;
-const COINGECKO_KEY = 'ethereum';
+    const aliases = {};
+    const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
+    const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
+    const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
+    const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
+    const TELLOR_ETH_REQUEST_ID = 1;
+    const TELLOR_USDC_REQUEST_ID = 78;
+    const TELLOR_RIC_REQUEST_ID = 77;
+    const COINGECKO_KEY = 'ethereum';
 
-// random address from polygonscan that have a lot of usdcx
-const USDCX_SOURCE_ADDRESS = '0x81ea02098336435d5e92e032c029aab850304f5d';
-const ETHX_SOURCE_ADDRESS = '0x0154d25120Ed20A516fE43991702e7463c5A6F6e';
-const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
-const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
-const OUTPUT_TOKEN_ADDRESS = '0xB63E38D21B31719e6dF314D3d2c351dF0D4a9162'; // IDLE
+    // random address from polygonscan that have a lot of usdcx
+    const USDCX_SOURCE_ADDRESS = '0x81ea02098336435d5e92e032c029aab850304f5d';
+    const ETHX_SOURCE_ADDRESS = '0x0154d25120Ed20A516fE43991702e7463c5A6F6e';
+    const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
+    const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
+    const OUTPUT_TOKEN_ADDRESS = '0xB63E38D21B31719e6dF314D3d2c351dF0D4a9162'; // IDLE
 
-const CARL_ADDRESS = '0x8c3bf3EB2639b2326fF937D041292dA2e79aDBbf';
-const BOB_ADDRESS = '0x00Ce20EC71942B41F50fF566287B811bbef46DC8';
-const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
-const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
-const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
-const KAREN_ADDRESS = "0xbf188ab46C1ca9d9e47a7996d585566ECeDdAeAb"
-let oraclePrice: number;
-let ricOraclePrice: number;
+    const CARL_ADDRESS = '0x8c3bf3EB2639b2326fF937D041292dA2e79aDBbf';
+    const BOB_ADDRESS = '0x00Ce20EC71942B41F50fF566287B811bbef46DC8';
+    const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
+    const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
+    const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
+    const KAREN_ADDRESS = "0xbf188ab46C1ca9d9e47a7996d585566ECeDdAeAb"
+    let oraclePrice: number;
+    let ricOraclePrice: number;
 
-interface SuperTokensBalances {
-    outputx: string[];
-    ethx: string[];
-    wbtcx: string[];
-    daix: string[];
-    usdcx: string[];
-    ric: string[];
-};
+    interface SuperTokensBalances {
+        outputx: string[];
+        ethx: string[];
+        wbtcx: string[];
+        daix: string[];
+        usdcx: string[];
+        ric: string[];
+    };
 
-let appBalances: SuperTokensBalances;
-let ownerBalances: SuperTokensBalances;
-let aliceBalances: SuperTokensBalances;
-let bobBalances: SuperTokensBalances;
-let carlBalances: SuperTokensBalances;
-let karenBalances: SuperTokensBalances;
+    let appBalances: SuperTokensBalances;
+    let ownerBalances: SuperTokensBalances;
+    let aliceBalances: SuperTokensBalances;
+    let bobBalances: SuperTokensBalances;
+    let carlBalances: SuperTokensBalances;
+    let karenBalances: SuperTokensBalances;
 
-let sf: Framework,
-    superT: ISuperToken,
-    u: { [key: string]: IUser },
-    app: any,
-    tokenss: { [key: string]: any },
-    sfRegistrationKey: any,
-    userAccounts: { [key: string]: SignerWithAddress },
-    constant: { [key: string]: string },
-    tp: any,
-    approveSubscriptions: any,
-    ERC20: any;
+    let sf: Framework,
+        superT: ISuperToken,
+        u: { [key: string]: IUser },
+        app: any,
+        tokenss: { [key: string]: any },
+        sfRegistrationKey: any,
+        userAccounts: { [key: string]: SignerWithAddress },
+        constant: { [key: string]: string },
+        tp: any,
+        approveSubscriptions: any,
+        ERC20: any;
 
-// async function funcApproveSubscriptions(
-//     users = [alice.address, bob.address, carl.address, karen.address, admin.address],
-//     tokens = [usdcx.address, ethx.address, ric.address, ric.address],
-// ) {
-//     // Do approvals
-//     // Already approved?
-//     console.log('Approving subscriptions...');
+    // async function funcApproveSubscriptions(
+    //     users = [alice.address, bob.address, carl.address, karen.address, admin.address],
+    //     tokens = [usdcx.address, ethx.address, ric.address, ric.address],
+    // ) {
+    //     // Do approvals
+    //     // Already approved?
+    //     console.log('Approving subscriptions...');
 
-//     for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
-//         for (let userIndex = 0; userIndex < users.length; userIndex += 1) {
-//             await web3tx(
-//                 sf.host.callAgreement,
-//                 `${users[userIndex]} approves subscription to the app ${tokens[tokenIndex]} ${tokenIndex}`,
-//             )(
-//                 sf.agreements.ida.address,
-//                 sf.agreements.ida.contract.methods
-//                     .approveSubscription(tokens[tokenIndex], app.address, tokenIndex, '0x')
-//                     .encodeABI(),
-//                 '0x', // user data
-//                 {
-//                     from: users[userIndex],
-//                 },
-//             );
-//         }
-//     }
-//     console.log('Approved.');
-// }
+    //     for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
+    //         for (let userIndex = 0; userIndex < users.length; userIndex += 1) {
+    //             await web3tx(
+    //                 sf.host.callAgreement,
+    //                 `${users[userIndex]} approves subscription to the app ${tokens[tokenIndex]} ${tokenIndex}`,
+    //             )(
+    //                 sf.agreements.ida.address,
+    //                 sf.agreements.ida.contract.methods
+    //                     .approveSubscription(tokens[tokenIndex], app.address, tokenIndex, '0x')
+    //                     .encodeABI(),
+    //                 '0x', // user data
+    //                 {
+    //                     from: users[userIndex],
+    //                 },
+    //             );
+    //         }
+    //     }
+    //     console.log('Approved.');
+    // }
 
-async function takeMeasurements(): Promise<void> {
-    appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
-    ownerBalances.ethx.push((await ethx.balanceOf(admin.address)).toString());
-    aliceBalances.ethx.push((await ethx.balanceOf(alice.address)).toString());
-    carlBalances.ethx.push((await ethx.balanceOf(carl.address)).toString());
-    karenBalances.ethx.push((await ethx.balanceOf(karen.address)).toString());
-    bobBalances.ethx.push((await ethx.balanceOf(bob.address)).toString());
+    async function takeMeasurements(): Promise<void> {
+        appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
+        ownerBalances.ethx.push((await ethx.balanceOf(admin.address)).toString());
+        aliceBalances.ethx.push((await ethx.balanceOf(alice.address)).toString());
+        carlBalances.ethx.push((await ethx.balanceOf(carl.address)).toString());
+        karenBalances.ethx.push((await ethx.balanceOf(karen.address)).toString());
+        bobBalances.ethx.push((await ethx.balanceOf(bob.address)).toString());
 
-    appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
-    ownerBalances.usdcx.push((await usdcx.balanceOf(admin.address)).toString());
-    aliceBalances.usdcx.push((await usdcx.balanceOf(alice.address)).toString());
-    carlBalances.usdcx.push((await usdcx.balanceOf(carl.address)).toString());
-    karenBalances.usdcx.push((await usdcx.balanceOf(karen.address)).toString());
-    bobBalances.usdcx.push((await usdcx.balanceOf(bob.address)).toString());
+        appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
+        ownerBalances.usdcx.push((await usdcx.balanceOf(admin.address)).toString());
+        aliceBalances.usdcx.push((await usdcx.balanceOf(alice.address)).toString());
+        carlBalances.usdcx.push((await usdcx.balanceOf(carl.address)).toString());
+        karenBalances.usdcx.push((await usdcx.balanceOf(karen.address)).toString());
+        bobBalances.usdcx.push((await usdcx.balanceOf(bob.address)).toString());
 
-    appBalances.ric.push((await ric.balanceOf(app.address)).toString());
-    ownerBalances.ric.push((await ric.balanceOf(admin.address)).toString());
-    aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
-    carlBalances.ric.push((await ric.balanceOf(carl.address)).toString());
-    karenBalances.ric.push((await ric.balanceOf(karen.address)).toString());
-    bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
-}
-async function checkBalance(user: SignerWithAddress) {
-    console.log('Balance of ', user);
-    console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
-    console.log('ethx: ', (await ethx.balanceOf(user.address)).toString());
-    console.log('ric: ', (await ric.balanceOf(user.address)).toString());
-}
-
-async function delta(account: any, balances: any) {  // : SuperTokensBalances) {
-    const len = balances.ethx.length;
-    const changeInOutToken = balances.ethx[len - 1] - balances.ethx[len - 2];
-    const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
-    const changeInSubsidyToken = balances.ric[len - 1] - balances.ric[len - 2];
-    console.log();
-    console.log('Change in balances for ', account);
-    console.log('Ethx:', changeInOutToken, 'Bal:', balances.ethx[len - 1]);
-    console.log('Usdcx:', changeInInToken, 'Bal:', balances.usdcx[len - 1]);
-    console.log('Ric:', changeInSubsidyToken, 'Bal:', balances.ric[len - 1]);
-    return {
-        ethx: changeInOutToken,
-        usdcx: changeInInToken,
-        ric: changeInSubsidyToken
+        appBalances.ric.push((await ric.balanceOf(app.address)).toString());
+        ownerBalances.ric.push((await ric.balanceOf(admin.address)).toString());
+        aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
+        carlBalances.ric.push((await ric.balanceOf(carl.address)).toString());
+        karenBalances.ric.push((await ric.balanceOf(karen.address)).toString());
+        bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
     }
-}
+    async function checkBalance(user: SignerWithAddress) {
+        console.log('Balance of ', user);
+        console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
+        console.log('ethx: ', (await ethx.balanceOf(user.address)).toString());
+        console.log('ric: ', (await ric.balanceOf(user.address)).toString());
+    }
 
-describe("REXTwoWayMarket", function () {
+    async function delta(account: any, balances: any) {  // : SuperTokensBalances) {
+        const len = balances.ethx.length;
+        const changeInOutToken = balances.ethx[len - 1] - balances.ethx[len - 2];
+        const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
+        const changeInSubsidyToken = balances.ric[len - 1] - balances.ric[len - 2];
+        console.log();
+        console.log('Change in balances for ', account);
+        console.log('Ethx:', changeInOutToken, 'Bal:', balances.ethx[len - 1]);
+        console.log('Usdcx:', changeInInToken, 'Bal:', balances.usdcx[len - 1]);
+        console.log('Ric:', changeInSubsidyToken, 'Bal:', balances.ric[len - 1]);
+        return {
+            ethx: changeInOutToken,
+            usdcx: changeInInToken,
+            ric: changeInSubsidyToken
+        }
+    }
 
-    // let idaV1: InstantDistributionAgreementV1;
-    // let cfaV1: ConstantFlowAgreementV1;
-    // let framework: Framework;
-    // let deployer: SignerWithAddress;
-    // let user2: SignerWithAddress;
-    // let superToken: SuperToken;
+    describe("REXTwoWayMarket", function () {
 
-    before(async () => {
-        const {
-            superfluid,
-            users,
-            accounts,
-            tokens,
-            superTokens,
-            contracts,
-            constants,
-            tellor,
-        } = await setup();
+        // let idaV1: InstantDistributionAgreementV1;
+        // let cfaV1: ConstantFlowAgreementV1;
+        // let framework: Framework;
+        // let deployer: SignerWithAddress;
+        // let user2: SignerWithAddress;
+        // let superToken: SuperToken;
 
-        const { createSFRegistrationKey } = await common();
+        before(async () => {
+            const {
+                superfluid,
+                users,
+                accounts,
+                tokens,
+                superTokens,
+                contracts,
+                constants,
+                tellor,
+            } = await setup();
 
-        u = users;
-        sf = superfluid;
-        superT = superTokens;
-        tokenss = tokens;
-        userAccounts = accounts;
-        sfRegistrationKey = createSFRegistrationKey;
-        constant = constants;
-        tp = tellor;
+            const { createSFRegistrationKey } = await common();
 
-        const registrationKey = await sfRegistrationKey(sf, u.admin.address);
+            u = users;
+            sf = superfluid;
+            superT = superTokens;
+            tokenss = tokens;
+            userAccounts = accounts;
+            sfRegistrationKey = createSFRegistrationKey;
+            constant = constants;
+            tp = tellor;
 
-        // Deploy REXReferral
-        rexReferral = await ethers.getContractFactory("REXReferral", {
-            signer: owner,
+            const registrationKey = await sfRegistrationKey(sf, u.admin.address);
+
+            // Deploy REXReferral
+            rexReferral = await ethers.getContractFactory("REXReferral", {
+                signer: owner,
+            });
+            let referral = await rexReferral.deploy();
+            await referral.deployed();
+
+            // app = await REXTwoWayMarket.deploy(
+            //     // u.admin.address,
+            //     admin.address,
+            //     sf.host.address,
+            //     sf.agreements.cfa.address,
+            //     sf.agreements.ida.address,
+            //     registrationKey,
+            //     referral.address);
+
+            // ==============
+            // Deploy REX Market
+            console.log("Deploying REXTwoWayMarket...");
+            const REXMarketFactory = await ethers.getContractFactory(
+                "REXTwoWayMarket",
+                userAccounts["admin"]
+            );
+            app = await REXMarketFactory.deploy(
+                u.admin.address,
+                sf.host.hostContract.address,
+                constant.IDA_SUPERFLUID_ADDRESS,
+                constant.CFA_SUPERFLUID_ADDRESS,
+                registrationKey,
+                referral.address
+            );
+            console.log("Deployed REXTwoWayMarket");
+
+            await app.initializeTwoWayMarket(
+                usdcx.address,
+                TELLOR_USDC_REQUEST_ID,
+                1e9,
+                ethx.address,
+                TELLOR_ETH_REQUEST_ID,
+                1e9,
+                20000,
+                20000
+            )
+
+            // const REXTwoWayMarket = await ethers.getContractFactory("REXTwoWayMarket", {
+            //     signer: owner,
+            // });
+
+            await app.initializeSubsidies(10000000000000);
+
+            // Update the oracles
+            // Get actual price
+            let httpService = new HttpService();
+            const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + COINGECKO_KEY + "&vs_currencies=usd";
+            let response = await httpService.get(url);
+            oraclePrice = response.data[COINGECKO_KEY].usd * 1000000;
+            console.log("oraclePrice", oraclePrice.toString());
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            const url2 = "https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd";
+            response = await httpService.get(url2);
+            response.data = "";
+            ricOraclePrice = response.data["richochet"].usd * 1000000;
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
+
+            // send the contract some RIC
+            await ric.transfer(app.address, "3971239975789381077848")
+
+            // Register the market with REXReferral
+            await referral.registerApp(app.address);
+            referral = await referral.connect(carl);
+            await referral.applyForAffiliate("carl", "carl");
+            referral = await referral.connect(owner);
+            await referral.verifyAffiliate("carl");
+
+            // u.app = sf.user({
+            // app = sf.user({
+            //     address: app.address,
+            //     token: outputx.address,
+            // });
+            // u.app.alias = "App";
+            // app.alias = "App";    // AM --> what is alias for ?
+            // ==============
+
+        }); // End of "before" block
+
+        xit("should not allow two streams", async () => {
+            const inflowRateUsdc = "1000000000000000";
+            const inflowRateEth = "10000000000000";
+            const inflowRateIDASharesUsdc = "1000000";
+            const inflowRateIDASharesEth = "10000";
+
+            console.log("Transfer alice");
+            await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
+            console.log("Transfer bob");
+            await ethx.connect(ethSpender).transfer(alice.address, toWad(5)); //, { from: u.ethspender.address });
+            console.log("Done");
+
+            // await funcApproveSubscriptions([aliceAndAddress.address, bobAndAddress.address]);
+
+            //     const flowRate = getPerSecondFlowRateByMonth("100");
+            // try {
+            //     framework.cfaV1.createFlow({
+            //         flowRate,
+            //         receiver: alpha.address + "0",
+            //         superToken: superToken.address,
+            //     });
+            // } catch (err: any) {
+            //     expect(err.message).to.eql(
+            //         "Invalid Address Error - The address you have entered is not a valid ethereum address."
+            //     );
+            // }
+
+            const txnResponse = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: inflowRateUsdc,
+                    receiver: u.app.address,
+                    superToken: usdcx.address
+                }).exec(userAccounts["alice"]);
+            const txnReceipt = await txnResponse.wait();
+
+            await expect(
+                sf.cfaV1.createFlow({
+                    sender: alice.address,
+                    flowRate: inflowRateEth,
+                    receiver: app,
+                    superToken: ethx.address
+                })
+            ).to.be.revertedWith("Already streaming");
         });
-        let referral = await rexReferral.deploy();
-        await referral.deployed();
 
-        // app = await REXTwoWayMarket.deploy(
-        //     // u.admin.address,
-        //     admin.address,
-        //     sf.host.address,
-        //     sf.agreements.cfa.address,
-        //     sf.agreements.ida.address,
-        //     registrationKey,
-        //     referral.address);
+        it.only("should make sure subsidy tokens and output tokens are correct", async () => {
+            // The token with feeRate != 0 is output token in this case that is ethx 
+            // The token with emissionRate != 0 is subsidy token in this case that ric tokens. 
+            // 0. Approve subscriptions
+            await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400).toString());
+            //console.log("transfer?");
+            //await ricx.transfer(u.app.address, toWad(400).toString(), { from: u.admin.address });
+            //console.log("ric transfer");
+            //checkBalance(u.bob);
+            //checkBalance(u.alice);
+            //checkBalance(u.spender);
+            //checkBalance(u.admin);
+            //console.log(toWad(10).toString());
+            //await ethx.transfer(u.app.address, toWad(10).toString(), { from: u.bob.address });
+            //console.log("ethx transfer");
+            // await funcApproveSubscriptions();
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: "0",
+                    superToken: superT.ethx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(userAccounts["admin"]);
 
-        // ==============
-        // Deploy REX Market
-        console.log("Deploying REXTwoWayMarket...");
-        const REXMarketFactory = await ethers.getContractFactory(
-            "REXTwoWayMarket",
-            userAccounts["admin"]
-        );
-        app = await REXMarketFactory.deploy(
-            u.admin.address,
-            sf.host.hostContract.address,
-            constant.IDA_SUPERFLUID_ADDRESS,
-            constant.CFA_SUPERFLUID_ADDRESS,
-            registrationKey,
-            referral.address
-        );
-        console.log("Deployed REXTwoWayMarket");
+            // 1. Check balance for output and subsidy tokens and usdcx
+            //await takeMeasurements();
+            await checkBalance(alice);
+            let myFlowRate = "77160493827160";
 
-        await app.initializeTwoWayMarket(
-            usdcx.address,
-            TELLOR_USDC_REQUEST_ID,
-            1e9,
-            ethx.address,
-            TELLOR_ETH_REQUEST_ID,
-            1e9,
-            20000,
-            20000
-        )
+            // 2. Create a stream from an account to app to exchange tokens
+            // let aliceBeforeBalance = parseInt(await ric.balanceOf(u.alice.address));
+            let aliceBeforeBalance = await ric.balanceOf(alice.address);
+            console.log(aliceBeforeBalance);   // NOTE: it"s a BigNumber
 
-        // const REXTwoWayMarket = await ethers.getContractFactory("REXTwoWayMarket", {
-        //     signer: owner,
-        // });
+            const txnResponse = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: myFlowRate,
+                    receiver: u.app.address,
+                    superToken: ethx.address
+                }).exec(userAccounts["admin"]);
 
-        await app.initializeSubsidies(10000000000000);
+            // 3. Increase time by 1 hour
+            await increaseTime(60 * 60);
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await app.updateTokenPrice(usdcx.address);
+            await app.updateTokenPrice(outputx.address);
+            // 4. Stop the flow   AM ---> Why is the flow not stopped ?
+            //await u.alice.flow({ flowRate: "0", recipient: u.app });
+            let deltaAlice = await delta("alice", aliceBalances);
+            console.log(deltaAlice);
+            // 4. Distribute tokens 
+            await checkBalance(alice);
+            await app.distribute("0x");
+            await checkBalance(alice);
+            // 5. Check balance for output and subsidy tokens
+            let ricEmissionRate = 10000000000000;
+            let expectAliceRicRewards = 60 * 60 * ricEmissionRate;
+            let aliceAfterBalance = await ric.balanceOf(alice.address);    // JR --> I removed the conversion to string
+            console.log(aliceAfterBalance);
+            let aliceBeforeBalanceInNumber: number = aliceBeforeBalance.toNumber();
+            expect(aliceAfterBalance).to.within(
+                (ethers.BigNumber.from(aliceBeforeBalanceInNumber + (expectAliceRicRewards * 0.999))).toNumber(),
+                (ethers.BigNumber.from(aliceBeforeBalanceInNumber + (expectAliceRicRewards * 1.06))).toNumber()
+            );
+        });
 
-        // Update the oracles
-        // Get actual price
-        let httpService = new HttpService();
-        const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + COINGECKO_KEY + "&vs_currencies=usd";
-        let response = await httpService.get(url);
-        oraclePrice = response.data[COINGECKO_KEY].usd * 1000000;
-        console.log("oraclePrice", oraclePrice.toString());
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        const url2 = "https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd";
-        response = await httpService.get(url2);
-        response.data = "";
-        ricOraclePrice = response.data["richochet"].usd * 1000000;
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
+        xit("should create a stream exchange with the correct parameters", async () => {
+            const inflowRate = "77160493827160";
+            const inflowRateIDAShares = "77160";
 
-        // send the contract some RIC
-        await ric.transfer(app.address, "3971239975789381077848")
+            console.log("Transfer alice");
+            await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
+            console.log("Transfer bob");      // AM ---> ethspender or ethSpender 
+            await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
+            console.log("Done");
 
-        // Register the market with REXReferral
-        await referral.registerApp(app.address);
-        referral = await referral.connect(carl);
-        await referral.applyForAffiliate("carl", "carl");
-        referral = await referral.connect(owner);
-        await referral.verifyAffiliate("carl");
+            await approveSubscriptions([alice.address, bob.address]);
 
-        // u.app = sf.user({
-        // app = sf.user({
-        //     address: app.address,
-        //     token: outputx.address,
-        // });
-        // u.app.alias = "App";
-        // app.alias = "App";    // AM --> what is alias for ?
-        // ==============
+            // framework.cfaV1.createFlow({ flowRate: inflowRateUsdc, receiver: app, superToken: usdcx.address });
+            // framework.cfaV1.createFlow({ flowRate: inflowRate, receiver: app, superToken: usdcx.address });
+            const txnResponseAlice = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: inflowRate,
+                    receiver: u.app.address,
+                    superToken: ethx.address
+                }).exec(userAccounts["admin"]);
 
-    }); // End of "before" block
+            // await alice.flow({ flowRate: inflowRate, recipient: u.app });
+            const txnResponseBob = await sf.cfaV1
+                .createFlow({
+                    sender: bob.address,
+                    flowRate: inflowRate,
+                    receiver: u.app.address,
+                    superToken: ethx.address
+                }).exec(userAccounts["admin"]);
 
-    xit("should not allow two streams", async () => {
-        const inflowRateUsdc = "1000000000000000";
-        const inflowRateEth = "10000000000000";
-        const inflowRateIDASharesUsdc = "1000000";
-        const inflowRateIDASharesEth = "10000";
+            // await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
+            // Expect the parameters are correct       // TODO
+            expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal(inflowRate);
+            expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
+            expect((await app.getIDAShares(0, alice.address)).toString()).to.equal(`true,true,0,0`);
+            expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRate);
+            expect((await app.getIDAShares(1, bob.address)).toString()).to.equal(`true,true,0,0`);
+            expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
+        });
 
-        console.log("Transfer alice");
-        await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
-        console.log("Transfer bob");
-        await ethx.connect(ethSpender).transfer(alice.address, toWad(5)); //, { from: u.ethspender.address });
-        console.log("Done");
+        xit("approval should be unlimited", async () => {
+            // await funcApproveSubscriptions();
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: "0",
+                    superToken: superT.ethx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(userAccounts["admin"]);
+            // TODO
+            expect(await output.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
+                .to.be.equal(ethers.constants.MaxUint256);
+            expect(await usdc.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
+                .to.be.equal(ethers.constants.MaxUint256);
+            expect(await output.allowance(app.address, ethx.address))
+                .to.be.equal(ethers.constants.MaxUint256);
+            expect(await usdc.allowance(app.address, usdcx.address))
+                .to.be.equal(ethers.constants.MaxUint256);
+        });
 
-        // await funcApproveSubscriptions([aliceAndAddress.address, bobAndAddress.address]);
+        it("should distribute tokens to streamers", async () => {
+            // await funcApproveSubscriptions([alice.address, bob.address, carl.address, karen.address, admin.address]);
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: "0",
+                    superToken: superT.ethx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(userAccounts["bob"]);
 
-        //     const flowRate = getPerSecondFlowRateByMonth("100");
-        // try {
-        //     framework.cfaV1.createFlow({
-        //         flowRate,
-        //         receiver: alpha.address + "0",
-        //         superToken: superToken.address,
-        //     });
-        // } catch (err: any) {
-        //     expect(err.message).to.eql(
-        //         "Invalid Address Error - The address you have entered is not a valid ethereum address."
-        //     );
-        // }
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: "0",
+                    superToken: superT.ethx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(userAccounts[""]);    // TODO
 
-        const txnResponse = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: inflowRateUsdc,
-                receiver: u.app.address,
-                superToken: usdcx.address
-            }).exec(userAccounts["alice"]);
-        const txnReceipt = await txnResponse.wait();
+            console.log("Transfer alice");
+            await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
+            console.log("Transfer bob");
+            await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
+            console.log("Done");
 
-        await expect(
-            sf.cfaV1.createFlow({
-                sender: alice.address,
-                flowRate: inflowRateEth,
-                receiver: app,
-                superToken: ethx.address
-            })
-        ).to.be.revertedWith("Already streaming");
-    });
+            const inflowRateUsdc = "1000000000000000";
+            const inflowRateEth = "10000000000000";
+            const inflowRateIDASharesUsdc = "1000000";
+            const inflowRateIDASharesEth = "10000";
 
-    it.only("should make sure subsidy tokens and output tokens are correct", async () => {
-        // The token with feeRate != 0 is output token in this case that is ethx 
-        // The token with emissionRate != 0 is subsidy token in this case that ric tokens. 
-        // 0. Approve subscriptions
-        await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400).toString());
-        //console.log("transfer?");
-        //await ricx.transfer(u.app.address, toWad(400).toString(), { from: u.admin.address });
-        //console.log("ric transfer");
-        //checkBalance(u.bob);
-        //checkBalance(u.alice);
-        //checkBalance(u.spender);
-        //checkBalance(u.admin);
-        //console.log(toWad(10).toString());
-        //await ethx.transfer(u.app.address, toWad(10).toString(), { from: u.bob.address });
-        //console.log("ethx transfer");
-        // await funcApproveSubscriptions();
-        await sf.idaV1
-            .approveSubscription({
-                indexId: "0",
-                superToken: superT.ethx.address,
-                publisher: u.app.address,
-                userData: "0x",
-            })
-            .exec(userAccounts["admin"]);
+            // 1. Initialize a stream exchange
+            // 2. Create 2 streamers, one with 2x the rate of the other
+            // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
+            const txnResponseAlice = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: inflowRateUsdc,
+                    receiver: u.app.address,
+                    superToken: superT.usdcx.address
+                }).exec(userAccounts["alice"]);
+            const txnReceiptAlice = await txnResponseAlice.wait();
+            // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
+            const txnResponseBob = await sf.cfaV1
+                .createFlow({
+                    sender: bob.address,
+                    flowRate: inflowRateEth,
+                    receiver: u.app.address,
+                    superToken: superT.ethx.address
+                }).exec(userAccounts["bob"]);
+            const txnReceiptBob = await txnResponseAlice.wait();
 
-        // 1. Check balance for output and subsidy tokens and usdcx
-        //await takeMeasurements();
-        await checkBalance(alice);
-        let myFlowRate = "77160493827160";
+            await takeMeasurements();
+            // TODO 
+            expect(
+                await app.getStreamRate(alice.address, superT.usdcx.address)
+            ).to.equal(inflowRateUsdc);
+            expect(
+                (await app.getIDAShares(1, alice.address)).toString()
+            ).to.equal(`true,true,980000,0`);
+            expect(
+                (await app.getIDAShares(1, admin.address)).toString()
+            ).to.equal(`true,true,18000,0`);
+            expect(
+                await app.getStreamRate(bob.address, ethx.address)
+            ).to.equal(inflowRateEth);
+            expect(
+                (await app.getIDAShares(0, bob.address)).toString()
+            ).to.equal(`true,true,9800,0`);
+            expect(
+                (await app.getIDAShares(0, carl.address)).toString()
+            ).to.equal(`true,true,0,0`);
+            expect(
+                (await app.getIDAShares(0, admin.address)).toString()
+            ).to.equal(`true,true,200,0`);
+            // 3. Advance time 1 hour
+            await increaseTime(3600);
+            console.log("Fast forward");
+            await checkBalance(alice);
+            await checkBalance(bob);
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
+            // await app.updateTokenPrices();
+            await app.updateTokenPrice(superT.usdcx.address);
+            await app.updateTokenPrice(superT.ethx.address);
+            // 4. Trigger a distribution
+            await app.distribute("0x");
+            // This fifth step is commented in OneWay  // TODO
+            // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+            await takeMeasurements();
 
-        // 2. Create a stream from an account to app to exchange tokens
-        // let aliceBeforeBalance = parseInt(await ric.balanceOf(u.alice.address));
-        let aliceBeforeBalance = await ric.balanceOf(alice.address);
-        console.log(aliceBeforeBalance);   // NOTE: it"s a BigNumber
+            let deltaAlice = await delta("alice", aliceBalances);
+            let deltaCarl = await delta("carl", carlBalances);
+            let deltaKaren = await delta("karen", karenBalances);
+            let deltaBob = await delta("bob", bobBalances);
+            let deltaOwner = await delta("owner", ownerBalances);
+            // verify
+            console.log(deltaOwner)
+            console.log(deltaCarl)
+            console.log(deltaKaren)
+            console.log(deltaAlice)
+            console.log(deltaBob)
+            // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+            expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+            expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
-        const txnResponse = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: myFlowRate,
-                receiver: u.app.address,
-                superToken: ethx.address
-            }).exec(userAccounts["admin"]);
+            // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
-        // 3. Increase time by 1 hour
-        await increaseTime(60 * 60);
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await app.updateTokenPrice(usdcx.address);
-        await app.updateTokenPrice(outputx.address);
-        // 4. Stop the flow   AM ---> Why is the flow not stopped ?
-        //await u.alice.flow({ flowRate: "0", recipient: u.app });
-        let deltaAlice = await delta("alice", aliceBalances);
-        console.log(deltaAlice);
-        // 4. Distribute tokens 
-        await checkBalance(alice);
-        await app.distribute("0x");
-        await checkBalance(alice);
-        // 5. Check balance for output and subsidy tokens
-        let ricEmissionRate = 10000000000000;
-        let expectAliceRicRewards = 60 * 60 * ricEmissionRate;
-        let aliceAfterBalance = await ric.balanceOf(alice.address);    // JR --> I removed the conversion to string
-        console.log(aliceAfterBalance);
-        let aliceBeforeBalanceInNumber: number = aliceBeforeBalance.toNumber();
-        expect(aliceAfterBalance).to.within(
-            (ethers.BigNumber.from(aliceBeforeBalanceInNumber + (expectAliceRicRewards * 0.999))).toNumber(),
-            (ethers.BigNumber.from(aliceBeforeBalanceInNumber + (expectAliceRicRewards * 1.06))).toNumber()
-        );
-    });
+            // Flip, alice streams more USDC than Bob streams ETH
+            expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,2000,0`);
+            const txnResponseAlice2 = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: (parseInt(inflowRateUsdc) * 10).toString(),
+                    receiver: u.app.address,
+                    superToken: superT.usdcx.address
+                }).exec(userAccounts["alice"]);
 
-    xit("should create a stream exchange with the correct parameters", async () => {
-        const inflowRate = "77160493827160";
-        const inflowRateIDAShares = "77160";
+            // await alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: app });
 
-        console.log("Transfer alice");
-        await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
-        console.log("Transfer bob");      // AM ---> ethspender or ethSpender 
-        await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
-        console.log("Done");
+            expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
+            expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
+            expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
+            expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,180000,0`);
+            expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
+            expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
+            expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
+            expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
+            await takeMeasurements();
+            await increaseTime(3600);
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+            await app.updateTokenPrices();
+            // 4. Trigger a distribution
+            await app.distribute("0x");
+            // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+            await takeMeasurements();
 
-        await approveSubscriptions([alice.address, bob.address]);
+            deltaAlice = await delta("alice", aliceBalances);
+            deltaCarl = await delta("carl", carlBalances);
+            deltaKaren = await delta("karen", karenBalances);
+            deltaBob = await delta("bob", bobBalances);
+            deltaOwner = await delta("owner", ownerBalances);
+            // verify
+            console.log(deltaOwner)
+            console.log(deltaCarl)
+            console.log(deltaKaren)
+            console.log(deltaAlice)
+            console.log(deltaBob)
+            // Fee taken during harvest, can be a larger % of what"s actually distributed via IDA due to rounding the actual amount
+            expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+            expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
-        // framework.cfaV1.createFlow({ flowRate: inflowRateUsdc, receiver: app, superToken: usdcx.address });
-        // framework.cfaV1.createFlow({ flowRate: inflowRate, receiver: app, superToken: usdcx.address });
-        const txnResponseAlice = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: inflowRate,
-                receiver: u.app.address,
-                superToken: ethx.address
-            }).exec(userAccounts["admin"]);
+            console.log("Transfer karen");
+            await usdcx.connect(usdcSpender).transfer(karen.address, toWad(400));
 
-        // await alice.flow({ flowRate: inflowRate, recipient: u.app });
-        const txnResponseBob = await sf.cfaV1
-            .createFlow({
-                sender: bob.address,
-                flowRate: inflowRate,
-                receiver: u.app.address,
-                superToken: ethx.address
-            }).exec(userAccounts["admin"]);
+            // Add another streamer, alice streams more USDC than Bob streams ETH
+            const txnResponseAlice3 = await sf.cfaV1
+                .createFlow({
+                    sender: alice.address,
+                    flowRate: inflowRateUsdc,
+                    receiver: u.app.address,
+                    superToken: superT.usdcx.address
+                }).exec(userAccounts["alice"]);
 
-        // await u.bob.flow({ flowRate: inflowRate, recipient: u.app });
-        // Expect the parameters are correct       // TODO
-        expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal(inflowRate);
-        expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
-        expect((await app.getIDAShares(0, alice.address)).toString()).to.equal(`true,true,0,0`);
-        expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRate);
-        expect((await app.getIDAShares(1, bob.address)).toString()).to.equal(`true,true,0,0`);
-        expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
-    });
+            // await karen.flow({ flowRate: inflowRateUsdc, recipient: app });    
+            expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
+            expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
+            expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
+            expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
+            expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
+            expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
+            expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
+            expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(inflowRateUsdc);
+            expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,980000,0`);
+            expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,200000,0`);
 
-    xit("approval should be unlimited", async () => {
-        // await funcApproveSubscriptions();
-        await sf.idaV1
-            .approveSubscription({
-                indexId: "0",
-                superToken: superT.ethx.address,
-                publisher: u.app.address,
-                userData: "0x",
-            })
-            .exec(userAccounts["admin"]);
-        // TODO
-        expect(await output.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
-            .to.be.equal(ethers.constants.MaxUint256);
-        expect(await usdc.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
-            .to.be.equal(ethers.constants.MaxUint256);
-        expect(await output.allowance(app.address, ethx.address))
-            .to.be.equal(ethers.constants.MaxUint256);
-        expect(await usdc.allowance(app.address, usdcx.address))
-            .to.be.equal(ethers.constants.MaxUint256);
-    });
+            await takeMeasurements();
+            await increaseTime(3600);
 
-    it("should distribute tokens to streamers", async () => {
-        // await funcApproveSubscriptions([alice.address, bob.address, carl.address, karen.address, admin.address]);
-        await sf.idaV1
-            .approveSubscription({
-                indexId: "0",
-                superToken: superT.ethx.address,
-                publisher: u.app.address,
-                userData: "0x",
-            })
-            .exec(userAccounts["bob"]);
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+            await app.updateTokenPrices();
+            // 4. Trigger a distribution
+            await app.distribute("0x");
+            // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+            await takeMeasurements();
 
-        await sf.idaV1
-            .approveSubscription({
-                indexId: "0",
-                superToken: superT.ethx.address,
-                publisher: u.app.address,
-                userData: "0x",
-            })
-            .exec(userAccounts[""]);    // TODO
+            deltaAlice = await delta("alice", aliceBalances);
+            deltaCarl = await delta("carl", carlBalances);
+            deltaKaren = await delta("karen", karenBalances);
+            deltaBob = await delta("bob", bobBalances);
+            deltaOwner = await delta("owner", ownerBalances);
+            // verify
+            console.log(deltaOwner)
+            console.log(deltaCarl)
+            console.log(deltaKaren)
+            console.log(deltaAlice)
+            console.log(deltaBob)
+            // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+            expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+            expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
+            expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
-        console.log("Transfer alice");
-        await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
-        console.log("Transfer bob");
-        await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
-        console.log("Done");
+            let aliceBeforeBalance = await usdcx.balanceOf(alice.address);
+            console.log("before", aliceBeforeBalance.toString());
+            // await traveler.advanceTimeAndBlock(30);
+            // await alice.flow({ flowRate: "0", recipient: app });
+            // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
+            let aliceAfterBalance = await usdcx.balanceOf(alice.address);
+            // Need to also account for the four hour fee
+            let aliceBeforeBalanceInNumber = aliceBeforeBalance.toNumber();
+            let aliceAfterBalanceInNumber = aliceAfterBalance.toNumber();
+            aliceAfterBalanceInNumber = aliceAfterBalanceInNumber - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
+            expect(aliceBeforeBalance).to.within(aliceAfterBalanceInNumber * 0.999, aliceAfterBalanceInNumber * 1.001);
+            expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal(0);
+            expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,0,0`);
 
-        const inflowRateUsdc = "1000000000000000";
-        const inflowRateEth = "10000000000000";
-        const inflowRateIDASharesUsdc = "1000000";
-        const inflowRateIDASharesEth = "10000";
+            await takeMeasurements();
+            await increaseTime(3600);
 
-        // 1. Initialize a stream exchange
-        // 2. Create 2 streamers, one with 2x the rate of the other
-        // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
-        const txnResponseAlice = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: inflowRateUsdc,
-                receiver: u.app.address,
-                superToken: superT.usdcx.address
-            }).exec(userAccounts["alice"]);
-        const txnReceiptAlice = await txnResponseAlice.wait();
-        // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
-        const txnResponseBob = await sf.cfaV1
-            .createFlow({
-                sender: bob.address,
-                flowRate: inflowRateEth,
-                receiver: u.app.address,
-                superToken: superT.ethx.address
-            }).exec(userAccounts["bob"]);
-        const txnReceiptBob = await txnResponseAlice.wait();
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+            await app.updateTokenPrices();
+            // 4. Trigger a distributions
+            await app.distribute("0x");
+            // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+            await takeMeasurements();
 
-        await takeMeasurements();
-        // TODO 
-        expect(
-            await app.getStreamRate(alice.address, superT.usdcx.address)
-        ).to.equal(inflowRateUsdc);
-        expect(
-            (await app.getIDAShares(1, alice.address)).toString()
-        ).to.equal(`true,true,980000,0`);
-        expect(
-            (await app.getIDAShares(1, admin.address)).toString()
-        ).to.equal(`true,true,18000,0`);
-        expect(
-            await app.getStreamRate(bob.address, ethx.address)
-        ).to.equal(inflowRateEth);
-        expect(
-            (await app.getIDAShares(0, bob.address)).toString()
-        ).to.equal(`true,true,9800,0`);
-        expect(
-            (await app.getIDAShares(0, carl.address)).toString()
-        ).to.equal(`true,true,0,0`);
-        expect(
-            (await app.getIDAShares(0, admin.address)).toString()
-        ).to.equal(`true,true,200,0`);
-        // 3. Advance time 1 hour
-        await increaseTime(3600);
-        console.log("Fast forward");
-        await checkBalance(alice);
-        await checkBalance(bob);
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
-        // await app.updateTokenPrices();
-        await app.updateTokenPrice(superT.usdcx.address);
-        await app.updateTokenPrice(superT.ethx.address);
-        // 4. Trigger a distribution
-        await app.distribute("0x");
-        // This fifth step is commented in OneWay  // TODO
-        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        await takeMeasurements();
+            deltaAlice = await delta("alice", aliceBalances);
+            deltaCarl = await delta("carl", carlBalances);
+            deltaKaren = await delta("karen", karenBalances);
+            deltaBob = await delta("bob", bobBalances);
+            deltaOwner = await delta("owner", ownerBalances);
+            // verify
+            console.log(deltaOwner)
+            console.log(deltaCarl)
+            console.log(deltaKaren)
+            console.log(deltaAlice)
+            console.log(deltaBob)
+            // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+            expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+            expect(deltaAlice.usdcx).to.equal(0)
+            expect(deltaAlice.ethx).to.equal(0)
+            expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
-        let deltaAlice = await delta("alice", aliceBalances);
-        let deltaCarl = await delta("carl", carlBalances);
-        let deltaKaren = await delta("karen", karenBalances);
-        let deltaBob = await delta("bob", bobBalances);
-        let deltaOwner = await delta("owner", ownerBalances);
-        // verify
-        console.log(deltaOwner)
-        console.log(deltaCarl)
-        console.log(deltaKaren)
-        console.log(deltaAlice)
-        console.log(deltaBob)
-        // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-        expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-        expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
+            // Add another streamer, alice streams more USDC than Bob streams ETH
+            // await karen.flow({ flowRate: "0", recipient: app });
+            // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
+            // TODO
+            expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(0);
+            expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,0,0`);
 
-        // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
+            await takeMeasurements();
+            await increaseTime(3600);
 
-        // Flip, alice streams more USDC than Bob streams ETH
-        expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,2000,0`);
-        const txnResponseAlice2 = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: (parseInt(inflowRateUsdc) * 10).toString(),
-                receiver: u.app.address,
-                superToken: superT.usdcx.address
-            }).exec(userAccounts["alice"]);    
+            await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
+            await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+            await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+            await app.updateTokenPrices();
+            // 4. Trigger a distribution
+            await app.distribute("0x");
+            // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+            await takeMeasurements();
 
-        // await alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: app });
+            deltaAlice = await delta("alice", aliceBalances);
+            deltaCarl = await delta("carl", carlBalances);
+            deltaKaren = await delta("karen", karenBalances);
+            deltaBob = await delta("bob", bobBalances);
+            deltaOwner = await delta("owner", ownerBalances);
+            // verify
+            console.log(deltaOwner)
+            console.log(deltaCarl)
+            console.log(deltaKaren)
+            console.log(deltaAlice)
+            console.log(deltaBob)
+            // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+            expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+            expect(deltaKaren.usdcx).to.equal(0)
+            expect(deltaKaren.ethx).to.equal(0)
 
-        expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
-        expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
-        expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
-        expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,180000,0`);
-        expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
-        expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
-        expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
-        expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
-        await takeMeasurements();
-        await increaseTime(3600);
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await app.updateTokenPrices();
-        // 4. Trigger a distribution
-        await app.distribute("0x");
-        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        await takeMeasurements();
-
-        deltaAlice = await delta("alice", aliceBalances);
-        deltaCarl = await delta("carl", carlBalances);
-        deltaKaren = await delta("karen", karenBalances);
-        deltaBob = await delta("bob", bobBalances);
-        deltaOwner = await delta("owner", ownerBalances);
-        // verify
-        console.log(deltaOwner)
-        console.log(deltaCarl)
-        console.log(deltaKaren)
-        console.log(deltaAlice)
-        console.log(deltaBob)
-        // Fee taken during harvest, can be a larger % of what"s actually distributed via IDA due to rounding the actual amount
-        expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-        expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
-
-        console.log("Transfer karen");
-        await usdcx.connect(usdcSpender).transfer(karen.address, toWad(400));
-
-        // Add another streamer, alice streams more USDC than Bob streams ETH
-        const txnResponseAlice3 = await sf.cfaV1
-            .createFlow({
-                sender: alice.address,
-                flowRate: inflowRateUsdc,
-                receiver: u.app.address,
-                superToken: superT.usdcx.address
-            }).exec(userAccounts["alice"]);
-
-        // await karen.flow({ flowRate: inflowRateUsdc, recipient: app });    
-        expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
-        expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
-        expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
-        expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
-        expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
-        expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
-        expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
-        expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(inflowRateUsdc);
-        expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,980000,0`);
-        expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,200000,0`);
-
-        await takeMeasurements();
-        await increaseTime(3600);
-
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await app.updateTokenPrices();
-        // 4. Trigger a distribution
-        await app.distribute("0x");
-        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        await takeMeasurements();
-
-        deltaAlice = await delta("alice", aliceBalances);
-        deltaCarl = await delta("carl", carlBalances);
-        deltaKaren = await delta("karen", karenBalances);
-        deltaBob = await delta("bob", bobBalances);
-        deltaOwner = await delta("owner", ownerBalances);
-        // verify
-        console.log(deltaOwner)
-        console.log(deltaCarl)
-        console.log(deltaKaren)
-        console.log(deltaAlice)
-        console.log(deltaBob)
-        // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-        expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-        expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
-        expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
-
-        let aliceBeforeBalance = await usdcx.balanceOf(alice.address);
-        console.log("before", aliceBeforeBalance.toString());
-        // await traveler.advanceTimeAndBlock(30);
-        // await alice.flow({ flowRate: "0", recipient: app });
-        // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
-        let aliceAfterBalance = await usdcx.balanceOf(alice.address);
-        // Need to also account for the four hour fee
-        let aliceBeforeBalanceInNumber = aliceBeforeBalance.toNumber();
-        let aliceAfterBalanceInNumber = aliceAfterBalance.toNumber();
-        aliceAfterBalanceInNumber = aliceAfterBalanceInNumber - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
-        expect(aliceBeforeBalance).to.within(aliceAfterBalanceInNumber * 0.999, aliceAfterBalanceInNumber * 1.001);
-        expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal(0);
-        expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,0,0`);
-
-        await takeMeasurements();
-        await increaseTime(3600);
-
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await app.updateTokenPrices();
-        // 4. Trigger a distributions
-        await app.distribute("0x");
-        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        await takeMeasurements();
-
-        deltaAlice = await delta("alice", aliceBalances);
-        deltaCarl = await delta("carl", carlBalances);
-        deltaKaren = await delta("karen", karenBalances);
-        deltaBob = await delta("bob", bobBalances);
-        deltaOwner = await delta("owner", ownerBalances);
-        // verify
-        console.log(deltaOwner)
-        console.log(deltaCarl)
-        console.log(deltaKaren)
-        console.log(deltaAlice)
-        console.log(deltaBob)
-        // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-        expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-        expect(deltaAlice.usdcx).to.equal(0)
-        expect(deltaAlice.ethx).to.equal(0)
-        expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
-
-        // Add another streamer, alice streams more USDC than Bob streams ETH
-        // await karen.flow({ flowRate: "0", recipient: app });
-        // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
-        // TODO
-        expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(0);
-        expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,0,0`);
-
-        await takeMeasurements();
-        await increaseTime(3600);
-
-        await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-        await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await app.updateTokenPrices();
-        // 4. Trigger a distribution
-        await app.distribute("0x");
-        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        await takeMeasurements();
-
-        deltaAlice = await delta("alice", aliceBalances);
-        deltaCarl = await delta("carl", carlBalances);
-        deltaKaren = await delta("karen", karenBalances);
-        deltaBob = await delta("bob", bobBalances);
-        deltaOwner = await delta("owner", ownerBalances);
-        // verify
-        console.log(deltaOwner)
-        console.log(deltaCarl)
-        console.log(deltaKaren)
-        console.log(deltaAlice)
-        console.log(deltaBob)
-        // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-        expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-        expect(deltaKaren.usdcx).to.equal(0)
-        expect(deltaKaren.ethx).to.equal(0)
+        });
 
     });
-
-});

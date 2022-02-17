@@ -1,8 +1,19 @@
+// import hre from "hardhat";
+const {
+    web3tx,
+    toWad,
+    wad4human,
+    fromDecimals,
+} = require("@decentral.ee/web3-helpers");
+
 import { parseEther } from "@ethersproject/units";
 import { hexValue } from "@ethersproject/bytes";
 import { network, ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { names } from "../misc/setup";
+import { Framework } from "@superfluid-finance/sdk-core";
+
+import SuperfluidGovernanceBase from "./../artifacts/ricochet-exchange-sfcontracts-used/"; // /superfluid/SuperfluidGovernanceII.json";
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
@@ -14,8 +25,6 @@ export const getDate = (timestamp: number) => new Date(timestamp * 1000).toDateS
 
 export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to seconds
 
-// export const impersonateAccounts = async (accounts: AccountsWithUserKey[]) => {
-// export const impersonateAccounts = async (accounts: { [key: string]: string }) => {
 export async function impersonateAccounts(accounts: { [key: string]: string }): Promise<{ [key: string]: SignerWithAddress }> {
 
     let signers: { [key: string]: SignerWithAddress } = {};
@@ -38,20 +47,33 @@ export async function impersonateAccounts(accounts: { [key: string]: string }): 
     return signers;
 }
 
-export const impersonateAndSetBalance = async (account: any) => {
-    let signer: SignerWithAddress;
-
+export async function impersonateAccount(account: { [key: string]: string }): Promise<void> {
     await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: account
+        method: 'hardhat_impersonateAccount',
+        params: [account],
     });
+}
 
+export async function setBalance(account: { [key: string]: string }, balance: number) {
+    let signer: SignerWithAddress;
+    // const hexBalance = numberToHex(toWad(balance));
+    // await hre.network.provider.request({
+    //     method: 'hardhat_setBalance',
+    //     params: [
+    //         account,
+    //         hexBalance,
+    //     ],
+    // });
     await network.provider.send("hardhat_setBalance", [
         account,
         hexValue(parseEther("1000")),
     ]);
+    // signer = await ethers.getSigner(account);
+}
 
-    signer = await ethers.getSigner(account);
+export const impersonateAndSetBalance = async (account: any) => {
+    await impersonateAccount(account);
+    await setBalance(account, 10000);
 }
 
 export const currentBlockTimestamp = async () => {
@@ -83,3 +105,35 @@ export const setNextBlockTimestamp = async (timestamp: number) => {
 //         .div('1e' + decimals)
 //         .toString(10);
 // }
+
+/*******************************
+Superfluid specific Functions
+********************************/
+export async function createSFRegistrationKey(sf: Framework, deployer: SignerWithAddress): Promise<string> {
+    const registrationKey = `testKey-${Date.now()}`;
+    const appKey = ethers.utils.solidityKeccak256(
+        ['string', 'address', 'string'],
+        [
+            'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
+            deployer,
+            registrationKey,
+        ],
+    );
+
+    const governance = await sf.host.hostContract.getGovernance.call();
+    console.log(`SF Governance: ${governance}`);
+
+    const sfGovernanceRO = await ethers
+        .getContractAt(SuperfluidGovernanceBase.abi, governance);
+
+    const govOwner = await sfGovernanceRO.owner();
+    await impersonateAndSetBalance(govOwner);
+
+    const sfGovernance = await ethers
+        .getContractAt(SuperfluidGovernanceBase.abi, governance, await ethers.getSigner(govOwner));
+
+    // await sfGovernance.whiteListNewApp(sf.host.address, appKey);
+    await sfGovernance.whiteListNewApp(sf.host.hostContract.address, appKey);
+
+    return registrationKey;
+}
