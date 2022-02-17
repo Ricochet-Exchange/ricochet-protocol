@@ -13,7 +13,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { names } from "../misc/setup";
 import { Framework } from "@superfluid-finance/sdk-core";
 
-import SuperfluidGovernanceBase from "./../artifacts/ricochet-exchange-sfcontracts-used/"; // /superfluid/SuperfluidGovernanceII.json";
+import SuperfluidGovernanceBase from "../test/artifacts/superfluid/SuperfluidGovernanceII.json";
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 

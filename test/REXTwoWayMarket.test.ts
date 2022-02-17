@@ -17,6 +17,7 @@ import {
     impersonateAccounts,
     impersonateAndSetBalance,
 } from "./../misc/helpers";
+import { Constants } from "../misc/Constants";
 // const { loadFixture } = waffle;
 /* eslint-disable no-await-in-loop */
 const {
@@ -43,33 +44,9 @@ describe('REXTwoWayMarket', () => {
     // const ERC20 = await ethers.getContractFactory("IERC20");
     const names: string[] = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
 
-    // let sf;
-    // // let dai;
-    // // let daix;
-    // let ethx: ISuperToken;
-    // // let wbtc;
-    // let wbtcx: ISuperToken;
-    // // let usd;
-    // let usdcx: ISuperToken;
-    // let ric: ISuperToken;
-    // let daix: ISuperToken;
-    // let usdc;
-    // // let eth;
-    // // let weth;
-    // let app;
-    // let outputx;
-    // let tp; // Tellor playground
     // // let usingTellor;
     // // let sr; // Mock Sushi Router
-    // const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
     // // const u = {}; // object with all users
-    // let owner;
-    // let alice: SignerWithAddress;
-    // let bob: SignerWithAddress;
-    // let carl: SignerWithAddress;
-    // let karen: SignerWithAddress;
-    // let admin: SignerWithAddress;
-    // let usdcSpender;
     // let ethSpender; // u: { [key: string]: IUser },
     // let users: SignerWithAddress[] = [alice, bob, carl, karen, admin]; // object with all users
     // interface UserAndAddress {
@@ -114,7 +91,6 @@ describe('REXTwoWayMarket', () => {
     // before(async () => {
     //     // ==============
     //     // impersonate accounts and set balances
-
     //     const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
 
     //     accountAddrs.forEach(async (account) => {
@@ -214,7 +190,6 @@ describe('REXTwoWayMarket', () => {
     let rexReferral: any;
 
     // let sr; // Mock Sushi Router
-    const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
     let owner: SignerWithAddress;
     let alice: SignerWithAddress;
     let bob: SignerWithAddress;
@@ -226,29 +201,6 @@ describe('REXTwoWayMarket', () => {
     let usdc: any;  //: ERC20;
     let output: any;  //: ERC20;
 
-    const aliases = {};
-    const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
-    const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
-    const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
-    const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
-    const TELLOR_ETH_REQUEST_ID = 1;
-    const TELLOR_USDC_REQUEST_ID = 78;
-    const TELLOR_RIC_REQUEST_ID = 77;
-    const COINGECKO_KEY = 'ethereum';
-
-    // random address from polygonscan that have a lot of usdcx
-    const USDCX_SOURCE_ADDRESS = '0x81ea02098336435d5e92e032c029aab850304f5d';
-    const ETHX_SOURCE_ADDRESS = '0x0154d25120Ed20A516fE43991702e7463c5A6F6e';
-    const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
-    const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
-    const OUTPUT_TOKEN_ADDRESS = '0xB63E38D21B31719e6dF314D3d2c351dF0D4a9162'; // IDLE
-
-    const CARL_ADDRESS = '0x8c3bf3EB2639b2326fF937D041292dA2e79aDBbf';
-    const BOB_ADDRESS = '0x00Ce20EC71942B41F50fF566287B811bbef46DC8';
-    const ALICE_ADDRESS = '0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B';
-    const OWNER_ADDRESS = '0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA';
-    const REPORTER_ADDRESS = '0xeA74b2093280bD1E6ff887b8f2fE604892EBc89f';
-    const KAREN_ADDRESS = "0xbf188ab46C1ca9d9e47a7996d585566ECeDdAeAb"
     let oraclePrice: number;
     let ricOraclePrice: number;
 
