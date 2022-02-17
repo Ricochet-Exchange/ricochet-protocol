@@ -452,9 +452,11 @@ describe('REXTwoWayMarket', () => {
 
       // Lower bound on a stream is shareScaler * 1e3
 
-      const inflowRateMin     = '1000000000';
-      const inflowRateTooLow  = '990000000';
-      const inflowRateNot10  = '1000000001';
+      const inflowRateMin     = '1000000000000';
+      const inflowRatePrime   = '13000000000000';
+      const inflowRatePrime   = '3000000000000';
+      const inflowRateTooLow  = '100000000000';
+      const inflowRateNot10   = '1000000000001';
 
 
       console.log('Transfer alice USDCx');
@@ -463,34 +465,69 @@ describe('REXTwoWayMarket', () => {
       // await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
-      await approveSubscriptions([u.alice.address, u.carl.address]);
+      await approveSubscriptions([u.alice.address, u.carl.address, u.admin.address]);
+
+      // Make sure it reverts not scalable values
+      await expect(
+        u.alice.flow({ flowRate: inflowRateTooLow, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
 
       await expect(
-        alice.flow({ flowRate: inflowRateTooLow, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
-      ).to.be.revertedWith("tooLow");
+        u.alice.flow({ flowRate: inflowRateNot10, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
 
-      await expect(
-        alice.flow({ flowRate: inflowRate10, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
-      ).to.be.revertedWith("not100");
-
+      // Make sure it works with scalable, prime flow rates
       await u.alice.flow({
-        flowRate: inflowRateUsdc,
+        flowRate: inflowRatePrime,
         recipient: u.app,
         userData: web3.eth.abi.encodeParameter('string', 'carl')
       });
 
-      // One Check to verify amount received
-      expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRate);
-      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,100000000,0`);
-      expect((await app.getIDAShares(1, u.owner.address)).toString()).to.equal(`true,true,1800000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,200000,0`);
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,12740,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,234,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,26,0`);
+
+      // Stop the flow
+      await u.alice.flow({
+        flowRate: '0',
+        recipient: u.app
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+      // Test minimum flow rate
+      await u.alice.flow({
+        flowRate: inflowRateMin,
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2,0`);
+
+      // Stop the flow
+      await u.alice.flow({
+        flowRate: '0',
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
 
 
-
-      // const aliceEth = await sf.user({
-      //   address: u.alice.address,
-      //   token: ethx.address,
-      // });
+      const aliceEth = await sf.user({
+        address: u.alice.address,
+        token: ethx.address,
+      });
 
     });
 

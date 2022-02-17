@@ -461,27 +461,26 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       if(changeInFlowRate > 0) {
         // Add new shares to the DAO
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-        userShares = uint128(uint256(int256(changeInFlowRate)) - feeShares);
         if (address(0) != affiliateAddress) {
           affiliateShares += feeShares * market.affiliateFee / 1e6;
-          feeShares -= feeShares * market.affiliateFee / 1e6;
-          daoShares += feeShares;
-        } else {
-          daoShares += feeShares;
+          feeShares -= feeShares * market.affiliateFee / 1e6;        
         }
+        daoShares += feeShares;
       } else {
         // Make the rate positive
         changeInFlowRate = -1 * changeInFlowRate;
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-        userShares = uint128(uint256(int256(changeInFlowRate)) - feeShares);
         if (address(0) != affiliateAddress) {
           affiliateShares -= (feeShares * market.affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
-          daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
-        } else {
-          daoShares -= feeShares;
         }
+        daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
       }
+      userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
+
+      console.log("userShares", uint(userShares));
+      console.log("daoShares", uint(daoShares));
+      console.log("affiliateShares", uint(affiliateShares));
 
       // Scale back shares
       affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
@@ -738,8 +737,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
 
         // Enforce speed limit on flowRate
-        require(uint128(uint(int(_flowRate))) % market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler == 0, "notScaled");
-        require(uint128(uint(int(_flowRate))) > market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3, "tooLow");
+        require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
 
         _registerReferral(_newCtx, _shareholder);
 
