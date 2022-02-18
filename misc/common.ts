@@ -209,7 +209,8 @@ export const common = async () => {
         console.log('Approved.');
     }
 
-    export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
+    const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
+        // export async function createSFRegistrationKey(sf: any, deployerAddr: any) {
         console.log("address", deployerAddr);
         const host = await ethers.getContractAt(
             hostABI,

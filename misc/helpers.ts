@@ -14,6 +14,13 @@ import { names } from "../misc/setup";
 import { Framework } from "@superfluid-finance/sdk-core";
 
 import SuperfluidGovernanceBase from "../test/artifacts/superfluid/SuperfluidGovernanceII.json";
+import { ISuperToken } from "../typechain";
+// import Operation = require("@superfluid-finance/sdk-core/dist/module/Operation");
+import { IInstantDistributionAgreementV1 } from "@superfluid-finance/sdk-core/dist/module/typechain";
+import { abi as IInstantDistributionAgreementV1ABI } from "@superfluid-finance/sdk-core/dist/module/abi/IInstantDistributionAgreementV1.json";
+import { PopulatedTransaction } from "ethers";
+// import Operation from "@superfluid-finance/sdk-core/dist/module/Operation";
+const idaInterface = new ethers.utils.Interface(IInstantDistributionAgreementV1ABI);
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
@@ -25,7 +32,7 @@ export const getDate = (timestamp: number) => new Date(timestamp * 1000).toDateS
 
 export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to seconds
 
-export async function impersonateAccounts(accounts: { [key: string]: string }): Promise<{ [key: string]: SignerWithAddress }> {
+export async function impersonateAccounts(accounts: { [key: string]: string }) {  //}: Promise<{ [key: string]: SignerWithAddress }> {
 
     let signers: { [key: string]: SignerWithAddress } = {};
 
@@ -120,7 +127,7 @@ export async function createSFRegistrationKey(sf: Framework, deployer: SignerWit
         ],
     );
 
-    const governance = await sf.host.hostContract.getGovernance.call();
+    const governance = await sf.host.hostContract.getGovernance();
     console.log(`SF Governance: ${governance}`);
 
     const sfGovernanceRO = await ethers
@@ -137,3 +144,58 @@ export async function createSFRegistrationKey(sf: Framework, deployer: SignerWit
 
     return registrationKey;
 }
+
+// export async function approveSubscriptions(
+//     // users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
+//     framework: Framework, users: SignerWithAddress[], tokens: ISuperToken[]
+//     // tokens = [usdcx.address, ethx.address, ric.address, ric.address],
+// ) {
+//     // Do approvals
+//     // Already approved?
+//     console.log('Approving subscriptions...');
+//     let idaV1: IInstantDistributionAgreementV1;
+//     let operation: Operation;
+//     let callData: any;
+//     let txn: Promise<PopulatedTransaction>;
+//     for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
+//         for (let userIndex = 0; userIndex < users.length; userIndex += 1) {
+//             callData = idaInterface.encodeFunctionData("approveSubscription", [
+//                 "0",
+//                 tokens[tokenIndex].address,
+//                 app.address,
+//                 "0x"
+//             ]);
+//             txn = framework.host.hostContract.populateTransaction.callAgreement(
+//                 "", callData, "0x"
+//             );
+//             operation = new Operation(txn, "SUPERFLUID_CALL_AGREEMENT");
+//             try {
+//                 await operation.exec(users[userIndex]);
+//             } catch (err: any) {
+//                 console.log("Ricochet - ERROR executing the transaction");
+//             }
+//             // await web3tx(
+//             //     framework.host.hostContract.callAgreement, // .host.callAgreement,
+//             //     `${users[userIndex]} approves subscription to the app ${tokens[tokenIndex]} ${tokenIndex}`,
+//             // )(
+
+//             // framework.idaV1.approveSubscription({  // Correct
+//             //     indexId: "0",
+//             //     superToken: tokens[tokenIndex].address,
+//             //     publisher: app.address,
+//             //     userData: "0x"
+//             // })
+
+//             // agreements.ida.address,
+//             // sf.agreements.ida.contract.methods
+//             //     .approveSubscription(tokens[tokenIndex], app.address, tokenIndex, '0x')
+//             //     .encodeABI(),
+//             // '0x', // user data
+//             // {
+//             //     from: users[userIndex],
+//             // },
+//             // );
+//         }
+//     }
+//     console.log("Approved.");
+// }

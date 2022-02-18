@@ -2,10 +2,11 @@ import { waffle, ethers } from "hardhat";
 import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Constants } from "./Constants";
 
 const { provider, loadFixture } = waffle;
 
-const TellorPlayground = require("usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json");
+import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
@@ -15,25 +16,10 @@ const TellorPlayground = require("usingtellor/artifacts/contracts/TellorPlaygrou
 // This is because when we are testing the emit, the passed in contract expects a
 // provider and will throw an error if this doesn't exist.
 
-const OWNER_ADDRESS = "0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA";
-const ALICE_ADDRESS = "0x9f348cdD00dcD61EE7917695D2157ef6af2d7b9B";
-const BOB_ADDRESS = "0xf7f0CFC3772d29d4CC1482A2ACB7Be16a85a2223";
-const CARL_ADDRESS = "0x8c3bf3EB2639b2326fF937D041292dA2e79aDBbf";
-
 const ETHX_ADDRESS = "";
 const USDCX_ADDRESS = "";
 const WBTCX_ADDRESS = "";
 const DAIX_ADDRESS = ""
-
-const USDCX_SOURCE_ADDRESS = "0xA08f80dc1759b12fdC40A4dc64562b322C418E1f";
-const SF_RESOLVER = "0xE0cc76334405EE8b39213E620587d815967af39C";
-const RIC_TOKEN_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
-const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
-const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
-const TELLOR_ETH_REQUEST_ID = "1";
-const TELLOR_USDC_REQUEST_ID = "78";
-const IDA_SUPERFLUID_ADDRESS = "0x6EeE6060f715257b970700bc2656De21dEdF074C";
-const CFA_SUPERFLUID_ADDRESS = "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1";
 
 const PROVIDER = provider;
 
@@ -55,6 +41,16 @@ export interface IUser {
 //   [index: string]: string;
 // }
 
+// let owner: SignerWithAddress;
+// let alice: SignerWithAddress;
+// let bob: SignerWithAddress;
+// let carl: SignerWithAddress;
+// // let karen: SignerWithAddress;
+// let admin: SignerWithAddress;
+// let spender: SignerWithAddress;
+// let usdcSpender: SignerWithAddress;
+// let ethSpender: SignerWithAddress;
+
 export const names = ["admin", "alice", "bob", "carl", "spender"];
 
 export const setup = async () => {
@@ -66,28 +62,28 @@ export const setup = async () => {
   // const accounts: SignerWithAddress[] = await impersonateAccounts(userAccounts);
 
   const constants: { [key: string]: string } = {
-    "OWNER_ADDRESS": OWNER_ADDRESS,
-    "ALICE_ADDRESS": ALICE_ADDRESS,
-    "CARL_ADDRESS": CARL_ADDRESS,
-    "BOB_ADDRESS": BOB_ADDRESS,
-    "RIC_TOKEN_ADDRESS": RIC_TOKEN_ADDRESS,
-    "SF_RESOLVER": SF_RESOLVER,
-    "USDCX_SOURCE_ADDRESS": USDCX_SOURCE_ADDRESS,
-    "TELLOR_ORACLE_ADDRESS": TELLOR_ORACLE_ADDRESS,
-    "SUSHISWAP_ROUTER_ADDRESS": SUSHISWAP_ROUTER_ADDRESS,
-    "TELLOR_ETH_REQUEST_ID": TELLOR_ETH_REQUEST_ID,
-    "TELLOR_USDC_REQUEST_ID": TELLOR_USDC_REQUEST_ID,
-    "IDA_SUPERFLUID_ADDRESS": IDA_SUPERFLUID_ADDRESS,
-    "CFA_SUPERFLUID_ADDRESS": CFA_SUPERFLUID_ADDRESS,
+    "OWNER_ADDRESS": Constants.OWNER_ADDRESS,
+    "ALICE_ADDRESS": Constants.ALICE_ADDRESS,
+    "CARL_ADDRESS": Constants.CARL_ADDRESS,
+    "BOB_ADDRESS": Constants.BOB_ADDRESS,
+    "RIC_TOKEN_ADDRESS": Constants.RIC_TOKEN_ADDRESS,
+    "SF_RESOLVER": Constants.SF_RESOLVER,
+    "USDCX_SOURCE_ADDRESS": Constants.USDCX_SOURCE_ADDRESS,
+    "TELLOR_ORACLE_ADDRESS": Constants.TELLOR_ORACLE_ADDRESS,
+    "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
+    "TELLOR_ETH_REQUEST_ID": Constants.TELLOR_ETH_REQUEST_ID.toString(),
+    "TELLOR_USDC_REQUEST_ID": Constants.TELLOR_USDC_REQUEST_ID.toString(),
+    "IDA_SUPERFLUID_ADDRESS": Constants.IDA_SUPERFLUID_ADDRESS,
+    "CFA_SUPERFLUID_ADDRESS": Constants.CFA_SUPERFLUID_ADDRESS,
   };
 
   // let userAccounts: AccountsWithUserKey[] = {
   let userAccounts: { [key: string]: string } = {
-    "admin": OWNER_ADDRESS,
-    "alice": ALICE_ADDRESS,
-    "bob": BOB_ADDRESS,
-    "carl": CARL_ADDRESS,
-    "spender": USDCX_ADDRESS,
+    "admin": Constants.OWNER_ADDRESS,
+    "alice": Constants.ALICE_ADDRESS,
+    "bob": Constants.BOB_ADDRESS,
+    "carl": Constants.CARL_ADDRESS,
+    "spender": Constants.USDCX_SOURCE_ADDRESS,
   };
 
   // const myArray: StringArray = getStringArray();
@@ -105,12 +101,16 @@ export const setup = async () => {
   // for (let i = 0; i < names.length; ++i) {
   //   accountAddrs[i] = userAccounts[names[0]];
   // }
+
+  // let accounts: { [key: string]: SignerWithAddress } = await impersonateAccounts(userAccounts);
   let accounts: { [key: string]: SignerWithAddress } = await impersonateAccounts(userAccounts);
+  console.log(" ========= Admin Account: ", accounts["admin"]);
+  // console.log(" ========= Accounts: ", accounts)
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
     provider: PROVIDER,
-    resolverAddress: SF_RESOLVER,
+    resolverAddress: Constants.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
     protocolReleaseVersion: "v1"
@@ -139,12 +139,13 @@ export const setup = async () => {
       token: superTokens.usdcx.address,
       alias: names[i],
     };
+    console.log(" ========= Account.address ", i, ": ", accounts[i].address);
   }
 
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
     "ERC20",
-    RIC_TOKEN_ADDRESS
+    Constants.RIC_TOKEN_ADDRESS
   );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
@@ -160,9 +161,9 @@ export const setup = async () => {
   );
   tokens.ric = tokens.ric.connect(accounts["admin"]);
 
-  // Trellor Protocol to determine the price
+  // Tellor Protocol to determine the price
   const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
-  let tellor = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
+  let tellor = await TellorPlayground.attach(Constants.TELLOR_ORACLE_ADDRESS);
   tellor = tellor.connect(accounts["admin"]);
 
   return {
