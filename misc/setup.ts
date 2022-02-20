@@ -28,6 +28,7 @@ export interface ISuperToken {
   usdcx: SuperToken;
   wbtcx: SuperToken;
   daix: SuperToken;
+  // ric: SuperToken;
 }
 
 export interface IUser {
@@ -37,30 +38,11 @@ export interface IUser {
   alias?: string;
 }
 
-// export interface AccountsWithUserKey {
-//   [index: string]: string;
-// }
-
-// let owner: SignerWithAddress;
-// let alice: SignerWithAddress;
-// let bob: SignerWithAddress;
-// let carl: SignerWithAddress;
-// // let karen: SignerWithAddress;
-// let admin: SignerWithAddress;
-// let spender: SignerWithAddress;
-// let usdcSpender: SignerWithAddress;
-// let ethSpender: SignerWithAddress;
-
-export const names = ["admin", "alice", "bob", "carl", "spender"];
-
 export const setup = async () => {
   const users: { [key: string]: IUser } = {};
   const tokens: { [key: string]: any } = {};
 
-  // const contracts: any = {};
-  const contracts: { [key: string]: string } = {};
-  // const accounts: SignerWithAddress[] = await impersonateAccounts(userAccounts);
-
+  const contracts: any = {};
   const constants: { [key: string]: string } = {
     "OWNER_ADDRESS": Constants.OWNER_ADDRESS,
     "ALICE_ADDRESS": Constants.ALICE_ADDRESS,
@@ -77,35 +59,17 @@ export const setup = async () => {
     "CFA_SUPERFLUID_ADDRESS": Constants.CFA_SUPERFLUID_ADDRESS,
   };
 
-  // let userAccounts: AccountsWithUserKey[] = {
-  let userAccounts: { [key: string]: string } = {
-    "admin": Constants.OWNER_ADDRESS,
-    "alice": Constants.ALICE_ADDRESS,
-    "bob": Constants.BOB_ADDRESS,
-    "carl": Constants.CARL_ADDRESS,
-    "spender": Constants.USDCX_SOURCE_ADDRESS,
-  };
+  const accountAddrs = [
+    Constants.OWNER_ADDRESS,
+    Constants.ALICE_ADDRESS,
+    Constants.BOB_ADDRESS,
+    Constants.CARL_ADDRESS,
+    Constants.USDCX_SOURCE_ADDRESS,
+    Constants.SF_RESOLVER,
+  ];
 
-  // const myArray: StringArray = getStringArray();
-  // const secondItem = myArray[1];
-  // const accountAddrs = [
-  //   OWNER_ADDRESS,
-  //   ALICE_ADDRESS,
-  //   BOB_ADDRESS,
-  //   CARL_ADDRESS,
-  //   USDCX_SOURCE_ADDRESS,
-  //   SF_RESOLVER,
-  // ];
-
-  // let accountAddrs: string[];
-  // for (let i = 0; i < names.length; ++i) {
-  //   accountAddrs[i] = userAccounts[names[0]];
-  // }
-
-  // let accounts: { [key: string]: SignerWithAddress } = await impersonateAccounts(userAccounts);
-  let accounts: { [key: string]: SignerWithAddress } = await impersonateAccounts(userAccounts);
-  console.log(" ========= Admin Account: ", accounts["admin"]);
-  // console.log(" ========= Accounts: ", accounts)
+  const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
+  const names = ["admin", "alice", "bob", "carl", "spender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -130,6 +94,9 @@ export const setup = async () => {
     daix: await superfluid.loadSuperToken(
       "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
     ),
+    // ric: await superfluid.loadSuperToken(
+    //   Constants.RIC_TOKEN_ADDRESS
+    // )
   };
 
   // Declare all users for transactions (usdcx)
@@ -139,13 +106,11 @@ export const setup = async () => {
       token: superTokens.usdcx.address,
       alias: names[i],
     };
-    console.log(" ========= Account.address ", i, ": ", accounts[i].address);
   }
 
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
-    "ERC20",
-    Constants.RIC_TOKEN_ADDRESS
+    "ERC20", Constants.RIC_TOKEN_ADDRESS
   );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
@@ -159,12 +124,12 @@ export const setup = async () => {
     "ERC20",
     await superTokens.usdcx.underlyingToken.address
   );
-  tokens.ric = tokens.ric.connect(accounts["admin"]);
+  tokens.ric = tokens.ric.connect(accounts[0]);
 
-  // Tellor Protocol to determine the price
+  // Trellor Protocol to determine the price
   const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
   let tellor = await TellorPlayground.attach(Constants.TELLOR_ORACLE_ADDRESS);
-  tellor = tellor.connect(accounts["admin"]);
+  tellor = tellor.connect(accounts[0]);
 
   return {
     superfluid,
@@ -177,3 +142,8 @@ export const setup = async () => {
     tellor
   };
 };
+
+
+  // const accounts : SignerWithAddress[] = await impersonateAccounts(accountAddrs);
+  // const names = ["admin", "alice", "bob", "carl", "spender"];
+

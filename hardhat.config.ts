@@ -65,7 +65,7 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || '',
       //   accounts: [process.env.POLYGON_PRIVATE_KEY],
         enabled: true,
-        // blockNumber: 22877930
+        blockNumber: 22877930     // Essential for mainnet forking !!
       },
     },
     // polygon: {

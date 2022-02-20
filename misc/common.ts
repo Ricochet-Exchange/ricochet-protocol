@@ -17,7 +17,7 @@ export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
         sf.host.hostContract.address
     );
     const registrationKey = `testKey-${Date.now()}`;
-    console.log("resigration ?? key", registrationKey);
+    console.log("registration key: ", registrationKey);
 
     const encodedKey = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
