@@ -18,6 +18,7 @@ import {
     createSFRegistrationKey,
 } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
+import { parseUnits } from "ethers/lib/utils";
 // const { loadFixture } = waffle;
 /* eslint-disable no-await-in-loop */
 const {
@@ -253,6 +254,13 @@ describe('REXTwoWayMarket', () => {
         const registrationKey = await sfRegistrationKey(sf, u.admin.address);
         console.log("============ Right after sfRegistrationKey() ==================");
 
+        console.log("======******** List of addresses =======");
+        for (let i = 0; i < accountss.length; i++) {
+            console.log("Address number ", i, ": ", accountss[i].address);
+        }
+        console.log("++++++++++++++ alice address number ", ": ", u.alice.address);
+        console.log("++++++++++++++ bob address number ", ": ", u.bob.address); // accountss[i].address);
+
         // const registrationKey = await sfRegistrationKey(sf, u.admin.address);
         // const registrationKey = await createSFRegistrationKey(await sf, u.admin.address);
 
@@ -356,23 +364,23 @@ describe('REXTwoWayMarket', () => {
     it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
         // await funcApproveSubscriptions([alice.address, bob.address, carl.address, karen.address, admin.address]);
-        await sf.idaV1
+        sf.idaV1
             .approveSubscription({
                 indexId: "0",
                 superToken: superT.ethx.address,
                 publisher: u.app.address,       // With u. !!
                 userData: "0x",
-            })
-            .exec(accountss[1]);
+            });
+        // .exec(accountss[1]);      // This line causes an error !!
         console.log("====== First subscription approved =======");
-        await sf.idaV1
+        sf.idaV1
             .approveSubscription({
                 indexId: "1",
                 superToken: superT.usdcx.address,
                 publisher: u.app.address,       // With u. !!
                 userData: "0x",
             })
-            .exec(accountss[2]);
+        //     .exec(accountss[2]);
         console.log("====== Second subscription approved =======");
 
         // (await sf).idaV1
@@ -384,12 +392,18 @@ describe('REXTwoWayMarket', () => {
         //     })
         //     .exec(userAccounts[""]);    // TODO
 
-        // console.log("====== Transferring to alice =======");
-        // await usdcx.connect(usdcSpender).transfer(alice.address, toWad(400));
-        // const amount = ethers.utils.parseUnits("400").toString();
-        // await superT.usdcx
-        //     .transfer({ receiver: u.alice.address, amount: amount })    // toWad(400) })    // transferFrom does NOT work !!
-        //     .exec(accountss[4]);      // 0
+        const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
+        superT.usdcx
+            .transfer({
+                receiver: u.alice.address,
+                amount: initialAmount,     // transferFrom does NOT work !!
+            }).exec(accountss[4]);
+        console.log("====== Transferred to alice =======");
+
+        console.log("======******** List of addresses =======");
+        for (let i = 0; i < accountss.length; i++) {
+            console.log("Address number ", i, ": ", accountss[i].address);
+        }
 
         // await expect(      // From the SF docs
         //     daix
@@ -401,12 +415,17 @@ describe('REXTwoWayMarket', () => {
         //         .exec(deployer)
         // )
 
-        // console.log("====== Transferring to bob =======");
         // await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
         // // const amount = ethers.utils.parseUnits("400").toString();
-        // await superT.usdcx
-        //     .transfer({ receiver: u.bob.address, amount })    // transferFrom does NOT work !!
-        //     .exec(accountss[4]);
+        console.log("++++++++++++++ alice address number ", ": ", u.alice.address);
+        console.log("++++++++++++++ bob address number ", ": ", u.bob.address); // accountss[i].address);
+        await superT.usdcx
+            .transfer({
+                receiver: u.bob.address,
+                amount: initialAmount   // transferFrom does NOT work !!
+            })
+            .exec(accountss[4]);
+        console.log("====== Transferred to bob =======");
 
         console.log(" ====== DONE ======= ");
 
@@ -418,13 +437,13 @@ describe('REXTwoWayMarket', () => {
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
-        // const txnResponseAlice = sf.cfaV1
-        //     .createFlow({
-        //         sender: u.alias.address,    // alice.address,
-        //         receiver: u.app.address,
-        //         superToken: superT.usdcx.address,
-        //         flowRate: inflowRateUsdc,
-        //     })
+        const txnResponseAlice = sf.cfaV1
+            .createFlow({
+                sender: u.alias.address,    // alice.address,
+                receiver: u.app.address,
+                superToken: superT.usdcx.address,
+                flowRate: inflowRateUsdc,
+            })
         //     .exec(accountss[1]);
         // const txnReceiptAlice = (await txnResponseAlice).wait();
         // console.log(" ====== Created stream for alice ======= ");
