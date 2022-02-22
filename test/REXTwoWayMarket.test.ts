@@ -6,7 +6,6 @@ import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { TellorPlayground, REXTwoWayMarket, ERC20 } from "../typechain";
-// import { names } from "../misc/setup";
 
 import {
     getSeconds,
@@ -19,23 +18,11 @@ import {
 } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { parseUnits } from "ethers/lib/utils";
-// const { loadFixture } = waffle;
-/* eslint-disable no-await-in-loop */
-const {
-    web3tx,
-    toWad,
-    wad4human,
-    fromDecimals,
-    BN,
-} = require("@decentral.ee/web3-helpers");
+import { Contract } from "ethers";
 
-// names[0] = "sdf";
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 
-// function sleep(ms) {
-//     return new Promise((resolve) => setTimeout(resolve, ms));
-// }
 
 describe('REXTwoWayMarket', () => {
     const errorHandler = (err: any) => {
@@ -163,31 +150,37 @@ describe('REXTwoWayMarket', () => {
         ERC20: any;
 
 
-    // async function takeMeasurements(): Promise<void> {
-    //     appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
-    //     ownerBalances.ethx.push((await ethx.balanceOf(admin.address)).toString());
-    //     aliceBalances.ethx.push((await ethx.balanceOf(alice.address)).toString());
-    //     carlBalances.ethx.push((await ethx.balanceOf(carl.address)).toString());
-    //     karenBalances.ethx.push((await ethx.balanceOf(karen.address)).toString());
-    //     bobBalances.ethx.push((await ethx.balanceOf(bob.address)).toString());
+    async function takeMeasurements(): Promise<void> {
+        appBalances.ethx.push((await superT.ethx.balanceOf({
+            account: u.app.address, providerOrSigner: provider
+        })));
+        //     ownerBalances.ethx.push((await ethx.balanceOf(admin.address)).toString());
+        //     aliceBalances.ethx.push((await ethx.balanceOf(alice.address)).toString());
+        //     carlBalances.ethx.push((await ethx.balanceOf(carl.address)).toString());
+        //     karenBalances.ethx.push((await ethx.balanceOf(karen.address)).toString());
+        //     bobBalances.ethx.push((await ethx.balanceOf(bob.address)).toString());
 
-    //     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
-    //     ownerBalances.usdcx.push((await usdcx.balanceOf(admin.address)).toString());
-    //     aliceBalances.usdcx.push((await usdcx.balanceOf(alice.address)).toString());
-    //     carlBalances.usdcx.push((await usdcx.balanceOf(carl.address)).toString());
-    //     karenBalances.usdcx.push((await usdcx.balanceOf(karen.address)).toString());
-    //     bobBalances.usdcx.push((await usdcx.balanceOf(bob.address)).toString());
+        //     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
+        //     ownerBalances.usdcx.push((await usdcx.balanceOf(admin.address)).toString());
+        //     aliceBalances.usdcx.push((await usdcx.balanceOf(alice.address)).toString());
+        //     carlBalances.usdcx.push((await usdcx.balanceOf(carl.address)).toString());
+        //     karenBalances.usdcx.push((await usdcx.balanceOf(karen.address)).toString());
+        //     bobBalances.usdcx.push((await usdcx.balanceOf(bob.address)).toString());
 
-    //     appBalances.ric.push((await ric.balanceOf(app.address)).toString());
-    //     ownerBalances.ric.push((await ric.balanceOf(admin.address)).toString());
-    //     aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
-    //     carlBalances.ric.push((await ric.balanceOf(carl.address)).toString());
-    //     karenBalances.ric.push((await ric.balanceOf(karen.address)).toString());
-    //     bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
-    // }
+        //     appBalances.ric.push((await ric.balanceOf(app.address)).toString());
+        //     ownerBalances.ric.push((await ric.balanceOf(admin.address)).toString());
+        //     aliceBalances.ric.push((await ric.balanceOf(alice.address)).toString());
+        //     carlBalances.ric.push((await ric.balanceOf(carl.address)).toString());
+        //     karenBalances.ric.push((await ric.balanceOf(karen.address)).toString());
+        //     bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
+    }
 
     async function checkBalance(user: SignerWithAddress) {
-        console.log('Balance of ', user);
+        console.log('Balance of ', user.address);
+        let balance = await superT.ethx.balanceOf({
+            account: user.address, providerOrSigner: provider
+        });
+        console.log('Balance in usdcx: ', balance);
         // console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
         // console.log('usdcx: ', (await usdcx.balanceOf({
         //     account: user.address,
@@ -278,11 +271,9 @@ describe('REXTwoWayMarket', () => {
         const REXMarketFactory = await ethers.getContractFactory(
             "REXTwoWayMarket",
             accountss[0]
-            // userAccounts["admin"]
         );
         app = await REXMarketFactory.deploy(
             u.admin.address,
-            // admin.address,
             sf.host.hostContract.address,
             Constants.IDA_SUPERFLUID_ADDRESS,
             Constants.CFA_SUPERFLUID_ADDRESS,
@@ -360,27 +351,32 @@ describe('REXTwoWayMarket', () => {
 
     }); // End of "before" block
 
-
+    // You need to call "approve" before calling "transferFrom"
     it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
+        console.log("====== Result is: ", await sf.idaV1.getIndex({
+            superToken: superT.ethx.address, publisher: u.app.address, indexId: "1", providerOrSigner: provider
+        }));
+
+        // Index 1 is for Ether and 0 for USDCx
         // await funcApproveSubscriptions([alice.address, bob.address, carl.address, karen.address, admin.address]);
-        sf.idaV1
+        await sf.idaV1
             .approveSubscription({
-                indexId: "0",
+                indexId: "1",
                 superToken: superT.ethx.address,
                 publisher: u.app.address,       // With u. !!
                 userData: "0x",
-            });
-        // .exec(accountss[1]);      // This line causes an error !!
+            })
+            .exec(accountss[1]);
         console.log("====== First subscription approved =======");
-        sf.idaV1
+        await sf.idaV1
             .approveSubscription({
-                indexId: "1",
+                indexId: "0",
                 superToken: superT.usdcx.address,
                 publisher: u.app.address,       // With u. !!
                 userData: "0x",
             })
-        //     .exec(accountss[2]);
+            .exec(accountss[2]);
         console.log("====== Second subscription approved =======");
 
         // (await sf).idaV1
@@ -393,17 +389,23 @@ describe('REXTwoWayMarket', () => {
         //     .exec(userAccounts[""]);    // TODO
 
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
-        superT.usdcx
+        // await superT.usdcx
+        //     .approve({
+        //         receiver: u.alice.address,
+        //         amount: initialAmount,     // transferFrom does NOT work !!
+        //     }).exec(accountss[4]);
+        await superT.usdcx
             .transfer({
                 receiver: u.alice.address,
                 amount: initialAmount,     // transferFrom does NOT work !!
             }).exec(accountss[4]);
+        console.log("Balance of Alice in usdcx ---> ");
+        let balance = await superT.ethx.balanceOf({
+            account: u.alice.address, providerOrSigner: provider
+        });
+        console.log(" -----> ", balance);
+        // checkBalance(accountss[1]);
         console.log("====== Transferred to alice =======");
-
-        console.log("======******** List of addresses =======");
-        for (let i = 0; i < accountss.length; i++) {
-            console.log("Address number ", i, ": ", accountss[i].address);
-        }
 
         // await expect(      // From the SF docs
         //     daix
@@ -415,10 +417,6 @@ describe('REXTwoWayMarket', () => {
         //         .exec(deployer)
         // )
 
-        // await ethx.connect(ethSpender).transfer(bob.address, toWad(5));
-        // // const amount = ethers.utils.parseUnits("400").toString();
-        console.log("++++++++++++++ alice address number ", ": ", u.alice.address);
-        console.log("++++++++++++++ bob address number ", ": ", u.bob.address); // accountss[i].address);
         await superT.usdcx
             .transfer({
                 receiver: u.bob.address,
@@ -427,43 +425,51 @@ describe('REXTwoWayMarket', () => {
             .exec(accountss[4]);
         console.log("====== Transferred to bob =======");
 
-        console.log(" ====== DONE ======= ");
+        console.log(" ====== DONE ======= \n",);
 
         const inflowRateUsdc = "1000000000000000";
         const inflowRateEth = "10000000000000";
         const inflowRateIDASharesUsdc = "1000000";
         const inflowRateIDASharesEth = "10000";
-
+        let inflowRate = parseUnits("30", 18);   // .div(ethers.BigNumber.from(30));  // getBigNumber(getSeconds(30)));
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
-        const txnResponseAlice = sf.cfaV1
+        let signer22 = await ethers.getSigner(u.alice.address);
+        const createFlowOperation = sf.cfaV1
             .createFlow({
-                sender: u.alias.address,    // alice.address,
-                receiver: u.app.address,
+                // sender: u.alice.address,    // alice.address,
+                receiver: u.app.address,   //u.alice.address,
                 superToken: superT.usdcx.address,
                 flowRate: inflowRateUsdc,
-            })
-        //     .exec(accountss[1]);
-        // const txnReceiptAlice = (await txnResponseAlice).wait();
-        // console.log(" ====== Created stream for alice ======= ");
+            });
+        const txnResponseAlice = await createFlowOperation.exec(signer22);   // (new ethers.Signer(u.alice.address))    // (accountss[4]);
+        // const txnResponseAlice = await createFlowOperation.exec(contr);
 
-        // // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
-        // const txnResponseBob = sf.cfaV1
-        //     .createFlow({
-        //         sender: u.bob.address,    // bob.address,
-        //         receiver: u.app.address,
-        //         superToken: superT.ethx.address,
-        //         flowRate: inflowRateEth,
-        //     })
-        //     .exec(accountss[2]);       // bob
+        // contract.provider.getSigner('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')
+
+        const txnReceiptAlice = await txnResponseAlice.wait();
+        console.log(" ====== Created stream for alice ======= ");
+
+        // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
+        const txnResponseBob = await sf.cfaV1
+            .createFlow({
+                //         sender: u.bob.address,    // bob.address,
+                receiver: u.bob.address,
+                superToken: superT.ethx.address,
+                flowRate: inflowRateEth,
+            });
+        // .exec(accountss[0]);
         // const txnReceiptBob = (await txnResponseBob).wait();
-        // console.log(" ====== Created stream for bob ======= ");
+        console.log(" ====== Created stream for bob ======= \n");
         // // await takeMeasurements();
         // // TODO 
-        // expect(
-        //     await app.getStreamRate(alice.address, usdcx.address)
-        // ).to.equal(inflowRateUsdc);
+        console.log(" ======***** Alice stream rate: ",
+            await app.getStreamRate(u.alice.address, superT.ethx.address), " and for usdcx: ",
+            await app.getStreamRate(u.alice.address, superT.usdcx.address));
+        expect(
+            await app.getStreamRate(u.alice.address, superT.usdcx.address)
+        ).to.equal(inflowRateUsdc);
         // expect(
         //     (await app.getIDAShares(1, alice.address)).toString()
         // ).to.equal(`true,true,980000,0`);
