@@ -168,14 +168,14 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Sets fee rate for a output pool/token
     /// @param _index IDA index for the output pool/token
-    /// @param _feeRate Fee rate for the ouput pool/token
+    /// @param _feeRate Fee rate for the output pool/token
     function setFeeRate(uint32 _index, uint128 _feeRate) external onlyOwner {
         market.outputPools[_index].feeRate = _feeRate;
     }
 
     /// @dev Sets emission rate for a output pool/token
     /// @param _index IDA index for the output pool/token
-    /// @param _emissionRate Emission rate for the ouput pool/token
+    /// @param _emissionRate Emission rate for the output pool/token
     function setEmissionRate(uint32 _index, uint128 _emissionRate)
         external
         onlyOwner
@@ -193,7 +193,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Get output token address
     /// @return output token address
-    function getOuputPool(uint32 _index)
+    function getOutputPool(uint32 _index)
         external
         view
         returns (OutputPool memory)
@@ -463,7 +463,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
         if (address(0) != affiliateAddress) {
           affiliateShares += feeShares * market.affiliateFee / 1e6;
-          feeShares -= feeShares * market.affiliateFee / 1e6;        
+          feeShares -= feeShares * market.affiliateFee / 1e6;
         }
         daoShares += feeShares;
       } else {
