@@ -448,13 +448,12 @@ describe('REXTwoWayMarket', () => {
 
     });
 
-    it.only('should not allow small streams', async () => {
+    it('should not allow small streams', async () => {
 
       // Lower bound on a stream is shareScaler * 1e3
 
       const inflowRateMin     = '1000000000000';
       const inflowRatePrime   = '13000000000000';
-      const inflowRatePrime   = '3000000000000';
       const inflowRateTooLow  = '100000000000';
       const inflowRateNot10   = '1000000000001';
 
@@ -580,13 +579,13 @@ describe('REXTwoWayMarket', () => {
     });
 
     xit('should create a stream exchange with the correct parameters', async () => {
-      const inflowRate = '77160493827160';
-      const inflowRateIDAShares = '77160';
+      const inflowRate = '77000000000000';
+      const inflowRateIDAShares = '77000';
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.bob.address, toWad(5), { from: u.ethspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       await approveSubscriptions([u.alice.address, u.bob.address]);
@@ -615,13 +614,13 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it('should distribute tokens to streamers', async () => {
+    it.only('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.bob.address, toWad(5), { from: u.ethspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       const inflowRateUsdc = '1000000000000000';
@@ -638,6 +637,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
