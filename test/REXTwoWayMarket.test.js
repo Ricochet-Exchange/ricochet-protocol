@@ -672,7 +672,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it('should distribute tokens to streamers', async () => {
+    it.only('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
