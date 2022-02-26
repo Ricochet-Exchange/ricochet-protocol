@@ -121,8 +121,8 @@ describe('REXTwoWayMarket', () => {
   const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
-  const USDCX_SOURCE_ADDRESS = '0x81ea02098336435d5e92e032c029aab850304f5d';
-  const ETHX_SOURCE_ADDRESS = '0x0154d25120Ed20A516fE43991702e7463c5A6F6e';
+  const USDCX_SOURCE_ADDRESS = '0x7b9deffca9356a99f95759afc6e709422d845a7c';
+  const ETHX_SOURCE_ADDRESS = '0x6EAA11eec98c663ba096593cc779217A7e20665a';
   const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
   const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
   const OUTPUT_TOKEN_ADDRESS = '0xB63E38D21B31719e6dF314D3d2c351dF0D4a9162'; // IDLE
@@ -324,7 +324,7 @@ describe('REXTwoWayMarket', () => {
       signer: owner,
     });
 
-    const registrationKey = 'ricochetftw-010222-2'; //await createSFRegistrationKey(sf, u.admin.address);
+    const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
     console.log(registrationKey);
     console.log('Deploying REXTwoWayMarket...');
     app = await REXTwoWayMarket.deploy(
@@ -419,7 +419,7 @@ describe('REXTwoWayMarket', () => {
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
   }
 
-  describe('REXTwoWayMarket', async () => {
+  describe.only('REXTwoWayMarket', async () => {
 
     xit('should not allow two streams', async () => {
       const inflowRateUsdc = '1000000000000000';
@@ -431,7 +431,7 @@ describe('REXTwoWayMarket', () => {
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.alice.address, toWad(5), { from: u.ethspender.address });
+      await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       await approveSubscriptions([u.alice.address, u.bob.address]);
@@ -445,6 +445,88 @@ describe('REXTwoWayMarket', () => {
       await expect(
         aliceEth.flow({ flowRate: inflowRateEth, recipient: u.app })
       ).to.be.revertedWith("Already streaming");
+
+    });
+
+    it('should not allow small streams', async () => {
+
+      // Lower bound on a stream is shareScaler * 1e3
+
+      const inflowRateMin     = '1000000000000';
+      const inflowRatePrime   = '13000000000000';
+      const inflowRateTooLow  = '100000000000';
+      const inflowRateNot10   = '1000000000001';
+
+
+      console.log('Transfer alice USDCx');
+      await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
+      // console.log('Transfer alice ETH');
+      // await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
+      console.log('Done');
+
+      await approveSubscriptions([u.alice.address, u.carl.address, u.admin.address]);
+
+      // Make sure it reverts not scalable values
+      await expect(
+        u.alice.flow({ flowRate: inflowRateTooLow, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
+
+      await expect(
+        u.alice.flow({ flowRate: inflowRateNot10, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
+
+      // Make sure it works with scalable, prime flow rates
+      await u.alice.flow({
+        flowRate: inflowRatePrime,
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,12740,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,234,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,26,0`);
+
+      // Stop the flow
+      await u.alice.flow({
+        flowRate: '0',
+        recipient: u.app
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+      // Test minimum flow rate
+      await u.alice.flow({
+        flowRate: inflowRateMin,
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2,0`);
+
+      // Stop the flow
+      await u.alice.flow({
+        flowRate: '0',
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+
+      const aliceEth = await sf.user({
+        address: u.alice.address,
+        token: ethx.address,
+      });
 
     });
 
@@ -497,13 +579,13 @@ describe('REXTwoWayMarket', () => {
     });
 
     xit('should create a stream exchange with the correct parameters', async () => {
-      const inflowRate = '77160493827160';
-      const inflowRateIDAShares = '77160';
+      const inflowRate = '77000000000000';
+      const inflowRateIDAShares = '77000';
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.bob.address, toWad(5), { from: u.ethspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       await approveSubscriptions([u.alice.address, u.bob.address]);
@@ -532,13 +614,13 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it('should distribute tokens to streamers', async () => {
+    it.only('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.bob.address, toWad(5), { from: u.ethspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       const inflowRateUsdc = '1000000000000000';
@@ -555,6 +637,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,9800,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);

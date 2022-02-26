@@ -56,6 +56,7 @@ contract REXTwoWayMarket is REXMarket {
     oracle = tellor;
     market.feeRate = _feeRate;
     market.affiliateFee = 100000;
+    require(_inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6, "!scaleable");
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId, _inputTokenAShareScaler);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId, _inputTokenBShareScaler);
     market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
@@ -172,7 +173,6 @@ contract REXTwoWayMarket is REXMarket {
 
         // Distribution Subsidy
         distAmount = (block.timestamp - lastDistributionTokenAAt) * market.outputPools[SUBSIDYA_INDEX].emissionRate;
-        console.log("distAmountA", uint(distAmount));
         if (distAmount < market.outputPools[SUBSIDYA_INDEX].token.balanceOf(address(this))) {
           newCtx = _idaDistribute(SUBSIDYA_INDEX, uint128(distAmount), market.outputPools[SUBSIDYA_INDEX].token, newCtx);
           emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYA_INDEX].token));
@@ -200,7 +200,6 @@ contract REXTwoWayMarket is REXMarket {
 
         // Distribution Subsidy
         distAmount = (block.timestamp - lastDistributionTokenBAt) * market.outputPools[SUBSIDYB_INDEX].emissionRate;
-        console.log("distAmountB", uint(distAmount));
         if (distAmount < market.outputPools[SUBSIDYB_INDEX].token.balanceOf(address(this))) {
           newCtx = _idaDistribute(SUBSIDYB_INDEX, uint128(distAmount), market.outputPools[SUBSIDYB_INDEX].token, newCtx);
           emit Distribution(distAmount, 0, address(market.outputPools[SUBSIDYB_INDEX].token));
@@ -353,11 +352,6 @@ contract REXTwoWayMarket is REXMarket {
      }
 
      (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
-
-     console.log("daoShares1", uint(daoShares));
-     console.log("affiliateShares1", uint(affiliateShares));
-     console.log("userShares1", uint(userShares));
-
 
      _newCtx = _ctx;
 
