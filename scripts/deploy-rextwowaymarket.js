@@ -16,50 +16,55 @@ async function main() {
   TELLOR_USDC_REQUEST_ID = 78;
   ETHX_ADDRESS = "0x27e1e4E6BC79D93032abef01025811B7E4727e85";
   TELLOR_ETH_REQUEST_ID = 1;
+  WBTCX_ADDRESS = "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92";
+  TELLOR_WBTC_REQUEST_ID = 60;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const REXTwoWayMarket = await ethers.getContractFactory("REXTwoWayMarket");
-  console.log("Deploying REXTwoWayMarket")
-  const rexTwoWayMarket = await REXTwoWayMarket.deploy(deployer.address,
-                                                      HOST_ADDRESS,
-                                                      CFA_ADDRESS,
-                                                      IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY,
-                                                      process.env.REX_REFERRAL_ADDRESS
-                                                     );
+  const rexTwoWayMarket = await REXTwoWayMarket.attach("0xC6d5c858523aB5573672d3c8Af8359d6525CC9eC");
 
+  // console.log("Deploying REXTwoWayMarket")
+  // const rexTwoWayMarket = await REXTwoWayMarket.deploy(deployer.address,
+  //                                                     HOST_ADDRESS,
+  //                                                     CFA_ADDRESS,
+  //                                                     IDA_ADDRESS,
+  //                                                     process.env.SF_REG_KEY,
+  //                                                     process.env.REX_REFERRAL_ADDRESS
+  //                                                    );
+  //
+  //
+  //  await rexTwoWayMarket.deployed();
+  //  console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
 
-   await rexTwoWayMarket.deployed();
-   console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
+  // await rexTwoWayMarket.initializeTwoWayMarket(
+  //   USDCX_ADDRESS,
+  //   TELLOR_USDC_REQUEST_ID,
+  //   1e7,
+  //   WBTCX_ADDRESS,
+  //   TELLOR_WBTC_REQUEST_ID,
+  //   1e9,
+  //   20000,
+  //   20000
+  // );
 
-   await rexTwoWayMarket.initializeTwoWayMarket(
-     USDCX_ADDRESS,
-     TELLOR_USDC_REQUEST_ID,
-     1e9,
-     ETHX_ADDRESS,
-     TELLOR_ETH_REQUEST_ID,
-     1e9,
-     20000,
-     20000
-   );
+  await rexTwoWayMarket.initializeSubsidies("1000000000000000"); // 1e15/second
 
-   await rexTwoWayMarket.initializeSubsidies(1000000000000000); // 1e15/second
-
-
-  // Register the market with REXReferral
   console.log("Registering with RexReferral system...")
   const REXReferral = await ethers.getContractFactory("REXReferral");
   const referral = await REXReferral.attach(process.env.REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexTwoWayMarket.address);
   console.log("Registered:", rexTwoWayMarket.address);
+  //
+  // // Affiliates will need to be setup manually
+  // // referral = await referral.connect(carl);
+  // // await referral.applyForAffiliate("carl", "carl");
+  // // referral = await referral.connect(owner);
+  // // await referral.verifyAffiliate("carl");
+  //
+  // await rexTwoWayMarket.transferOwnership("0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89"); // 1e15/second
 
-  // Affiliates will need to be setup manually
-  // referral = await referral.connect(carl);
-  // await referral.applyForAffiliate("carl", "carl");
-  // referral = await referral.connect(owner);
-  // await referral.verifyAffiliate("carl");
 
 }
 

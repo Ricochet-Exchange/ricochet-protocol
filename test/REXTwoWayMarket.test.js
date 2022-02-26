@@ -340,7 +340,7 @@ describe('REXTwoWayMarket', () => {
     await app.initializeTwoWayMarket(
       usdcx.address,
       TELLOR_USDC_REQUEST_ID,
-      1e9,
+      1e7,
       ethx.address,
       TELLOR_ETH_REQUEST_ID,
       1e9,
@@ -448,7 +448,7 @@ describe('REXTwoWayMarket', () => {
 
     });
 
-    it('should not allow small streams', async () => {
+    it.only('should not allow small streams', async () => {
 
       // Lower bound on a stream is shareScaler * 1e3
 
@@ -457,14 +457,20 @@ describe('REXTwoWayMarket', () => {
       const inflowRateTooLow  = '100000000000';
       const inflowRateNot10   = '1000000000001';
 
+      const inflowRateMinETH     = '10000000000';
+      const inflowRatePrimeETH   = '130000000000';
+      const inflowRateTooLowETH  = '1000000000';
+      const inflowRateNot10ETH   = '10000000001';
 
       console.log('Transfer alice USDCx');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
+
       // console.log('Transfer alice ETH');
       // await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
-      await approveSubscriptions([u.alice.address, u.carl.address, u.admin.address]);
+      await approveSubscriptions([u.alice.address, u.carl.address, u.admin.address, u.bob.address]);
 
       // Make sure it reverts not scalable values
       await expect(
@@ -522,11 +528,63 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
 
+      // TEST ETH SIDE
 
-      const aliceEth = await sf.user({
-        address: u.alice.address,
-        token: ethx.address,
+      // Make sure it reverts not scalable values
+      await expect(
+        u.bob.flow({ flowRate: inflowRateTooLowETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
+
+      await expect(
+        u.bob.flow({ flowRate: inflowRateNot10ETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+      ).to.be.revertedWith("notScalable");
+
+      // Make sure it works with scalable, prime flow rates
+      await u.bob.flow({
+        flowRate: inflowRatePrimeETH,
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
       });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,12740,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,234,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,26,0`);
+
+      // Stop the flow
+      await u.bob.flow({
+        flowRate: '0',
+        recipient: u.app
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+      // Test minimum flow rate
+      await u.bob.flow({
+        flowRate: inflowRateMinETH,
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,18,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2,0`);
+
+      // Stop the flow
+      await u.bob.flow({
+        flowRate: '0',
+        recipient: u.app,
+        userData: web3.eth.abi.encodeParameter('string', 'carl')
+      });
+
+      // Confirm speed limit allocates shares correctly
+      expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+      expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
 
     });
 
