@@ -736,8 +736,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
-        // Enforce speed limit on flowRate
-        require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
+        _onlyScalable(_superToken, _flowRate);
 
         _registerReferral(_newCtx, _shareholder);
 
@@ -748,6 +747,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // TODO: Update shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
+    }
+
+    function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal virtual {
+      // Enforce speed limit on flowRate
+      require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
     }
 
     function _registerReferral(bytes memory _ctx, address _shareholder) internal {
@@ -803,6 +807,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
             _agreementData, _superToken
         );
+
+        _onlyScalable(_superToken, _flowRate);
+
         int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 
 
