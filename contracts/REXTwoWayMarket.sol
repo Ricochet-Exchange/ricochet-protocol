@@ -20,7 +20,7 @@ contract REXTwoWayMarket is REXMarket {
   address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
   ISuperToken subsidyToken = ISuperToken(ric);
   uint256 ricRequestId = 77;
-  IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+  IUniswapV2Router02 router = IUniswapV2Router02(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
   ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
 
@@ -208,7 +208,7 @@ contract REXTwoWayMarket is REXMarket {
 
       }
 
-
+      market.lastDistributionAt = block.timestamp;
 
   }
 
