@@ -834,7 +834,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, parseInt(ricOraclePrice * 1.02));
       await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
@@ -868,7 +868,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await tp.submitValue(TELLOR_RIC_REQUEST_ID, parseInt(ricOraclePrice * 1.02));
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, parseInt(ricOraclePrice * 1.03));
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');

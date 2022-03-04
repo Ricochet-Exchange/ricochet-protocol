@@ -20,7 +20,6 @@ contract REXTwoWayMarket is REXMarket {
   // address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
   // Use ETHx as a subsidy, RIC is the token so another token needs to be set as subsidy
   ISuperToken subsidyToken = ISuperToken(0x27e1e4E6BC79D93032abef01025811B7E4727e85);
-  uint256 ricRequestId = 77;
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
   ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
@@ -323,6 +322,8 @@ contract REXTwoWayMarket is REXMarket {
    path = new address[](2);
    path[0] = inputToken;
    path[1] = outputToken;
+   console.log("inputAmount", amount);
+   console.log("minOutput", minOutput);
    router.swapExactTokensForTokens(
       amount,
       minOutput, // Accept any amount but fail if we're too far from the oracle price
@@ -332,6 +333,7 @@ contract REXTwoWayMarket is REXMarket {
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
    outputAmount = ERC20(outputToken).balanceOf(address(this));
+   console.log("outputAmount", outputAmount);
    // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version if needed

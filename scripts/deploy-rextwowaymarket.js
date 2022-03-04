@@ -23,6 +23,8 @@ async function main() {
   TELLOR_ETH_REQUEST_ID = 1;
   WBTCX_ADDRESS = "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92";
   TELLOR_WBTC_REQUEST_ID = 60;
+  RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  TELLOR_RIC_REQUEST_ID = 77;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -46,9 +48,9 @@ async function main() {
   await rexTwoWayMarket.initializeTwoWayMarket(
     USDCX_ADDRESS,
     TELLOR_USDC_REQUEST_ID,
-    1e7,
-    WBTCX_ADDRESS,
-    TELLOR_WBTC_REQUEST_ID,
+    1e9,
+    RIC_ADDRESS,
+    TELLOR_RIC_REQUEST_ID,
     1e9,
     20000,
     20000,
@@ -58,7 +60,7 @@ async function main() {
 
   await sleep(5000);
 
-  await rexTwoWayMarket.initializeSubsidies("1000000000000000"); // 1e15/second
+  await rexTwoWayMarket.initializeSubsidies(0); // 1e15/second
   console.log("Initialized subsidy.")
 
   console.log("Registering with RexReferral system...")
