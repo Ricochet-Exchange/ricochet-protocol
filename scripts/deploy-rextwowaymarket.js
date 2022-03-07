@@ -14,7 +14,6 @@ async function main() {
   const CFA_ADDRESS = "0x6EeE6060f715257b970700bc2656De21dEdF074C";
   const IDA_ADDRESS = "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1";
   const TELLOR_ORACLE_ADDRESS = "0xACC2d27400029904919ea54fFc0b18Bf07C57875";
-  const ROUTER_ADDRESS = "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff";
 
   DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
@@ -44,7 +43,7 @@ async function main() {
    console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
 
   await rexTwoWayMarket.initializeTwoWayMarket(
-    USDCX_ADDRESS,
+    DAIX_ADDRESS,
     TELLOR_USDC_REQUEST_ID,
     1e7,
     WBTCX_ADDRESS,
@@ -58,7 +57,7 @@ async function main() {
 
   await sleep(5000);
 
-  await rexTwoWayMarket.initializeSubsidies("1000000000000000"); // 1e15/second
+  await rexTwoWayMarket.initializeSubsidies(0); // 1e15/second
   console.log("Initialized subsidy.")
 
   console.log("Registering with RexReferral system...")
