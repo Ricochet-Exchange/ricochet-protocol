@@ -208,7 +208,7 @@ contract REXTwoWayMarket is REXMarket {
 
       }
 
-
+      market.lastDistributionAt = block.timestamp;
 
   }
 
