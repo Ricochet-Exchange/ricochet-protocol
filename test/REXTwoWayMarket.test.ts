@@ -29,83 +29,6 @@ describe('REXTwoWayMarket', () => {
         if (err) throw err;
     };
 
-    // const ERC20 = await ethers.getContractFactory("IERC20");
-
-    // const names: string[] = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
-
-    // interface SuperTokensBalances {
-    //     outputx: string[];
-    //     ethx: string[];
-    //     wbtcx: string[];
-    //     daix: string[];
-    //     usdcx: string[];
-    //     ric: string[];
-    // };
-
-    // let appBalances: SuperTokensBalances;
-    // let ownerBalances: SuperTokensBalances;
-    // let aliceBalances: SuperTokensBalances;
-    // let bobBalances: SuperTokensBalances;
-    // let carlBalances: SuperTokensBalances;
-    // let karenBalances: SuperTokensBalances;
-
-
-    //     // ==============
-    //     // Init SF users
-
-    //     // for (let i = 0; i < names.length; i += 1) {
-    //     for (let i = 0; i < usersAndAddresses.length; i += 1) {
-    //         // Bob will be the ETHx streamer
-    //         if (usersAndAddresses[i].user == bob) { //}  .toLowerCase() == "bob") {
-    //             u[names[i].toLowerCase()] = sf.user({
-    //                 address: accounts[i]._address || accounts[i].address,
-    //                 token: ethx.address,
-    //             });
-    //         } else {
-    //             u[names[i].toLowerCase()] = sf.user({
-    //                 address: accounts[i]._address || accounts[i].address,
-    //                 token: usdcx.address,
-    //             });
-    //         }
-
-    //         u[names[i].toLowerCase()].alias = names[i];
-    //         // aliases[u[names[i].toLowerCase()].address] = names[i];
-    //         // usersAndAddresses[i].alias = usersAndAddresses[i].
-    //     }
-
-    //     // ==============
-    //     // NOTE: Assume the oracle is up to date
-    //     // Deploy Tellor Oracle contracts
-
-    //     const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
-    //     tp = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
-    //     tp = tp.connect(owner);
-
-    //     // ==============
-    //     // Setup tokens
-
-    //     const ERC20 = await ethers.getContractFactory('ERC20');
-    //     let ric = await ERC20.attach(RIC_TOKEN_ADDRESS);
-    //     let weth = await ERC20.attach(await ethx.getUnderlyingToken());
-    //     let wbtc = await ERC20.attach(await wbtcx.getUnderlyingToken());
-    //     usdc = await ERC20.attach(await usdcx.getUnderlyingToken());
-    //     ric = ric.connect(owner);
-
-    //     // Attach alice to the SLP token
-    //     let outputx = ethx;
-    //     let output = await ERC20.attach(await outputx.getUnderlyingToken());
-
-    // });
-
-    // let ethx: SuperToken;
-    // let wbtcx: any; //: SuperfluidToken;
-    // let usdcx: SuperToken;
-    // let ric: SuperToken;
-    // let daix: any; //: SuperfluidToken;
-    // let outputx: SuperToken;
-    // let usdc: ERC20;
-    // let output: ERC20;
-
     let rexReferral: any;
 
     // let sr; // Mock Sushi Router
@@ -148,6 +71,8 @@ describe('REXTwoWayMarket', () => {
         tp: TellorPlayground,
         approveSubscriptions: any,
         ERC20: any;
+
+    let USDCx: SuperToken;    // rashtrakoff
 
 
     async function takeMeasurements(): Promise<void> {
@@ -254,6 +179,9 @@ describe('REXTwoWayMarket', () => {
         console.log("++++++++++++++ alice address number ", ": ", u.alice.address);
         console.log("++++++++++++++ bob address number ", ": ", u.bob.address); // accountss[i].address);
 
+        console.log("======******** List of TOKENS addresses =======");
+        console.log("======** usdc's address: ", tokenss["usdc"].address);
+        console.log("======** USDCx's address: ", superT.usdcx.address);
         // const registrationKey = await sfRegistrationKey(sf, u.admin.address);
         // const registrationKey = await createSFRegistrationKey(await sf, u.admin.address);
 
@@ -275,8 +203,8 @@ describe('REXTwoWayMarket', () => {
         app = await REXMarketFactory.deploy(
             u.admin.address,
             sf.host.hostContract.address,
-            Constants.IDA_SUPERFLUID_ADDRESS,
             Constants.CFA_SUPERFLUID_ADDRESS,
+            Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address
         );
@@ -317,17 +245,6 @@ describe('REXTwoWayMarket', () => {
             alias: "App",
         };
 
-        // u.app = sf.user({
-        // app = sf.user({
-        //     address: app.address,
-        //     token: outputx.address,
-        // });
-        // u.app.alias = "App";
-        // app.alias = "App";    // AM --> what is alias for ?
-        // ==============
-
-        // await app.addOutputPool(Constants.RIC_TOKEN_ADDRESS, 0, 1000000000, 77);
-
         await app.initializeSubsidies(10000000000000);
         console.log("========== Initialized subsidies ===========");
 
@@ -354,12 +271,9 @@ describe('REXTwoWayMarket', () => {
     // You need to call "approve" before calling "transferFrom"
     it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
-        console.log("====== Result is: ", await sf.idaV1.getIndex({
-            superToken: superT.ethx.address, publisher: u.app.address, indexId: "1", providerOrSigner: provider
-        }));
-
         // Index 1 is for Ether and 0 for USDCx
         // await funcApproveSubscriptions([alice.address, bob.address, carl.address, karen.address, admin.address]);
+        // tokenss['eth']
         await sf.idaV1
             .approveSubscription({
                 indexId: "1",
@@ -369,6 +283,10 @@ describe('REXTwoWayMarket', () => {
             })
             .exec(accountss[1]);
         console.log("====== First subscription approved =======");
+        console.log("====== Result is: ", await sf.idaV1.getIndex({
+            superToken: superT.ethx.address, publisher: u.app.address, indexId: "1", providerOrSigner: provider
+        }));
+
         await sf.idaV1
             .approveSubscription({
                 indexId: "0",
@@ -400,22 +318,12 @@ describe('REXTwoWayMarket', () => {
                 amount: initialAmount,     // transferFrom does NOT work !!
             }).exec(accountss[4]);
         console.log("Balance of Alice in usdcx ---> ");
-        let balance = await superT.ethx.balanceOf({
+        let balance = await superT.usdcx.balanceOf({
             account: u.alice.address, providerOrSigner: provider
         });
         console.log(" -----> ", balance);
         // checkBalance(accountss[1]);
         console.log("====== Transferred to alice =======");
-
-        // await expect(      // From the SF docs
-        //     daix
-        //         .transferFrom({
-        //             sender: deployer.address,
-        //             receiver: alpha.address,
-        //             amount,
-        //         })
-        //         .exec(deployer)
-        // )
 
         await superT.usdcx
             .transfer({
@@ -427,7 +335,7 @@ describe('REXTwoWayMarket', () => {
 
         console.log(" ====== DONE ======= \n",);
 
-        const inflowRateUsdc = "1000000000000000";
+        const inflowRateUsdc = "1000000000000000";  // ethers.BigNumber.from(10);
         const inflowRateEth = "10000000000000";
         const inflowRateIDASharesUsdc = "1000000";
         const inflowRateIDASharesEth = "10000";
@@ -436,14 +344,22 @@ describe('REXTwoWayMarket', () => {
         // 2. Create 2 streamers, one with 2x the rate of the other
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
         let signer22 = await ethers.getSigner(u.alice.address);
+        console.log(" ====== Before Create flow ======= ");
+        let aliceBeforeFlow = await superT.usdcx.balanceOf({
+            account: u.alice.address,
+            providerOrSigner: provider
+        });
+        console.log("Alice's balance in USDCx: ", aliceBeforeFlow);
+        console.log(" ====== Create flow ======= ", u.alice.address, "receiver: ", u.app.address,
+            "supertoken: ", superT.usdcx.address, "flowRate: ", inflowRateUsdc);
         const createFlowOperation = sf.cfaV1
             .createFlow({
-                // sender: u.alice.address,    // alice.address,
-                receiver: u.app.address,   //u.alice.address,
+                sender: u.alice.address,
+                receiver: u.app.address,
                 superToken: superT.usdcx.address,
                 flowRate: inflowRateUsdc,
             });
-        const txnResponseAlice = await createFlowOperation.exec(signer22);   // (new ethers.Signer(u.alice.address))    // (accountss[4]);
+        const txnResponseAlice = await createFlowOperation.exec(accountss[1]);  // (signer22);   // (new ethers.Signer(u.alice.address))    // (accountss[4]);
         // const txnResponseAlice = await createFlowOperation.exec(contr);
 
         // contract.provider.getSigner('0x70997970C51812dc3A010C7d01b50e0d17dc79C8')
@@ -454,8 +370,8 @@ describe('REXTwoWayMarket', () => {
         // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
         const txnResponseBob = await sf.cfaV1
             .createFlow({
-                //         sender: u.bob.address,    // bob.address,
-                receiver: u.bob.address,
+                sender: u.bob.address,    
+                receiver: u.app.address,
                 superToken: superT.ethx.address,
                 flowRate: inflowRateEth,
             });
