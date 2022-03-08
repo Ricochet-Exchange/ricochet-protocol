@@ -326,7 +326,7 @@ describe('REXTwoWayMarket', () => {
     await app.initializeTwoWayMarket(
       usdcx.address,
       TELLOR_USDC_REQUEST_ID,
-      1e7,
+      1e9,
       maticx.address,
       TELLOR_MATIC_REQUEST_ID,
       1e9,
@@ -662,11 +662,11 @@ describe('REXTwoWayMarket', () => {
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await maticx.transfer(u.bob.address, toWad(1), { from: u.maticspender.address });
+      await maticx.transfer(u.bob.address, toWad(300), { from: u.maticspender.address });
       console.log('Done');
 
       const inflowRateUsdc = '1000000000000000';
-      const inflowRateMatic  = '10000000000000';
+      const inflowRateMatic  = '1000000000000000';
       const inflowRateIDASharesUsdc = '1000000';
       const inflowRateIDASharesMatic = '10000';
 
