@@ -7,6 +7,7 @@ import { Constants } from "./Constants";
 const { provider, loadFixture } = waffle;
 
 import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
+import { ERC20 } from "../typechain";
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
@@ -28,7 +29,7 @@ export interface ISuperToken {
   usdcx: SuperToken;
   wbtcx: SuperToken;
   daix: SuperToken;
-  // ric: SuperToken;
+  ric: SuperToken;
 }
 
 export interface IUser {
@@ -38,9 +39,17 @@ export interface IUser {
   alias?: string;
 }
 
+// export interface TypesOfTokens {
+//   ric: Promise<ERC20>;
+//   weth: Promise<ERC20>;
+//   wbtc: Promise<ERC20>;
+//   usdc: Promise<ERC20>;
+// }
+
 export const setup = async () => {
   const users: { [key: string]: IUser } = {};
-  const tokens: { [key: string]: any } = {};
+  let tokens: { [key: string]: any } = {};  // TypesOfTokens
+  // tokens.ric = new ERC20();
 
   const contracts: any = {};
   const constants: { [key: string]: string } = {
@@ -73,14 +82,14 @@ export const setup = async () => {
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
-    provider: PROVIDER,
+    provider: ethers.provider,  //   PROVIDER,  // ethers.getDefaultProvider(),
     resolverAddress: Constants.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
     protocolReleaseVersion: "v1"
   });
 
-  // Declare supertokens as ERC 20 contraxts
+  // Declare supertokens as ERC 20 contracts
   const superTokens: ISuperToken = {
     ethx: await superfluid.loadSuperToken(
       "0x27e1e4E6BC79D93032abef01025811B7E4727e85"
@@ -94,9 +103,9 @@ export const setup = async () => {
     daix: await superfluid.loadSuperToken(
       "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
     ),
-    // ric: await superfluid.loadSuperToken(
-    //   Constants.RIC_TOKEN_ADDRESS
-    // )
+    ric: await superfluid.loadSuperToken(
+      Constants.RIC_TOKEN_ADDRESS
+    )
   };
 
   // Declare all users for transactions (usdcx)
@@ -124,6 +133,7 @@ export const setup = async () => {
     "ERC20",
     await superTokens.usdcx.underlyingToken.address
   );
+  // let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
 
   // Trellor Protocol to determine the price
