@@ -21,7 +21,7 @@ contract REXTwoWayMarket is REXMarket {
   ISuperToken subsidyToken = ISuperToken(ric);
   uint256 ricRequestId = 77;
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-  ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
+  ITellor tellor = ITellor(0xf8c1EB914EF4271edBC95C48ED067295C057F1a0);
 
 
   // REX Two Way Market Contracts
