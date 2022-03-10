@@ -314,6 +314,9 @@ describe('REXTwoWayMarket', () => {
     tellorMultisig = await ethers.getSigner(TELLOR_MULTISIG_ADDRESS)
     trb = await ERC20.attach(TRB_TOKEN_ADDRESS);
     [reporter1, reporter2, reporter3] = await ethers.getSigners()
+    console.log("SYMBOLA: ", await trb.symbol())
+    // console.log("STAKEAM: ", await tp.stakeAmount())
+    // console.log("SYMBOLB: ", await tp.symbol())
   });
 
   beforeEach(async () => {
@@ -324,6 +327,8 @@ describe('REXTwoWayMarket', () => {
     await trb.connect(reporter1).approve(tp.address, web3.utils.toWei("120"))
     await trb.connect(reporter2).approve(tp.address, web3.utils.toWei("120"))
     await trb.connect(reporter3).approve(tp.address, web3.utils.toWei("120"))
+    // console.log("STAKEAM2: ", await tp.stakeAmount())
+    // console.log("STAKEAM3: ", await tp.connect(reporter1).stakeAmount())
     await tp.connect(reporter1).depositStake(web3.utils.toWei("120"))
     await tp.connect(reporter2).depositStake(web3.utils.toWei("120"))
     await tp.connect(reporter3).depositStake(web3.utils.toWei("120"))
@@ -333,6 +338,7 @@ describe('REXTwoWayMarket', () => {
     let response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
     oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
     console.log('oraclePrice', oraclePrice);
+    console.log("TELLOR_ETH_REQUEST_ID: ", uintTob32(TELLOR_ETH_REQUEST_ID))
     await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
     await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
     response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd');
@@ -376,18 +382,21 @@ describe('REXTwoWayMarket', () => {
       20000,
       20000
     )
-
+    console.log("Initialized Two Way Market")
     await app.initializeSubsidies(10000000000000);
+    console.log("Initialized subsidies")
     // send the contract some RIC
     await ric.transfer(app.address, '3971239975789381077848')
-
+    console.log("Ric dot transfer")
     // Register the market with REXReferral
     await referral.registerApp(app.address);
+    console.log("Referall dot registered app")
     referral = await referral.connect(carl);
     await referral.applyForAffiliate("carl", "carl");
+    console.log("Applied for affiliate carl")
     referral = await referral.connect(owner);
     await referral.verifyAffiliate("carl");
-
+    console.log("Verified affliate carl")
 
 
     u.app = sf.user({
@@ -702,8 +711,19 @@ describe('REXTwoWayMarket', () => {
     });
 
     it.only('should distribute tokens to streamers', async () => {
+      currentValue = await app.getCurrentValue(TELLOR_ETH_REQUEST_ID)
+      console.log("CURRENT_VALUE_A: ", currentValue)
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
+      // await traveler.advanceTimeAndBlock(3600);
+      // console.log("Fast forward")
+      currentValue = await app.getCurrentValue(TELLOR_ETH_REQUEST_ID)
+      console.log("CURRENT_VALUE_B: ", currentValue)
+      // await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
+      // await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
+      // await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
+      console.log("Updating token prices....")
+      await app.updateTokenPrices();
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');

@@ -537,4 +537,8 @@ contract TellorPlayground {
         );
         return true;
     }
+
+    /* function stakeAmount() external view returns(uint256) {
+      return voteCount;
+    } */
 }
