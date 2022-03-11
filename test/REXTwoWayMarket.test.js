@@ -126,15 +126,19 @@ describe('REXTwoWayMarket', () => {
   let carl;
   let usdcSpender;
   let ethSpender;
+  let abiCoder = new ethers.utils.AbiCoder
   const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
   const TELLOR_ORACLE_ADDRESS = '0xFd45Ae72E81Adaaf01cC61c8bCe016b7060DD537';
   const TELLOR_MULTISIG_ADDRESS = '0x3F0C1eB3FA7fCe2b0932d6d4D9E03b5481F3f0A7';
   const TRB_TOKEN_ADDRESS = '0xE3322702BEdaaEd36CdDAb233360B939775ae5f1';
-  const TELLOR_ETH_REQUEST_ID = 1;
-  const TELLOR_USDC_REQUEST_ID = 78;
-  const TELLOR_RIC_REQUEST_ID = 77;
+  const TELLOR_ETH_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["eth", "usd"])])
+  const TELLOR_USDC_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["usdc", "usd"])])
+  const TELLOR_RIC_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["ric", "usd"])])
+  const TELLOR_ETH_QUERY_ID = ethers.utils.keccak256(TELLOR_ETH_QUERY_DATA) // 0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992
+  const TELLOR_USDC_QUERY_ID = ethers.utils.keccak256(TELLOR_USDC_QUERY_DATA) // 0x8ee44cd434ed5b0e007eee581fbe0855336f3f84484e8d9989a620a4a49aa0f7
+  const TELLOR_RIC_QUERY_ID = ethers.utils.keccak256(TELLOR_RIC_QUERY_DATA) // 0x6e5122118ce52cc9b97c359c1f174a3c21c71d810f7addce3484cc28e0be0f29
   const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
@@ -314,9 +318,6 @@ describe('REXTwoWayMarket', () => {
     tellorMultisig = await ethers.getSigner(TELLOR_MULTISIG_ADDRESS)
     trb = await ERC20.attach(TRB_TOKEN_ADDRESS);
     [reporter1, reporter2, reporter3] = await ethers.getSigners()
-    console.log("SYMBOLA: ", await trb.symbol())
-    // console.log("STAKEAM: ", await tp.stakeAmount())
-    // console.log("SYMBOLB: ", await tp.symbol())
   });
 
   beforeEach(async () => {
@@ -327,8 +328,6 @@ describe('REXTwoWayMarket', () => {
     await trb.connect(reporter1).approve(tp.address, web3.utils.toWei("120"))
     await trb.connect(reporter2).approve(tp.address, web3.utils.toWei("120"))
     await trb.connect(reporter3).approve(tp.address, web3.utils.toWei("120"))
-    // console.log("STAKEAM2: ", await tp.stakeAmount())
-    // console.log("STAKEAM3: ", await tp.connect(reporter1).stakeAmount())
     await tp.connect(reporter1).depositStake(web3.utils.toWei("120"))
     await tp.connect(reporter2).depositStake(web3.utils.toWei("120"))
     await tp.connect(reporter3).depositStake(web3.utils.toWei("120"))
@@ -338,12 +337,11 @@ describe('REXTwoWayMarket', () => {
     let response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
     oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
     console.log('oraclePrice', oraclePrice);
-    console.log("TELLOR_ETH_REQUEST_ID: ", uintTob32(TELLOR_ETH_REQUEST_ID))
-    await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-    await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
+    await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+    await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
     response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd');
     ricOraclePrice = parseInt(response.data['richochet'].usd * 1000000).toString();
-    await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(1000000), 0, '0x');
+    await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(1000000), 0, TELLOR_RIC_QUERY_DATA);
 
     // ==============
     // Deploy REX Market
@@ -374,29 +372,25 @@ describe('REXTwoWayMarket', () => {
 
     await app.initializeTwoWayMarket(
       usdcx.address,
-      TELLOR_USDC_REQUEST_ID,
+      TELLOR_USDC_QUERY_ID,
       1e7,
       ethx.address,
-      TELLOR_ETH_REQUEST_ID,
+      TELLOR_ETH_QUERY_ID,
       1e9,
       20000,
       20000
     )
-    console.log("Initialized Two Way Market")
+
     await app.initializeSubsidies(10000000000000);
-    console.log("Initialized subsidies")
     // send the contract some RIC
     await ric.transfer(app.address, '3971239975789381077848')
-    console.log("Ric dot transfer")
+
     // Register the market with REXReferral
     await referral.registerApp(app.address);
-    console.log("Referall dot registered app")
     referral = await referral.connect(carl);
     await referral.applyForAffiliate("carl", "carl");
-    console.log("Applied for affiliate carl")
     referral = await referral.connect(owner);
     await referral.verifyAffiliate("carl");
-    console.log("Verified affliate carl")
 
 
     u.app = sf.user({
@@ -653,8 +647,8 @@ describe('REXTwoWayMarket', () => {
       await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
       // 3. Increase time by 1 hour
       await traveler.advanceTimeAndBlock(60*60);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Stop the flow
@@ -711,19 +705,8 @@ describe('REXTwoWayMarket', () => {
     });
 
     it.only('should distribute tokens to streamers', async () => {
-      currentValue = await app.getCurrentValue(TELLOR_ETH_REQUEST_ID)
-      console.log("CURRENT_VALUE_A: ", currentValue)
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
-      // await traveler.advanceTimeAndBlock(3600);
-      // console.log("Fast forward")
-      currentValue = await app.getCurrentValue(TELLOR_ETH_REQUEST_ID)
-      console.log("CURRENT_VALUE_B: ", currentValue)
-      // await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      // await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      // await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
-      console.log("Updating token prices....")
-      await app.updateTokenPrices();
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
@@ -754,9 +737,9 @@ describe('REXTwoWayMarket', () => {
       console.log("Fast forward")
       await checkBalance(u.alice)
       await checkBalance(u.bob)
-      await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(1000000), 0, '0x');
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(1000000), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -793,9 +776,9 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -838,9 +821,9 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -877,9 +860,9 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
@@ -911,9 +894,9 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.connect(reporter1).submitValue(uintTob32(TELLOR_ETH_REQUEST_ID), uintTob32(oraclePrice), 0, '0x');
-      await tp.connect(reporter2).submitValue(uintTob32(TELLOR_USDC_REQUEST_ID), uintTob32(1000000), 0, '0x');
-      await tp.connect(reporter3).submitValue(uintTob32(TELLOR_RIC_REQUEST_ID), uintTob32(ricOraclePrice), 0, '0x');
+      await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');

@@ -45,7 +45,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     struct OracleInfo {
-        uint256 requestId;
+        bytes32 queryId;
         uint256 usdPrice;
         uint256 lastUpdatedAt;
     }
@@ -271,7 +271,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken _inputToken,
         uint256 _rateTolerance,
         ITellor _tellor,
-        uint256 _inputTokenRequestId,
+        bytes32 _inputTokenQueryId,
         uint128 _affiliateFee,
         uint128 _feeRate
     ) public virtual onlyOwner {
@@ -284,7 +284,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.affiliateFee = _affiliateFee;
         market. feeRate = _feeRate;
         oracle = _tellor;
-        OracleInfo memory _newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
+        OracleInfo memory _newOracle = OracleInfo(_inputTokenQueryId, 0, 0);
         market.oracles[market.inputToken] = _newOracle;
         updateTokenPrice(_inputToken);
     }
@@ -293,12 +293,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
+        bytes32 _queryId,
         uint128 _shareScaler
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
-        require(_requestId != 0, "!validReqId");
-        require(market.oracles[_token].requestId == 0, "!unique");
+        require(_queryId != bytes32(0), "!validReqId");
+        require(market.oracles[_token].queryId == bytes32(0), "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
 
         OutputPool memory _newPool = OutputPool(
@@ -311,7 +311,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
+        OracleInfo memory _newOracle = OracleInfo(_queryId, 0, 0);
         market.oracles[_token] = _newOracle;
         updateTokenPrice(_token);
     }
@@ -332,7 +332,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             bool _ifRetrieve,
             uint256 _value,
             uint256 _timestampRetrieved
-        ) = getCurrentValue(market.oracles[_token].requestId);
+        ) = getCurrentValue(market.oracles[_token].queryId);
 
         require(_ifRetrieve, "!getCurrentValue");
         require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
@@ -341,7 +341,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
     }
 
-    function getCurrentValue(uint256 _requestId)
+    function getCurrentValue(bytes32 _queryId)
         public
         view
         returns (
@@ -351,13 +351,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         )
     {
         uint256 _quantity;
-        console.log("CONSOLE.LOGBYTES32");
-        console.logBytes32(bytes32(_requestId));
-        (_value, _quantity) = oracle.getMedian(bytes32(_requestId), block.timestamp, 600, 10);
-        console.log("@VALUE: %s", _value);
-        console.log("@QUANTITY: %s", _quantity);
-        if (_quantity > 0) return (true, _value, block.timestamp - 30);
-        return (false, 0, _timestampRetrieved);
+        (_value, _quantity) = oracle.getMedian(_queryId, block.timestamp, 660, 10);
+        if (_quantity > 0) return (true, _value, block.timestamp - 330);
+        return (false, 0, 0);
     }
 
     /// @dev Get flow rate for `_streamer`

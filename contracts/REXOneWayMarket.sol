@@ -32,14 +32,14 @@ contract REXOneWayMarket is REXMarket {
     ITellor _tellor,
     ISuperToken _inputToken,
     uint256 _rateTolerance,
-    uint256 _inputTokenRequestId,
+    bytes32 _inputTokenQueryId,
     ISuperToken _outputToken,
     uint128 _feeRate,
-    uint256 _ouptutTokenRequestId,
+    bytes32 _ouptutTokenQueryId,
     uint128 _shareScaler) public onlyOwner initializer {
 
-    REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenRequestId, 100000, _feeRate);
-    addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenRequestId, _shareScaler);
+    REXMarket.initializeMarket(_inputToken, _rateTolerance, _tellor, _inputTokenQueryId, 100000, _feeRate);
+    addOutputPool(_outputToken, _feeRate, 0, _ouptutTokenQueryId, _shareScaler);
 
     // Approvals
     // Unlimited approve for sushiswap
@@ -53,7 +53,7 @@ contract REXOneWayMarket is REXMarket {
         2**256 - 1
     );
     // and Supertoken upgrades
-    
+
     ERC20(market.inputToken.getUnderlyingToken()).safeIncreaseAllowance(
         address(market.inputToken),
         2**256 - 1
