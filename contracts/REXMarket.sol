@@ -473,10 +473,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       }
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
 
-      console.log("userShares", uint(userShares));
-      console.log("daoShares", uint(daoShares));
-      console.log("affiliateShares", uint(affiliateShares));
-
       // Scale back shares
       affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
       daoShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
