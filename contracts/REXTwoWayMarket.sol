@@ -217,16 +217,16 @@ contract REXTwoWayMarket is REXMarket {
       address _agreementClass,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
-      bytes calldata // _ctx
+      bytes calldata _ctx
   ) external view virtual override returns (bytes memory _cbdata) {
-    // _onlyHost();
-    if(_isCFAv1(_agreementClass)) {
-      (address shareholder, ) = abi.decode(_agreementData, (address, address));
-      (,,uint128 shares,) = getIDAShares(OUTPUTA_INDEX, shareholder);
-      require(shares == 0, "Already streaming");
-      (,,shares,) = getIDAShares(OUTPUTB_INDEX, shareholder);
-      require(shares == 0, "Already streaming");
-    }
+    _onlyHost();
+    if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+        return _ctx;
+    (address shareholder, ) = abi.decode(_agreementData, (address, address));
+    (,,uint128 shares,) = getIDAShares(OUTPUTA_INDEX, shareholder);
+    require(shares == 0, "Already streaming");
+    (,,shares,) = getIDAShares(OUTPUTB_INDEX, shareholder);
+    require(shares == 0, "Already streaming");
   }
 
   function beforeAgreementTerminated(
@@ -234,10 +234,11 @@ contract REXTwoWayMarket is REXMarket {
       address _agreementClass,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
-      bytes calldata // _ctx
+      bytes calldata _ctx
   ) external view virtual override returns (bytes memory _cbdata) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
 
       (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
@@ -261,7 +262,8 @@ contract REXTwoWayMarket is REXMarket {
       bytes calldata _ctx
   ) external virtual override returns (bytes memory _newCtx) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
 
       _newCtx = _ctx;
       (address _shareholder, ) = abi.decode(_agreementData, (address, address));
