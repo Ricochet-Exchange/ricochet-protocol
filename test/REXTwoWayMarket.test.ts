@@ -211,12 +211,33 @@ describe('REXTwoWayMarket', () => {
             console.log("Address number ", i, ": ", accountss[i].address);
         }
         console.log("++++++++++++++ alice address number: ", u.alice.address);
+        console.log("++++++++++++++ aliceSigner address ", aliceSigner.address);
         console.log("++++++++++++++ bob address number: ", u.bob.address);
         console.log("++++++++++++++ carl address number: ", u.carl.address);
 
         console.log("======******** List of TOKENS addresses =======");
         console.log("======** usdc's address: ", tokenss["usdc"].address);
         console.log("======** USDCx's address: ", superT.usdcx.address);
+        // ==============================================================================
+        let whaleEthxBalance = await superT.ethx.balanceOf({
+            account: Constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
+        });
+        console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
+
+        // console.log("====== Transferring ethx to bob =======");
+        // await superT.ethx
+        //     .transfer({
+        //         receiver: bobSigner.address,    // u.bob.address,
+        //         amount: ethers.utils.parseUnits("0.5", 18).toString(),   // 18 is important !!,     // initialAmount
+        //     }).exec(ethxWhaleSigner);
+        // console.log("====== Transferred to bob =======");
+
+        // let balanceEthx = await superT.ethx.balanceOf({
+        //     // account: u.bob.address, providerOrSigner: provider
+        //     account: bobSigner.address, providerOrSigner: provider
+        // });
+        // console.log("Bob's Balance in ETHX: ", balanceEthx);
+        // ==============================================================================    
 
         // Deploy REXReferral
         rexReferral = await ethers.getContractFactory("REXReferral", {
@@ -453,7 +474,7 @@ describe('REXTwoWayMarket', () => {
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
         await superT.usdcx
             .transfer({
-                receiver: u.alice.address,
+                receiver: aliceSigner.address,     // u.alice.address,
                 amount: initialAmount,     // transferFrom does NOT work !!
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to alice =======");
@@ -462,12 +483,10 @@ describe('REXTwoWayMarket', () => {
         // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
         await superT.ethx
             .transfer({
-                receiver: u.bob.address,
-                amount: initialAmount
+                receiver: bobSigner.address,   // u.bob.address,
+                amount: ethers.utils.parseUnits("0.5", 18).toString(),  // initialAmount
             }).exec(ethxWhaleSigner);
-        // .exec(accountss[4]);
         console.log("====== Transferred to bob =======");
-        // checkBalance(bobSigner, "Bob");
 
         console.log(" ====== DONE ======= \n",);
 
@@ -487,11 +506,11 @@ describe('REXTwoWayMarket', () => {
         // const adminSigner = await ethers.getSigner(u.admin.address);
 
         await sf.cfaV1.createFlow({
-            sender: u.alice.address,
+            sender: aliceSigner.address,  // u.alice.address,
             receiver: u.app.address,
             superToken: superT.usdcx.address,
             flowRate: inflowRateUsdc,
-            userData: ethers.utils.solidityKeccak256(["string"], ["carl"]),   // Not sure
+            // userData: ethers.utils.solidityKeccak256(["string"], ["carl"]),   // Not sure
         }).exec(aliceSigner);
         console.log(" ====== Created stream for alice ======= ");
         console.log(" ======***** Alice stream rate: ",
@@ -520,19 +539,14 @@ describe('REXTwoWayMarket', () => {
         // const createBobFlow = 
         // should the nonce be incremented before this second tx ?
         await sf.cfaV1.createFlow({
-            sender: u.bob.address,
+            sender: bobSigner.address,    // u.bob.address,
             receiver: u.app.address,
             superToken: superT.ethx.address,
             flowRate: inflowRateEth,
         }).exec(bobSigner);
-        // const txnResponseBob = await createBobFlow.exec(accountss[2]);   // (adminSigner);  
-        // const txnReceiptBob = await txnResponseBob.wait();
 
         console.log("                      ====== Created stream for bob ======= \n");
         console.log(" ======***** Bob stream rate: ", await app.getStreamRate(u.bob.address, superT.ethx.address), " for ethx.");
-
-        // const txnResponseBob = await createBobFlow.exec(accountss[2]);  
-        // const txnReceiptBob = await txnResponseBob.wait();
 
         // // await takeMeasurements();
         // // TODO 
@@ -562,16 +576,16 @@ describe('REXTwoWayMarket', () => {
         ).to.equal(`true,true,20000,0`);
         // 3. Advance time 1 hour
         await increaseTime(3600);
-        console.log("Fast forward");
-        // await checkBalance(alice);
-        // await checkBalance(bob);
-        // await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        // await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
-        // await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
-        // // await app.updateTokenPrices();
+        console.log("Fast forward");    // So far so good
+        await checkBalance(aliceSigner, "alice");
+        await checkBalance(bobSigner, "bob");
+        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
+        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
+        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
+        // await app.updateTokenPrices();      // TODO
         // await app.updateTokenPrice(usdcx.address);
         // await app.updateTokenPrice(ethx.address);
-        // // 4. Trigger a distribution
+        // 4. Trigger a distribution
         // await app.distribute("0x");
         // // This fifth step is commented in OneWay  // TODO
         // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
