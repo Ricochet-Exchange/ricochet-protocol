@@ -19,6 +19,7 @@ import {
 import { Constants } from "../misc/Constants";
 import { parseUnits } from "ethers/lib/utils";
 import { Contract } from "ethers";
+import { Abi } from "@truffle/abi-utils/dist/lib/arbitrary";
 
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
@@ -34,14 +35,13 @@ describe('REXTwoWayMarket', () => {
 
     let rexReferral: any;
 
-    // let sr; // Mock Sushi Router
-    // let owner: SignerWithAddress;
-    // let alice: SignerWithAddress;
-    // let bob: SignerWithAddress;
-    // let carl: SignerWithAddress;
-    // let karen: SignerWithAddress;
-    // let admin: SignerWithAddress;
-    // let usdcSpender: SignerWithAddress;
+    let adminSigner: SignerWithAddress;
+    let aliceSigner: SignerWithAddress;
+    let bobSigner: SignerWithAddress;
+    let carlSigner: SignerWithAddress;
+    let usdcxWhaleSigner: SignerWithAddress;
+    let ethxWhaleSigner: SignerWithAddress;
+
     // let ethSpender: SignerWithAddress;
 
     let oraclePrice: number;
@@ -72,7 +72,7 @@ describe('REXTwoWayMarket', () => {
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
         tp: TellorPlayground,
-        approveSubscriptions: any,
+        // approveSubscriptions: any,
         ERC20: any;
 
     let USDCx: SuperToken;    // rashtrakoff
@@ -103,25 +103,55 @@ describe('REXTwoWayMarket', () => {
         //     bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
     }
 
-    async function checkBalance(user: SignerWithAddress) {
-        console.log('Balance of ', user.address);
-        let balance = await superT.ethx.balanceOf({
+    // async function approveSubscriptions(sf: Framework, superT: ISuperToken, u: { [key: string]: IUser; }, accountss: SignerWithAddress[]) {
+    async function approveSubscriptions() {
+        let accountssNumbers = [0, 1, 2, 3]; // 0 is the admin, 1 is alice, 2 is bob, 3 is carl
+        for (let i = 0; i < accountssNumbers.length; i++) {
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: USDCX_SUBSCRIPTION_INDEX.toString(),
+                    superToken: superT.usdcx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(accountss[accountssNumbers[i]]);
+            console.log("====== admin/alice/bob/carl subscription to usdcx approved =======");
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
+                    superToken: superT.ethx.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(accountss[accountssNumbers[i]]);
+            console.log("====== admin/alice/bob/carl subscription to ethx approved =======");
+            await sf.idaV1
+                .approveSubscription({
+                    indexId: RIC_SUBSCRIPTION_INDEX.toString(),
+                    superToken: superT.ric.address,
+                    publisher: u.app.address,
+                    userData: "0x",
+                })
+                .exec(accountss[accountssNumbers[i]]);
+            console.log("====== admin/alice/bob/carl subscription to ric approved =======");
+        }
+    }
+
+    async function checkBalance(user: SignerWithAddress, name: string) {
+        console.log(" ======== Balance of ", name, " ", user.address, " ============= ");
+        let balanceEthx = await superT.ethx.balanceOf({
             account: user.address, providerOrSigner: provider
         });
-        console.log('Balance in usdcx: ', balance);
-        // console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
-        // console.log('usdcx: ', (await usdcx.balanceOf({
-        //     account: user.address,
-        //     providerOrSigner: user
-        // })));
-        // console.log('ethx: ', (await ethx.balanceOf({
-        //     account: user.address,
-        //     providerOrSigner: user
-        // })));
-        // console.log('ric: ', (await ric.balanceOf({
-        //     account: user.address,
-        //     providerOrSigner: user
-        // })));
+        let balanceUsdcx = await superT.usdcx.balanceOf({
+            account: user.address, providerOrSigner: provider
+        });
+        let balanceRic = await superT.ric.balanceOf({
+            account: user.address, providerOrSigner: provider
+        });
+        console.log("Balance in ETHX: ", balanceEthx);
+        console.log("Balance in USDCX: ", balanceUsdcx);
+        console.log("Balance in RIC: ", balanceRic);
+        console.log(" =============================================================== ");
     }
 
     async function delta(account: SignerWithAddress, balances: any) {  // : SuperTokensBalances) {
@@ -140,13 +170,6 @@ describe('REXTwoWayMarket', () => {
             ric: changeInSubsidyToken
         }
     }
-
-    // let idaV1: InstantDistributionAgreementV1;
-    // let cfaV1: ConstantFlowAgreementV1;
-    // let framework: Framework;
-    // let deployer: SignerWithAddress;
-    // let user2: SignerWithAddress;
-    // let superToken: SuperToken;
 
     beforeEach(async () => {
         const {
@@ -172,6 +195,14 @@ describe('REXTwoWayMarket', () => {
         constant = constants;
         tp = tellor;
 
+        // This order is established in misc/setup.ts
+        adminSigner = accountss[0];
+        aliceSigner = accountss[1];
+        bobSigner = accountss[2];
+        carlSigner = accountss[3];
+        usdcxWhaleSigner = accountss[4];
+        ethxWhaleSigner = accountss[5];
+
         const registrationKey = await sfRegistrationKey(sf, u.admin.address);
         console.log("============ Right after sfRegistrationKey() ==================");
 
@@ -186,12 +217,10 @@ describe('REXTwoWayMarket', () => {
         console.log("======******** List of TOKENS addresses =======");
         console.log("======** usdc's address: ", tokenss["usdc"].address);
         console.log("======** USDCx's address: ", superT.usdcx.address);
-        // const registrationKey = await sfRegistrationKey(sf, u.admin.address);
-        // const registrationKey = await createSFRegistrationKey(await sf, u.admin.address);
 
         // Deploy REXReferral
         rexReferral = await ethers.getContractFactory("REXReferral", {
-            signer: accountss[0],  // owner,
+            signer: adminSigner,
         });
         let referral = await rexReferral.deploy();
         await referral.deployed();
@@ -224,7 +253,6 @@ describe('REXTwoWayMarket', () => {
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
         const url2 = "https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd";
         response = await httpService.get(url2);
-        // response.data = "";
         ricOraclePrice = await response.data["richochet"].usd * 1000000;
         console.log("RIC oraclePrice: ", ricOraclePrice.toString());
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
@@ -252,122 +280,194 @@ describe('REXTwoWayMarket', () => {
         await app.initializeSubsidies(10000000000000);
         console.log("========== Initialized subsidies ===========");
 
-        // send the contract some RIC       // I think it causes an "Execute Transaction Error"
-        // try {
-        //     superT.ric.transfer({
-        //         receiver: app.address,
-        //         amount: "239975789381077848"   // --->  Error: invalid BigNumber value
-        //     }).exec(accountss[0]);
-        // } catch (err: any) {
-        //     console.log("Ricochet - ERROR transferring RICs to the contract: ", err);
-        // }
-        // console.log("============ RICs have been sent to the contract =============");
+        checkBalance(accountss[5], "the ETHX whale");
+        // send the contract some RIC       
+        try {
+            await superT.ric.transfer({
+                receiver: u.app.address,
+                amount: "239975789381077848"
+            }).exec(adminSigner);
+        } catch (err: any) {
+            console.log("Ricochet - ERROR transferring RICs to the contract: ", err);
+        }
+        console.log("============ RICs have been sent to the contract =============");
+        checkBalance(adminSigner, "the contract");
 
         // Register the market with REXReferral
-        let carlSigner = await ethers.getSigner(u.carl.address);
+        let carlSigner2 = await ethers.getSigner(u.carl.address);
         await referral.registerApp(u.app.address);
-        referral = await referral.connect(carlSigner);
+        referral = await referral.connect(carlSigner2);
         await referral.applyForAffiliate("carl", "carl");
-        let adminSigner = await ethers.getSigner(u.admin.address);
-        referral = await referral.connect(adminSigner);
+        let adminSigner2 = await ethers.getSigner(u.admin.address);
+        referral = await referral.connect(adminSigner2);
         await referral.verifyAffiliate("carl");
 
     }); // End of "before" block
 
+    xit("should not allow small streams", async () => {
+
+        // Lower bound on a stream is shareScaler * 1e3
+
+        const inflowRateMin = '1000000000000';
+        const inflowRatePrime = '13000000000000';
+        const inflowRateTooLow = '100000000000';
+        const inflowRateNot10 = '1000000000001';
+
+        const inflowRateMinETH = '10000000000';
+        const inflowRatePrimeETH = '130000000000';
+        const inflowRateTooLowETH = '1000000000';
+        const inflowRateNot10ETH = '10000000001';
+
+        console.log('Transfer alice USDCx');
+        await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
+        await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
+
+        // console.log('Transfer alice ETH');
+        // await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
+        console.log('Done');
+
+        await approveSubscriptions();    // ([u.alice.address, u.carl.address, u.admin.address, u.bob.address]);
+
+        // Make sure it reverts not scalable values
+        await expect(
+            u.alice.flow({ flowRate: inflowRateTooLow, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        ).to.be.revertedWith("notScalable");
+
+        await expect(
+            u.alice.flow({ flowRate: inflowRateNot10, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        ).to.be.revertedWith("notScalable");
+
+        // Make sure it works with scalable, prime flow rates
+        await u.alice.flow({
+            flowRate: inflowRatePrime,
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,12740,0`);
+        expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,234,0`);
+        expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,26,0`);
+
+        // Stop the flow
+        await u.alice.flow({
+            flowRate: '0',
+            recipient: u.app
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+        // Test minimum flow rate
+        await u.alice.flow({
+            flowRate: inflowRateMin,
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980,0`);
+        expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18,0`);
+        expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2,0`);
+
+        // Stop the flow
+        await u.alice.flow({
+            flowRate: '0',
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+        // TEST ETH SIDE
+
+        // Make sure it reverts not scalable values
+        await expect(
+            u.bob.flow({ flowRate: inflowRateTooLowETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        ).to.be.revertedWith("notScalable");
+
+        await expect(
+            u.bob.flow({ flowRate: inflowRateNot10ETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        ).to.be.revertedWith("notScalable");
+
+        // Make sure it works with scalable, prime flow rates
+        await u.bob.flow({
+            flowRate: inflowRatePrimeETH,
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,12740,0`);
+        expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,234,0`);
+        expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,26,0`);
+
+        // Stop the flow
+        await u.bob.flow({
+            flowRate: '0',
+            recipient: u.app
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+        // Test minimum flow rate
+        await u.bob.flow({
+            flowRate: inflowRateMinETH,
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980,0`);
+        expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,18,0`);
+        expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,2,0`);
+
+        // Stop the flow
+        await u.bob.flow({
+            flowRate: '0',
+            recipient: u.app,
+            userData: web3.eth.abi.encodeParameter('string', 'carl')
+        });
+
+        // Confirm speed limit allocates shares correctly
+        expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
+
+    });
+
     // You need to call "approve" before calling "transferFrom"
     it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
-        // await funcApproveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
-        // tokenss['eth']
-        await sf.idaV1
-            .approveSubscription({
-                indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
-                superToken: superT.ethx.address,
-                publisher: u.app.address,       // With u. !!
-                userData: "0x",
-            })
-            .exec(accountss[1]);
-        console.log("====== Alice subscription approved =======");
-        console.log("====== Result is: ", await sf.idaV1.getIndex({
-            superToken: superT.ethx.address, publisher: u.app.address, indexId: "1", providerOrSigner: provider
-        }));
 
-        await sf.idaV1
-            .approveSubscription({
-                indexId: USDCX_SUBSCRIPTION_INDEX.toString(),
-                superToken: superT.usdcx.address,
-                publisher: u.app.address,       // With u. !!
-                userData: "0x",
-            })
-            .exec(accountss[2]);
-        console.log("====== bob subscription approved =======");
-        let accountssNumbers = [0, 3];   // 0 is the admin, 3 is carl
-        for (let i = 0; i < accountssNumbers.length; i++) {
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: USDCX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.usdcx.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                // .exec(accountss[0]);
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/carl subscription to usdcx approved =======");
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.ethx.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                // .exec(accountss[0]);
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/carl subscription to ethx approved =======");
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: RIC_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.ric.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/carl subscription to ric approved =======");
-        }
-        // (await sf).idaV1
-        //     .approveSubscription({
-        //         indexId: "0",
-        //         superToken: ethx.address,
-        //         publisher: app.address,
-        //         userData: "0x",
-        //     })
-        //     .exec(userAccounts[""]);    // TODO
+        await approveSubscriptions();    // (sf, superT, u, accountss); ([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
-        // await superT.usdcx
-        //     .approve({
-        //         receiver: u.alice.address,
-        //         amount: initialAmount,     // transferFrom does NOT work !!
-        //     }).exec(accountss[4]);
         await superT.usdcx
             .transfer({
                 receiver: u.alice.address,
                 amount: initialAmount,     // transferFrom does NOT work !!
-            }).exec(accountss[4]);
-        console.log("Balance of Alice in usdcx ---> ");
-        let balance = await superT.usdcx.balanceOf({
-            account: u.alice.address, providerOrSigner: provider
-        });
-        console.log(" -----> ", balance);
-        // checkBalance(accountss[1]);
+            }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to alice =======");
+        // checkBalance(accountss[1], "Alice");   // JR
 
-        await superT.usdcx
+        // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
+        await superT.ethx
             .transfer({
                 receiver: u.bob.address,
-                amount: initialAmount   // transferFrom does NOT work !!
-            })
-            .exec(accountss[4]);
+                amount: initialAmount
+            }).exec(ethxWhaleSigner);
+        // .exec(accountss[4]);
         console.log("====== Transferred to bob =======");
+        // checkBalance(bobSigner, "Bob");
 
         console.log(" ====== DONE ======= \n",);
 
@@ -379,51 +479,69 @@ describe('REXTwoWayMarket', () => {
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
-        let signer22 = await ethers.getSigner(u.alice.address);
-        console.log(" ====== Before Create flow ======= ");
-        let aliceBeforeFlow = await superT.usdcx.balanceOf({
-            account: u.alice.address,
-            providerOrSigner: provider
-        });
-        console.log("Alice's balance in USDCx: ", aliceBeforeFlow);
-        console.log(" ====== Create flow ======= ", u.alice.address, "receiver: ", u.app.address,
+        // let signer22 = await ethers.getSigner(u.alice.address);
+
+        console.log(" ====== Create alice flow ======= ");
+        console.log("address: ", u.alice.address, "receiver: ", u.app.address,
             "supertoken: ", superT.usdcx.address, "flowRate: ", inflowRateUsdc);
-        const createFlowOperation = sf.cfaV1
-            .createFlow({
-                sender: u.alice.address,
-                receiver: u.app.address,
-                superToken: superT.usdcx.address,
-                flowRate: inflowRateUsdc,
-            });
-        const txnResponseAlice = await createFlowOperation.exec(accountss[1]);  // IMP. ----> the flow won't be created without this line 
-        const txnReceiptAlice = await txnResponseAlice.wait();
+        // const adminSigner = await ethers.getSigner(u.admin.address);
+
+        await sf.cfaV1.createFlow({
+            sender: u.alice.address,
+            receiver: u.app.address,
+            superToken: superT.usdcx.address,
+            flowRate: inflowRateUsdc,
+            userData: ethers.utils.solidityKeccak256(["string"], ["carl"]),   // Not sure
+        }).exec(aliceSigner);
         console.log(" ====== Created stream for alice ======= ");
         console.log(" ======***** Alice stream rate: ",
             await app.getStreamRate(u.alice.address, superT.ethx.address), " and for usdcx: ",
             await app.getStreamRate(u.alice.address, superT.usdcx.address));
 
-        // await bob.flow({ flowRate: inflowRateEth, recipient: app });     
-        const createBobFlow = sf.cfaV1
-            .createFlow({
-                sender: u.bob.address,
-                receiver: u.app.address,
-                superToken: superT.ethx.address,
-                flowRate: inflowRateEth,
-            });
+        // let baseNonce = provider.getTransactionCount(wallet.getAddress());
+        // let nonceOffset = 0;
+        // function getNonce() {
+        //     return baseNonce.then((nonce) => (nonce + (nonceOffset++)));
+        // }
+        // let tx0 = { to: a0, value: v0, nonce: getNonce() };
+        // wallet.sendTransaction(tx0);
+        // let tx1 = { to: a1, value: v1, nonce: getNonce() };
+        // wallet.sendTransaction(tx1);
+        // setTimeout(() => {
+        //     console.log('hi');
+        // }, 500);
+        // ethers.utils NonceManager.incrementTransactionCount();
+
+        console.log(" ====== Create bob flow ======= ");
+        console.log("address: ", u.bob.address, "receiver: ", u.app.address,
+            "supertoken: ", superT.ethx.address, "flowRate: ", inflowRateEth);
+
+        // const signer = sf.createSigner({ privateKey: "<TEST_ACCOUNT_PRIVATE_KEY>", provider });
+        // const createBobFlow = 
+        // should the nonce be incremented before this second tx ?
+        await sf.cfaV1.createFlow({
+            sender: u.bob.address,
+            receiver: u.app.address,
+            superToken: superT.ethx.address,
+            flowRate: inflowRateEth,
+        }).exec(bobSigner);
+        // const txnResponseBob = await createBobFlow.exec(accountss[2]);   // (adminSigner);  
+        // const txnReceiptBob = await txnResponseBob.wait();
+
+        console.log("                      ====== Created stream for bob ======= \n");
         console.log(" ======***** Bob stream rate: ", await app.getStreamRate(u.bob.address, superT.ethx.address), " for ethx.");
 
-        // .exec(accountss[2]);
-        // const txnResponseBob = await createBobFlow.exec(accountss[2]);  // IMP. ----> the flow won't be created without this line 
+        // const txnResponseBob = await createBobFlow.exec(accountss[2]);  
         // const txnReceiptBob = await txnResponseBob.wait();
-        console.log(" ====== Created stream for bob ======= \n");
+
         // // await takeMeasurements();
         // // TODO 
-        expect(
-            await app.getStreamRate(u.alice.address, superT.usdcx.address)
-        ).to.equal(inflowRateUsdc);
-        expect(
-            (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.alice.address)).toString()
-        ).to.equal(`true,true,980000,0`);
+        // expect(
+        //     await app.getStreamRate(u.alice.address, superT.usdcx.address)
+        // ).to.equal(inflowRateUsdc);
+        // expect(
+        //     (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.alice.address)).toString()
+        // ).to.equal(`true,true,980000,0`);
         expect(
             (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.admin.address)).toString()
         ).to.equal(`true,true,20000,0`);     // It's 18,000 if a referral is registered
@@ -665,5 +783,6 @@ describe('REXTwoWayMarket', () => {
         // expect(deltaKaren.ethx).to.equal(0)
 
     });
-
 });
+
+

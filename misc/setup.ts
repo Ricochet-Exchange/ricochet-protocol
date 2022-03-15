@@ -74,11 +74,12 @@ export const setup = async () => {
     Constants.BOB_ADDRESS,
     Constants.CARL_ADDRESS,
     Constants.USDCX_SOURCE_ADDRESS,
+    Constants.ETHX_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "spender"];
+  const names = ["admin", "alice", "bob", "carl", "usdcxspender", "ethxspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
