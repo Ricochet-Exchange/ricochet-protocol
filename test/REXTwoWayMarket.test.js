@@ -121,7 +121,7 @@ describe('REXTwoWayMarket', () => {
   const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
-  const USDCX_SOURCE_ADDRESS = '0x7b9deffca9356a99f95759afc6e709422d845a7c';
+  const USDCX_SOURCE_ADDRESS = '0x81Ea02098336435d5e92e032C029AAB850304f5D';
   const ETHX_SOURCE_ADDRESS = '0x6EAA11eec98c663ba096593cc779217A7e20665a';
   const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
   const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
@@ -448,6 +448,54 @@ describe('REXTwoWayMarket', () => {
 
     });
 
+    it.only('should not allow affiliate streams', async () => {
+      const inflowRateUsdc = '1000000000000000';
+
+      console.log('Transfer alice');
+      await usdcx.transfer(u.carl.address, toWad(400), { from: u.usdcspender.address });
+      console.log('Done');
+
+      await approveSubscriptions([u.carl.address]);
+
+      await expect(
+        u.carl.flow({ flowRate: inflowRateUsdc, recipient: u.app })
+      ).to.be.revertedWith("noAffiliates")
+
+    });
+
+    it('should let streamers unsubscribe', async () => {
+      const inflowRateUsdc = '1000000000000000';
+
+      console.log('Transfer alice');
+      await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
+      console.log('Done');
+
+      await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') });
+      await approveSubscriptions([u.alice.address]);
+
+      await web3tx(
+        sf.host.callAgreement,
+        `Alice revokes IDA subscription`,
+      )(
+        sf.agreements.ida.address,
+        sf.agreements.ida.contract.methods.revokeSubscription(
+            ethx.address,
+            app.address,
+            1,
+            '0x'
+        ).encodeABI(),
+        '0x', // user data
+        {
+          from: u.alice.address,
+        },
+      );
+
+      expect(await app.isAppJailed()).to.equal(false)
+
+    });
+
+
+
     it('should not allow small streams', async () => {
 
       // Lower bound on a stream is shareScaler * 1e3
@@ -672,7 +720,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it.only('should distribute tokens to streamers', async () => {
+    it('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');

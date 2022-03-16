@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 interface IREXReferral {
 
+    function addressToAffiliate (address) view external returns (uint256);
+
     /**
      * @dev Add a market contract to allow-list
      * @param contractAddr address for REXMarket contract
