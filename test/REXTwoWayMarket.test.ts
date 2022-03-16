@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayMarket, ERC20 } from "../typechain";
+import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory } from "../typechain";
 
 import {
     getSeconds,
@@ -33,7 +33,7 @@ describe('REXTwoWayMarket', () => {
         if (err) throw err;
     };
 
-    let rexReferral: any;
+    let rexReferral: REXReferral__factory;
 
     let adminSigner: SignerWithAddress;
     let aliceSigner: SignerWithAddress;
@@ -41,8 +41,6 @@ describe('REXTwoWayMarket', () => {
     let carlSigner: SignerWithAddress;
     let usdcxWhaleSigner: SignerWithAddress;
     let ethxWhaleSigner: SignerWithAddress;
-
-    // let ethSpender: SignerWithAddress;
 
     let oraclePrice: number;
     let ricOraclePrice: number;
@@ -72,11 +70,12 @@ describe('REXTwoWayMarket', () => {
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
         tp: TellorPlayground,
-        // approveSubscriptions: any,
         ERC20: any;
 
-    let USDCx: SuperToken;    // rashtrakoff
-
+    let ricochetUSDCx: SuperToken;
+    let ricochetETHx: SuperToken;
+    let ricochetWBTCx: SuperToken;
+    let ricochetRIC: SuperToken;
 
     async function takeMeasurements(): Promise<void> {
         appBalances.ethx.push((await superT.ethx.balanceOf({
@@ -110,7 +109,7 @@ describe('REXTwoWayMarket', () => {
             await sf.idaV1
                 .approveSubscription({
                     indexId: USDCX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.usdcx.address,
+                    superToken: ricochetUSDCx.address,
                     publisher: u.app.address,
                     userData: "0x",
                 })
@@ -119,7 +118,7 @@ describe('REXTwoWayMarket', () => {
             await sf.idaV1
                 .approveSubscription({
                     indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.ethx.address,
+                    superToken: ricochetETHx.address,
                     publisher: u.app.address,
                     userData: "0x",
                 })
@@ -128,7 +127,7 @@ describe('REXTwoWayMarket', () => {
             await sf.idaV1
                 .approveSubscription({
                     indexId: RIC_SUBSCRIPTION_INDEX.toString(),
-                    superToken: superT.ric.address,
+                    superToken: ricochetRIC.address,
                     publisher: u.app.address,
                     userData: "0x",
                 })
@@ -139,13 +138,13 @@ describe('REXTwoWayMarket', () => {
 
     async function checkBalance(user: SignerWithAddress, name: string) {
         console.log(" ======== Balance of ", name, " ", user.address, " ============= ");
-        let balanceEthx = await superT.ethx.balanceOf({
+        let balanceEthx = await ricochetETHx.balanceOf({
             account: user.address, providerOrSigner: provider
         });
-        let balanceUsdcx = await superT.usdcx.balanceOf({
+        let balanceUsdcx = await ricochetUSDCx.balanceOf({
             account: user.address, providerOrSigner: provider
         });
-        let balanceRic = await superT.ric.balanceOf({
+        let balanceRic = await ricochetRIC.balanceOf({
             account: user.address, providerOrSigner: provider
         });
         console.log("Balance in ETHX: ", balanceEthx);
@@ -203,7 +202,13 @@ describe('REXTwoWayMarket', () => {
         usdcxWhaleSigner = accountss[4];
         ethxWhaleSigner = accountss[5];
 
-        const registrationKey = await sfRegistrationKey(sf, u.admin.address);
+        ricochetUSDCx = superT.usdcx;
+        ricochetETHx = superT.ethx;
+        ricochetWBTCx = superT.wbtcx;
+        ricochetRIC = superT.ric;
+
+        // ==============================================================================
+        const registrationKey = await sfRegistrationKey(sf, adminSigner.address);  
         console.log("============ Right after sfRegistrationKey() ==================");
 
         console.log("======******** List of addresses =======");
@@ -216,27 +221,14 @@ describe('REXTwoWayMarket', () => {
         console.log("++++++++++++++ carl address number: ", u.carl.address);
 
         console.log("======******** List of TOKENS addresses =======");
-        console.log("======** usdc's address: ", tokenss["usdc"].address);
+        console.log("======** usdc's address: ", ricochetUSDCx.address);    //  tokenss["usdc"].address);
         console.log("======** USDCx's address: ", superT.usdcx.address);
         // ==============================================================================
-        let whaleEthxBalance = await superT.ethx.balanceOf({
+        let whaleEthxBalance = await ricochetETHx.balanceOf({
             account: Constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
         });
         console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
 
-        // console.log("====== Transferring ethx to bob =======");
-        // await superT.ethx
-        //     .transfer({
-        //         receiver: bobSigner.address,    // u.bob.address,
-        //         amount: ethers.utils.parseUnits("0.5", 18).toString(),   // 18 is important !!,     // initialAmount
-        //     }).exec(ethxWhaleSigner);
-        // console.log("====== Transferred to bob =======");
-
-        // let balanceEthx = await superT.ethx.balanceOf({
-        //     // account: u.bob.address, providerOrSigner: provider
-        //     account: bobSigner.address, providerOrSigner: provider
-        // });
-        // console.log("Bob's Balance in ETHX: ", balanceEthx);
         // ==============================================================================    
 
         // Deploy REXReferral
@@ -252,10 +244,10 @@ describe('REXTwoWayMarket', () => {
         console.log("Deploying REXTwoWayMarket...");
         const REXMarketFactory = await ethers.getContractFactory(
             "REXTwoWayMarket",
-            accountss[0]
+            adminSigner  
         );
         app = await REXMarketFactory.deploy(
-            u.admin.address,
+            adminSigner.address,  
             sf.host.hostContract.address,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
@@ -281,10 +273,10 @@ describe('REXTwoWayMarket', () => {
         // IMP. --> the oracles must be updated before calling initializeTwoWayMarket
 
         await app.initializeTwoWayMarket(
-            superT.usdcx.address,
+            ricochetUSDCx.address,
             Constants.TELLOR_USDC_REQUEST_ID,
             1e7,
-            superT.ethx.address,
+            ricochetETHx.address,  
             Constants.TELLOR_ETH_REQUEST_ID,
             1e9,
             20000,
@@ -301,10 +293,11 @@ describe('REXTwoWayMarket', () => {
         await app.initializeSubsidies(10000000000000);
         console.log("========== Initialized subsidies ===========");
 
-        checkBalance(accountss[5], "the ETHX whale");
+        checkBalance(ethxWhaleSigner, "the ETHX whale");
         // send the contract some RIC       
         try {
-            await superT.ric.transfer({
+            // await superT.ric.transfer({
+            await ricochetRIC.transfer({
                 receiver: u.app.address,
                 amount: "239975789381077848"
             }).exec(adminSigner);
@@ -315,12 +308,12 @@ describe('REXTwoWayMarket', () => {
         checkBalance(adminSigner, "the contract");
 
         // Register the market with REXReferral
-        let carlSigner2 = await ethers.getSigner(u.carl.address);
+        // let carlSigner2 = await ethers.getSigner(u.carl.address);
         await referral.registerApp(u.app.address);
-        referral = await referral.connect(carlSigner2);
+        referral = await referral.connect(carlSigner);
         await referral.applyForAffiliate("carl", "carl");
-        let adminSigner2 = await ethers.getSigner(u.admin.address);
-        referral = await referral.connect(adminSigner2);
+        // let adminSigner2 = await ethers.getSigner(u.admin.address);
+        referral = await referral.connect(adminSigner);
         await referral.verifyAffiliate("carl");
 
     }); // End of "before" block
@@ -474,7 +467,7 @@ describe('REXTwoWayMarket', () => {
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
         await superT.usdcx
             .transfer({
-                receiver: aliceSigner.address,     // u.alice.address,
+                receiver: aliceSigner.address,
                 amount: initialAmount,     // transferFrom does NOT work !!
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to alice =======");
@@ -483,7 +476,7 @@ describe('REXTwoWayMarket', () => {
         // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
         await superT.ethx
             .transfer({
-                receiver: bobSigner.address,   // u.bob.address,
+                receiver: bobSigner.address,   
                 amount: ethers.utils.parseUnits("0.5", 18).toString(),  // initialAmount
             }).exec(ethxWhaleSigner);
         console.log("====== Transferred to bob =======");
@@ -498,15 +491,13 @@ describe('REXTwoWayMarket', () => {
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
-        // let signer22 = await ethers.getSigner(u.alice.address);
 
         console.log(" ====== Create alice flow ======= ");
-        console.log("address: ", u.alice.address, "receiver: ", u.app.address,
-            "supertoken: ", superT.usdcx.address, "flowRate: ", inflowRateUsdc);
-        // const adminSigner = await ethers.getSigner(u.admin.address);
-
+        console.log("address: ", aliceSigner.address, "receiver: ", u.app.address,
+            "supertoken: ", ricochetUSDCx.address, "flowRate: ", inflowRateUsdc);
+        
         await sf.cfaV1.createFlow({
-            sender: aliceSigner.address,  // u.alice.address,
+            sender: aliceSigner.address,  
             receiver: u.app.address,
             superToken: superT.usdcx.address,
             flowRate: inflowRateUsdc,
@@ -514,8 +505,8 @@ describe('REXTwoWayMarket', () => {
         }).exec(aliceSigner);
         console.log(" ====== Created stream for alice ======= ");
         console.log(" ======***** Alice stream rate: ",
-            await app.getStreamRate(u.alice.address, superT.ethx.address), " and for usdcx: ",
-            await app.getStreamRate(u.alice.address, superT.usdcx.address));
+            await app.getStreamRate(aliceSigner.address, ricochetETHx.address), " and for usdcx: ",
+            await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address));
 
         // let baseNonce = provider.getTransactionCount(wallet.getAddress());
         // let nonceOffset = 0;
@@ -532,21 +523,18 @@ describe('REXTwoWayMarket', () => {
         // ethers.utils NonceManager.incrementTransactionCount();
 
         console.log(" ====== Create bob flow ======= ");
-        console.log("address: ", u.bob.address, "receiver: ", u.app.address,
-            "supertoken: ", superT.ethx.address, "flowRate: ", inflowRateEth);
+        console.log("address: ", bobSigner.address, "receiver: ", u.app.address,
+            "supertoken: ", ricochetETHx.address, "flowRate: ", inflowRateEth);
 
-        // const signer = sf.createSigner({ privateKey: "<TEST_ACCOUNT_PRIVATE_KEY>", provider });
-        // const createBobFlow = 
-        // should the nonce be incremented before this second tx ?
         await sf.cfaV1.createFlow({
-            sender: bobSigner.address,    // u.bob.address,
+            sender: bobSigner.address,    
             receiver: u.app.address,
-            superToken: superT.ethx.address,
+            superToken: ricochetETHx.address,
             flowRate: inflowRateEth,
         }).exec(bobSigner);
 
         console.log("                      ====== Created stream for bob ======= \n");
-        console.log(" ======***** Bob stream rate: ", await app.getStreamRate(u.bob.address, superT.ethx.address), " for ethx.");
+        console.log(" ======***** Bob stream rate: ", await app.getStreamRate(bobSigner.address, superT.ethx.address), " for ethx.");
 
         // // await takeMeasurements();
         // // TODO 
@@ -557,22 +545,22 @@ describe('REXTwoWayMarket', () => {
         //     (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.alice.address)).toString()
         // ).to.equal(`true,true,980000,0`);
         expect(
-            (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.admin.address)).toString()
+            (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
         ).to.equal(`true,true,20000,0`);     // It's 18,000 if a referral is registered
         expect(
-            (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.carl.address)).toString()
+            (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
         ).to.equal(`true,true,0,0`);     // It's 2,000 if a referral is registered
         expect(
-            await app.getStreamRate(u.bob.address, superT.ethx.address)
+            await app.getStreamRate(bobSigner.address, ricochetETHx.address)
         ).to.equal(inflowRateEth);
         expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, u.bob.address)).toString()
+            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
         ).to.equal(`true,true,980000,0`);
         expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, u.carl.address)).toString()
+            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
         ).to.equal(`true,true,0,0`);
         expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, u.admin.address)).toString()
+            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
         ).to.equal(`true,true,20000,0`);
         // 3. Advance time 1 hour
         await increaseTime(3600);
@@ -583,8 +571,6 @@ describe('REXTwoWayMarket', () => {
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
         // await app.updateTokenPrices();      // TODO
-        // await app.updateTokenPrice(usdcx.address);
-        // await app.updateTokenPrice(ethx.address);
         // 4. Trigger a distribution
         // await app.distribute("0x");
         // // This fifth step is commented in OneWay  // TODO
