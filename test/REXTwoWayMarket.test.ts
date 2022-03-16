@@ -28,6 +28,11 @@ const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
 
+export interface superTokenAndItsIDAIndex {
+    token: SuperToken;
+    IDAIndex: number;
+}
+
 describe('REXTwoWayMarket', () => {
     const errorHandler = (err: any) => {
         if (err) throw err;
@@ -41,6 +46,7 @@ describe('REXTwoWayMarket', () => {
     let carlSigner: SignerWithAddress;
     let usdcxWhaleSigner: SignerWithAddress;
     let ethxWhaleSigner: SignerWithAddress;
+    let karenSigner: SignerWithAddress;
 
     let oraclePrice: number;
     let ricOraclePrice: number;
@@ -77,6 +83,15 @@ describe('REXTwoWayMarket', () => {
     let ricochetWBTCx: SuperToken;
     let ricochetRIC: SuperToken;
 
+    let usdcxAndItsIDAIndex: superTokenAndItsIDAIndex;
+    let ethxAndItsIDAIndex: superTokenAndItsIDAIndex;
+    let ricAndItsIDAIndex: superTokenAndItsIDAIndex;
+
+    // const usdcxAndItsIDAIndex: superTokenAndItsIDAIndex = {
+    //     token: ricochetUSDCx,
+    //     IDAIndex: USDCX_SUBSCRIPTION_INDEX,
+    // }
+
     async function takeMeasurements(): Promise<void> {
         appBalances.ethx.push((await superT.ethx.balanceOf({
             account: u.app.address, providerOrSigner: provider
@@ -102,37 +117,22 @@ describe('REXTwoWayMarket', () => {
         //     bobBalances.ric.push((await ric.balanceOf(bob.address)).toString());
     }
 
-    // async function approveSubscriptions(sf: Framework, superT: ISuperToken, u: { [key: string]: IUser; }, accountss: SignerWithAddress[]) {
-    async function approveSubscriptions() {
-        let accountssNumbers = [0, 1, 2, 3]; // 0 is the admin, 1 is alice, 2 is bob, 3 is carl
-        for (let i = 0; i < accountssNumbers.length; i++) {
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: USDCX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: ricochetUSDCx.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/alice/bob/carl subscription to usdcx approved =======");
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
-                    superToken: ricochetETHx.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/alice/bob/carl subscription to ethx approved =======");
-            await sf.idaV1
-                .approveSubscription({
-                    indexId: RIC_SUBSCRIPTION_INDEX.toString(),
-                    superToken: ricochetRIC.address,
-                    publisher: u.app.address,
-                    userData: "0x",
-                })
-                .exec(accountss[accountssNumbers[i]]);
-            console.log("====== admin/alice/bob/carl subscription to ric approved =======");
+    async function approveSubscriptions(tokensAndIDAIndexes: superTokenAndItsIDAIndex[], signers: SignerWithAddress[]) {
+        console.log("  ======== Inside approveSubscriptions ===========");
+        let tokenIndex: number;
+        for (let i = 0; i < signers.length; i++) {
+            for (let j = 0; j < tokensAndIDAIndexes.length; j++) {
+                tokenIndex = tokensAndIDAIndexes[j].IDAIndex;
+                await sf.idaV1
+                    .approveSubscription({
+                        indexId: tokenIndex.toString(),
+                        superToken: tokensAndIDAIndexes[j].token.address,
+                        publisher: u.app.address,
+                        userData: "0x",
+                    })
+                    .exec(signers[i]);
+                console.log("====== ", i, " subscription to token ", j, " approved =======");
+            }
         }
     }
 
@@ -207,8 +207,21 @@ describe('REXTwoWayMarket', () => {
         ricochetWBTCx = superT.wbtcx;
         ricochetRIC = superT.ric;
 
+        usdcxAndItsIDAIndex = {
+            token: ricochetUSDCx,
+            IDAIndex: USDCX_SUBSCRIPTION_INDEX,
+        }
+        ethxAndItsIDAIndex = {
+            token: ricochetETHx,
+            IDAIndex: ETHX_SUBSCRIPTION_INDEX,
+        }
+        ricAndItsIDAIndex = {
+            token: ricochetRIC,
+            IDAIndex: RIC_SUBSCRIPTION_INDEX,
+        }
+
         // ==============================================================================
-        const registrationKey = await sfRegistrationKey(sf, adminSigner.address);  
+        const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
         console.log("============ Right after sfRegistrationKey() ==================");
 
         console.log("======******** List of addresses =======");
@@ -244,10 +257,10 @@ describe('REXTwoWayMarket', () => {
         console.log("Deploying REXTwoWayMarket...");
         const REXMarketFactory = await ethers.getContractFactory(
             "REXTwoWayMarket",
-            adminSigner  
+            adminSigner
         );
         app = await REXMarketFactory.deploy(
-            adminSigner.address,  
+            adminSigner.address,
             sf.host.hostContract.address,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
@@ -276,7 +289,7 @@ describe('REXTwoWayMarket', () => {
             ricochetUSDCx.address,
             Constants.TELLOR_USDC_REQUEST_ID,
             1e7,
-            ricochetETHx.address,  
+            ricochetETHx.address,
             Constants.TELLOR_ETH_REQUEST_ID,
             1e9,
             20000,
@@ -315,7 +328,7 @@ describe('REXTwoWayMarket', () => {
         // let adminSigner2 = await ethers.getSigner(u.admin.address);
         referral = await referral.connect(adminSigner);
         await referral.verifyAffiliate("carl");
-
+        console.log("                      ============ The affiliate has been veryfied =============");
     }); // End of "before" block
 
     xit("should not allow small streams", async () => {
@@ -462,7 +475,8 @@ describe('REXTwoWayMarket', () => {
     it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
 
-        await approveSubscriptions();    // (sf, superT, u, accountss); ([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
+        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
+            [adminSigner, aliceSigner, bobSigner, carlSigner]);  // , karenSigner]); 
 
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
         await superT.usdcx
@@ -476,7 +490,7 @@ describe('REXTwoWayMarket', () => {
         // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
         await superT.ethx
             .transfer({
-                receiver: bobSigner.address,   
+                receiver: bobSigner.address,
                 amount: ethers.utils.parseUnits("0.5", 18).toString(),  // initialAmount
             }).exec(ethxWhaleSigner);
         console.log("====== Transferred to bob =======");
@@ -495,9 +509,9 @@ describe('REXTwoWayMarket', () => {
         console.log(" ====== Create alice flow ======= ");
         console.log("address: ", aliceSigner.address, "receiver: ", u.app.address,
             "supertoken: ", ricochetUSDCx.address, "flowRate: ", inflowRateUsdc);
-        
+
         await sf.cfaV1.createFlow({
-            sender: aliceSigner.address,  
+            sender: aliceSigner.address,
             receiver: u.app.address,
             superToken: superT.usdcx.address,
             flowRate: inflowRateUsdc,
@@ -527,7 +541,7 @@ describe('REXTwoWayMarket', () => {
             "supertoken: ", ricochetETHx.address, "flowRate: ", inflowRateEth);
 
         await sf.cfaV1.createFlow({
-            sender: bobSigner.address,    
+            sender: bobSigner.address,
             receiver: u.app.address,
             superToken: ricochetETHx.address,
             flowRate: inflowRateEth,
