@@ -170,7 +170,17 @@ describe('REXTwoWayMarket', () => {
         }
     }
 
-    beforeEach(async () => {
+    /*
+    - Initialize Superfluid framework (see the helpers/setup.ts file)
+    - Deploy REXReferral contract
+    - Deploy REXTwoWayMarket contract
+    - Update the oracles
+    - Initialize TwoWayMarket
+    - Initialize subsidies
+    - Send RICs to the contract
+    - Register affiliate
+    */
+    before(async () => {
         const {
             superfluid,
             users,
@@ -325,7 +335,76 @@ describe('REXTwoWayMarket', () => {
         referral = await referral.connect(adminSigner);
         await referral.verifyAffiliate("carl");
         console.log("                      ============ The affiliate has been veryfied =============");
+        console.log("=======================================================================");
+        console.log("================ End of \"before\" block ==============================");
+        console.log("=======================================================================");
     });                 // End of "before" block
+
+
+    it.only("should not allow affiliate streams", async () => {
+        const inflowRateUsdc = '1000000000000000';
+
+        console.log('Transfer carl');
+        await ricochetUSDCx
+            .transfer({
+                receiver: carlSigner.address,
+                amount: ethers.utils.parseUnits("400", 18).toString(),
+            }).exec(usdcxWhaleSigner);
+        console.log("====== CCCCC - Transferred to carl =======");
+
+        await approveSubscriptions([usdcxAndItsIDAIndex], [carlSigner]);
+
+        let operation = sf.cfaV1.createFlow({
+            sender: carlSigner.address,
+            receiver: u.app.address,
+            superToken: ricochetUSDCx.address,
+            flowRate: inflowRateUsdc,  
+        });
+        console.log("      =====", operation);
+        expect(await operation.exec(carlSigner)).to.be.revertedWith("noAffiliates"); // I get "Execute Transaction Error - There was an error executing the transaction: {}"
+    });
+
+    it("should let streamers unsubscribe", async () => {
+        const inflowRateUsdc = '1000000000000000';
+
+        console.log('Transfer alice');
+        await ricochetUSDCx
+            .transfer({
+                receiver: aliceSigner.address,
+                amount: ethers.utils.parseUnits("400", 18).toString(),
+            }).exec(usdcxWhaleSigner);
+        console.log("====== UNSUBSCRIBE - Transferred to alice =======");
+
+        let operation = sf.cfaV1.createFlow({
+            sender: aliceSigner.address,
+            receiver: u.app.address,
+            superToken: ricochetUSDCx.address,
+            flowRate: inflowRateUsdc,  // I get "AssertionError: Expected transaction to be reverted with noAffiliates, but other exception was thrown: [object Object]"
+        }).exec(aliceSigner);
+        console.log("      =====", operation);
+        // await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') });
+        await approveSubscriptions([usdcxAndItsIDAIndex], [aliceSigner]);
+
+        await web3tx(
+            sf.host.callAgreement,
+            `Alice revokes IDA subscription`,
+        )(
+            sf.agreements.ida.address,
+            sf.agreements.ida.contract.methods.revokeSubscription(
+                ethx.address,
+                app.address,
+                1,
+                '0x'
+            ).encodeABI(),
+            '0x', // user data
+            {
+                from: u.alice.address,
+            },
+        );
+
+        expect(await app.isAppJailed()).to.equal(false)
+
+    });
 
     it("should not allow small streams", async () => {
 
