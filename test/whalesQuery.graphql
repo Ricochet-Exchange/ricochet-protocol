@@ -1,0 +1,22 @@
+"Subgraph query to look for a whale address for WETHx"
+{
+  accountTokenSnapshots(
+    first:10
+    where:{
+      token:"0x27e1e4e6bc79d93032abef01025811b7e4727e85"
+    }
+    orderBy:balanceUntilUpdatedAt
+    orderDirection:desc
+  ) {
+    balanceUntilUpdatedAt
+      account{
+      id
+      isSuperApp
+    }
+  }
+}
+
+"To be run in https://console.superfluid.finance/subgraph"
+"Other conditions --> Be sure it's not a registered super app and check that it's an EOA account as well."
+"Courtesy of Joshua Triley"
+
