@@ -73,6 +73,7 @@ export const setup = async () => {
     Constants.ALICE_ADDRESS,
     Constants.BOB_ADDRESS,
     Constants.CARL_ADDRESS,
+    Constants.KAREN_ADDRESS,
     Constants.USDCX_SOURCE_ADDRESS,
     Constants.ETHX_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
