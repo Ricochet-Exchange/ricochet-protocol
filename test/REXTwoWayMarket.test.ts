@@ -7,19 +7,10 @@ import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
 
-import {
-    getSeconds,
-    increaseTime,
-    // impersonateAccount,
-    impersonateAccounts,
-    impersonateAndSetBalance,
-    initSuperfluid,
-    createSFRegistrationKey,
-} from "./../misc/helpers";
+import { increaseTime } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
 import { Contract } from "ethers";
-import { Abi } from "@truffle/abi-utils/dist/lib/arbitrary";
 
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
@@ -379,7 +370,7 @@ describe('REXTwoWayMarket', () => {
             sender: aliceSigner.address,
             receiver: u.app.address,
             superToken: ricochetUSDCx.address,
-            flowRate: inflowRateUsdc,  
+            flowRate: inflowRateUsdc,
         }).exec(aliceSigner);
 
         // await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') });
@@ -389,7 +380,7 @@ describe('REXTwoWayMarket', () => {
             .revokeSubscription({
                 indexId: ETHX_SUBSCRIPTION_INDEX.toString(),
                 superToken: ethxAndItsIDAIndex.token.address,
-                publisher: app.address,  
+                publisher: app.address,
                 userData: "0x"
             }).exec(aliceSigner);
 
@@ -411,7 +402,6 @@ describe('REXTwoWayMarket', () => {
         const inflowRateNot10ETH = '10000000001';
 
         console.log('==== Small streams ==== Transfer alice USDCx');
-        // await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
         await ricochetUSDCx
             .transfer({
                 receiver: aliceSigner.address,
@@ -419,7 +409,6 @@ describe('REXTwoWayMarket', () => {
             }).exec(usdcxWhaleSigner);
         console.log("====== AAAAAA - Transferred to alice =======");
 
-        // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
         await ricochetETHx
             .transfer({
                 receiver: bobSigner.address,
@@ -438,13 +427,8 @@ describe('REXTwoWayMarket', () => {
             flowRate: inflowRateTooLow,  // I get "Execute Transaction Error"
             // userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl'])
         });
-        // u.alice.flow({ flowRate: inflowRateTooLow, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
-        // let op2 = await operation.exec(aliceSigner);
-        // console.log("      ============= Just created a flowrate too low ----> ");
-        console.log("      =====", operation);
+        console.log(" ABCD     =====", operation);
         await expect(operation.exec(aliceSigner)).to.be.revertedWith("notScalable");
-
-        console.log("      ============= Till here");
 
         operation = sf.cfaV1.createFlow({
             sender: aliceSigner.address,
@@ -454,7 +438,6 @@ describe('REXTwoWayMarket', () => {
             userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl'])
             // userData: ethers.utils.solidityKeccak256(["string"], ["carl"]),   // Not sure
         });
-        // u.alice.flow({ flowRate: inflowRateNot10, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
 
         expect(await operation.exec(aliceSigner)).to.be.revertedWith("notScalable");
 
@@ -480,10 +463,6 @@ describe('REXTwoWayMarket', () => {
             superToken: ricochetUSDCx.address,
         }).exec(aliceSigner)
         console.log("      ============= Stopped flow ");
-        // await u.alice.flow({
-        //     flowRate: '0',
-        //     recipient: u.app
-        // });
 
         // Confirm speed limit allocates shares correctly
         expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,0,0`);
@@ -513,12 +492,6 @@ describe('REXTwoWayMarket', () => {
             userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl'])
         }).exec(aliceSigner);
         console.log("      == 222 = Stopped flow ");
-
-        // await u.alice.flow({
-        //     flowRate: '0',
-        //     recipient: u.app,
-        //     userData: web3.eth.abi.encodeParameter('string', 'carl')
-        // });
 
         // Confirm speed limit allocates shares correctly
         expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,0,0`);
@@ -617,7 +590,6 @@ describe('REXTwoWayMarket', () => {
             [adminSigner, aliceSigner, bobSigner, carlSigner]);  // , karenSigner]); 
 
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
-        // await superT.usdcx
         await ricochetUSDCx
             .transfer({
                 receiver: aliceSigner.address,
@@ -626,7 +598,6 @@ describe('REXTwoWayMarket', () => {
         console.log("====== Transferred to alice =======");
         // checkBalance(aliceSigner, "Alice");   
 
-        // await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
         await ricochetETHx
             .transfer({
                 receiver: bobSigner.address,
@@ -660,20 +631,6 @@ describe('REXTwoWayMarket', () => {
         console.log(" ======***** Alice stream rate: ",
             await app.getStreamRate(aliceSigner.address, ricochetETHx.address), " and for usdcx: ",
             await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address));
-
-        // let baseNonce = provider.getTransactionCount(wallet.getAddress());
-        // let nonceOffset = 0;
-        // function getNonce() {
-        //     return baseNonce.then((nonce) => (nonce + (nonceOffset++)));
-        // }
-        // let tx0 = { to: a0, value: v0, nonce: getNonce() };
-        // wallet.sendTransaction(tx0);
-        // let tx1 = { to: a1, value: v1, nonce: getNonce() };
-        // wallet.sendTransaction(tx1);
-        // setTimeout(() => {
-        //     console.log('hi');
-        // }, 500);
-        // ethers.utils NonceManager.incrementTransactionCount();
 
         console.log(" ====== Create bob flow ======= ");
         console.log("address: ", bobSigner.address, "receiver: ", u.app.address,
