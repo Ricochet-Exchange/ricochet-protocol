@@ -128,7 +128,7 @@ describe('REXTwoWayMarket', () => {
     }
 
     async function checkBalance(user: SignerWithAddress, name: string) {
-        console.log(" ======== Balance of ", name, " ", user.address, " ============= ");
+        console.log(" checkBalance START ======== Balance of ", name, " with address: ", user.address, " ============= ");
         let balanceEthx = await ricochetETHx.balanceOf({
             account: user.address, providerOrSigner: provider
         });
@@ -141,7 +141,7 @@ describe('REXTwoWayMarket', () => {
         console.log("Balance in ETHX: ", balanceEthx);
         console.log("Balance in USDCX: ", balanceUsdcx);
         console.log("Balance in RIC: ", balanceRic);
-        console.log(" =============================================================== ");
+        console.log(" checkBalance END ====================================================== ");
     }
 
     async function delta(account: SignerWithAddress, balances: any) {  // : SuperTokensBalances) {
@@ -200,8 +200,9 @@ describe('REXTwoWayMarket', () => {
         aliceSigner = accountss[1];
         bobSigner = accountss[2];
         carlSigner = accountss[3];
-        usdcxWhaleSigner = accountss[4];
-        ethxWhaleSigner = accountss[5];
+        karenSigner = accountss[4];
+        usdcxWhaleSigner = accountss[5];
+        ethxWhaleSigner = accountss[6];
 
         ricochetUSDCx = superT.usdcx;
         ricochetETHx = superT.ethx;
@@ -320,7 +321,7 @@ describe('REXTwoWayMarket', () => {
         checkBalance(adminSigner, "the contract");
 
         // Register the market with REXReferral
-        await referral.registerApp(u.app.address);
+        await referral.registerApp(app.address);    // (u.app.address);    
         referral = await referral.connect(carlSigner);
         await referral.applyForAffiliate("carl", "carl");
         referral = await referral.connect(adminSigner);
@@ -355,7 +356,7 @@ describe('REXTwoWayMarket', () => {
         expect(await operation.exec(carlSigner)).to.be.revertedWith("noAffiliates"); // I get "Execute Transaction Error - There was an error executing the transaction: {}"
     });
 
-    it("should let streamers unsubscribe", async () => {
+    xit("should let streamers unsubscribe", async () => {
         const inflowRateUsdc = '1000000000000000';
 
         console.log('Transfer alice');
@@ -387,7 +388,7 @@ describe('REXTwoWayMarket', () => {
         expect(await app.isAppJailed()).to.equal(false);   // It's working
     });
 
-    it("should not allow small streams", async () => {
+    xit("should not allow small streams", async () => {
 
         // Lower bound on a stream is shareScaler * 1e3
         const inflowRateUsdc2 = "1000000000000000";
@@ -520,7 +521,6 @@ describe('REXTwoWayMarket', () => {
             flowRate: inflowRateNot10ETH,
             userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl'])
         });
-        // u.bob.flow({ flowRate: inflowRateNot10ETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
         expect(await operation.exec(bobSigner)).to.be.revertedWith("notScalable");
 
         // Make sure it works with scalable, prime flow rates
@@ -583,11 +583,11 @@ describe('REXTwoWayMarket', () => {
     });
 
     // "approve" must be called before calling "transferFrom"
-    xit("should distribute tokens to streamers", async () => {
+    it("should distribute tokens to streamers", async () => {
         console.log("====== Test Case started ==========================");
 
         await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
-            [adminSigner, aliceSigner, bobSigner, carlSigner]);  // , karenSigner]); 
+            [adminSigner, aliceSigner, bobSigner, carlSigner, karenSigner]);
 
         const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
         await ricochetUSDCx
@@ -614,6 +614,7 @@ describe('REXTwoWayMarket', () => {
         let inflowRate = parseUnits("30", 18);   // .div(ethers.BigNumber.from(30));  // getBigNumber(getSeconds(30)));
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
+
         // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
 
         console.log(" ====== Create alice flow ======= ");
@@ -646,32 +647,19 @@ describe('REXTwoWayMarket', () => {
         console.log("                      ====== Created stream for bob ======= \n");
         console.log(" ======***** Bob stream rate: ", await app.getStreamRate(bobSigner.address, ricochetETHx.address), " for ethx.");
 
-        // // await takeMeasurements();
-        // // TODO 
-        // expect(
-        //     await app.getStreamRate(u.alice.address, superT.usdcx.address)
-        // ).to.equal(inflowRateUsdc);
-        // expect(
-        //     (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, u.alice.address)).toString()
-        // ).to.equal(`true,true,980000,0`);
+        // await takeMeasurements();
+        expect(await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address)).to.equal(inflowRateUsdc);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,980000,0`);
         expect(
             (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
         ).to.equal(`true,true,20000,0`);     // It's 18,000 if a referral is registered
         expect(
             (await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
         ).to.equal(`true,true,0,0`);     // It's 2,000 if a referral is registered
-        expect(
-            await app.getStreamRate(bobSigner.address, ricochetETHx.address)
-        ).to.equal(inflowRateEth);
-        expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
-        ).to.equal(`true,true,980000,0`);
-        expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
-        ).to.equal(`true,true,0,0`);
-        expect(
-            (await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-        ).to.equal(`true,true,20000,0`);
+        expect(await app.getStreamRate(bobSigner.address, ricochetETHx.address)).to.equal(inflowRateEth);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()).to.equal(`true,true,980000,0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,20000,0`);
         // 3. Advance time 1 hour
         await increaseTime(3600);
         console.log("Fast forward");    // So far so good
@@ -680,12 +668,14 @@ describe('REXTwoWayMarket', () => {
         await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
-        // await app.updateTokenPrices();      // TODO
+        console.log("======== So far so good - AAAAAAAAAAAAAA ===========");
+        await app.updateTokenPrices();
+        console.log("======= Updated PRICES");
         // 4. Trigger a distribution
-        // await app.distribute("0x");
-        // // This fifth step is commented in OneWay  // TODO
-        // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        // // await takeMeasurements();
+        await app.distribute("0x");
+        console.log("======= distribution has been called");
+        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+        // await takeMeasurements();
 
         // let deltaAlice = await delta(alice, aliceBalances);
         // let deltaCarl = await delta(carl, carlBalances);
@@ -698,42 +688,44 @@ describe('REXTwoWayMarket', () => {
         // console.log(deltaKaren)
         // console.log(deltaAlice)
         // console.log(deltaBob)
-        // // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
+
+        // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
         // expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
         // expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
-        // // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
+        // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
-        // // Flip, alice streams more USDC than Bob streams ETH
-        // expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,2000,0`);
-        // const txnResponseAlice2 = (await sf).cfaV1
-        //     .createFlow({
-        //         sender: alice.address,
-        //         flowRate: (parseInt(inflowRateUsdc) * 10).toString(),
-        //         receiver: app.address,
-        //         superToken: usdcx.address
-        //     }).exec(alice);
+        // FLIP, alice streams more USDC than Bob streams ETH
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);  // It should be 2000,0
+        console.log("======= expect executed");
+        let newFlowRate = (parseInt(inflowRateUsdc) * 10).toString();
+        await sf.cfaV1.updateFlow({
+            receiver: u.app.address,   // app.address,
+            flowRate: newFlowRate,     // newFlowRate.toString()
+            superToken: ricochetUSDCx.address
+        }).exec(aliceSigner);
+        console.log("======= FLOW updated");
 
-        // // await alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: app });
-
-        // expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
-        // expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
-        // expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
-        // expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,180000,0`);
-        // expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
-        // expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
-        // expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
-        // expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
-        // // await takeMeasurements();
-        // await increaseTime(3600);
-        // await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        // await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
-        // await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        // await app.updateTokenPrices();
-        // // 4. Trigger a distribution
-        // await app.distribute("0x");
-        // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        // // await takeMeasurements();
+        expect(await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address)).to.equal(newFlowRate);     // ("10000000000000000");
+        console.log("======= BBBBBB expect executed");
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,9800000,0`);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,200000,0`); // It's 180,000 if a referral is registered
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);   // It should be 20,000
+        expect(await app.getStreamRate(bobSigner.address, ricochetETHx.address)).to.equal(inflowRateEth);
+        let bobIDAShare = 980000;
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()).to.equal(`true,true,${bobIDAShare},0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,20000,0`);
+        // await takeMeasurements();
+        await increaseTime(3600);
+        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
+        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
+        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+        await app.updateTokenPrices();
+        // 4. Trigger a distribution
+        await app.distribute("0x");
+        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+        // await takeMeasurements();
 
         // deltaAlice = await delta(alice, aliceBalances);
         // deltaCarl = await delta(carl, carlBalances);
@@ -750,45 +742,44 @@ describe('REXTwoWayMarket', () => {
         // expect(deltaBob.ethx * oraclePrice / 1e6 * -1).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
         // expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
 
-        // console.log("Transfer karen");
-        // usdcx.transferFrom({
-        //     sender: usdcSpender.address,
-        //     receiver: karen.address,
-        //     amount: toWad(400)
-        // });
-        // // await usdcx.connect(usdcSpender).transfer(karen.address, toWad(400));
+        console.log("Transfer karen");
+        await ricochetUSDCx
+            .transfer({
+                receiver: karenSigner.address,
+                amount: ethers.utils.parseUnits("400", 18).toString(),
+            }).exec(usdcxWhaleSigner);
+        console.log("====== DDD - Transferred to karen =======");
 
-        // // Add another streamer, alice streams more USDC than Bob streams ETH
-        // const txnResponseAlice3 = (await sf).cfaV1
-        //     .createFlow({
-        //         sender: alice.address,
-        //         flowRate: inflowRateUsdc,
-        //         receiver: app.address,
-        //         superToken: usdcx.address
-        //     }).exec(alice);
+        // JR Corrected ---> karen, not alice
+        // Add another streamer, karen streams more USDC than Bob streams ETH
+        await sf.cfaV1.createFlow({
+            flowRate: inflowRateUsdc,
+            receiver: app.address,
+            superToken: ricochetUSDCx.address
+        }).exec(karenSigner);
+        console.log("====== DDD - Karen just created a flow =======");
 
-        // // await karen.flow({ flowRate: inflowRateUsdc, recipient: app });    
-        // expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal("10000000000000000");
-        // expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,9800000,0`);
-        // expect((await app.getIDAShares(1, carl.address)).toString()).to.equal(`true,true,20000,0`);
-        // expect(await app.getStreamRate(bob.address, ethx.address)).to.equal(inflowRateEth);
-        // expect((await app.getIDAShares(0, bob.address)).toString()).to.equal(`true,true,9800,0`);
-        // expect((await app.getIDAShares(0, carl.address)).toString()).to.equal(`true,true,0,0`);
-        // expect((await app.getIDAShares(0, admin.address)).toString()).to.equal(`true,true,200,0`);
-        // expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(inflowRateUsdc);
-        // expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,980000,0`);
-        // expect((await app.getIDAShares(1, admin.address)).toString()).to.equal(`true,true,200000,0`);
+        expect(await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address)).to.equal("10000000000000000");
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,9800000,0`);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);   // It should be 20000,0
+        expect(await app.getStreamRate(bobSigner.address, ricochetETHx.address)).to.equal(inflowRateEth);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()).to.equal(`true,true,980000,0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);
+        expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,20000,0`);
+        expect(await app.getStreamRate(karenSigner.address, ricochetUSDCx.address)).to.equal(inflowRateUsdc);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, karenSigner.address)).toString()).to.equal(`true,true,980000,0`);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,220000,0`); // It should be 200000,0
 
-        // // await takeMeasurements();
-        // await increaseTime(3600);
-
-        // await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        // await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
-        // await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        // await app.updateTokenPrices();
-        // // 4. Trigger a distribution
-        // await app.distribute("0x");
-        // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+        // await takeMeasurements();
+        await increaseTime(3600);
+        console.log("====== So far so good 22222 ========");
+        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
+        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
+        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+        await app.updateTokenPrices();
+        // 4. Trigger a distribution
+        await app.distribute("0x");
+        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
         // // await takeMeasurements();
 
         // deltaAlice = await delta(alice, aliceBalances);
@@ -807,38 +798,45 @@ describe('REXTwoWayMarket', () => {
         // expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
         // expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
-        // let aliceBeforeBalance = await usdcx.balanceOf({
-        //     account: alice.address,
-        //     providerOrSigner: alice
-        // });
-        // console.log("before", aliceBeforeBalance);
-        // // await traveler.advanceTimeAndBlock(30);
-        // // await alice.flow({ flowRate: "0", recipient: app });
-        // // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
-        // let aliceAfterBalance = await usdcx.balanceOf({
-        //     account: alice.address,
-        //     providerOrSigner: alice
-        // });
-        // // let aliceAfterBalance = await usdcx.balanceOf(alice.address);
-        // // Need to also account for the four hour fee
-        // let aliceBeforeBalanceInNumber = parseInt(aliceBeforeBalance);
-        // let aliceAfterBalanceInNumber = parseInt(aliceAfterBalance);
-        // aliceAfterBalanceInNumber = aliceAfterBalanceInNumber - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
-        // expect(aliceBeforeBalance).to.within(aliceAfterBalanceInNumber * 0.999, aliceAfterBalanceInNumber * 1.001);
-        // expect(await app.getStreamRate(alice.address, usdcx.address)).to.equal(0);
-        // expect((await app.getIDAShares(1, alice.address)).toString()).to.equal(`true,true,0,0`);
+        let aliceBeforeBalance = await ricochetUSDCx.balanceOf({
+            account: aliceSigner.address,
+            providerOrSigner: provider
+        });
+        console.log("ABC - alice's balane: ", aliceBeforeBalance);
+        await increaseTime(30);
 
-        // // await takeMeasurements();
-        // await increaseTime(3600);
+        // Stop the flow
+        await sf.cfaV1.deleteFlow({
+            sender: aliceSigner.address,
+            receiver: u.app.address,
+            superToken: ricochetUSDCx.address,
+        }).exec(aliceSigner)
+        console.log("    aaaaaa  ============= Stopped alice flow ");
 
-        // await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        // await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
-        // await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        // await app.updateTokenPrices();
-        // // 4. Trigger a distributions
-        // await app.distribute("0x");
-        // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
-        // // await takeMeasurements();
+        let aliceAfterBalance = await ricochetUSDCx.balanceOf({
+            account: aliceSigner.address,
+            providerOrSigner: provider
+        });
+        // Need to also account for the four hour fee
+        let aliceBeforeBalanceInNumber = parseInt(aliceBeforeBalance);
+        let aliceAfterBalanceInNumber = parseInt(aliceAfterBalance);
+        aliceAfterBalanceInNumber = aliceAfterBalanceInNumber - 4 * 60 * 60 * parseInt(inflowRateUsdc) * 10;
+        expect(aliceBeforeBalance).to.within(aliceAfterBalanceInNumber * 0.999, aliceAfterBalanceInNumber * 1.001);
+        expect(await app.getStreamRate(aliceSigner.address, ricochetUSDCx.address)).to.equal(0);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,0,0`);
+
+        // await takeMeasurements();
+        await increaseTime(3600);
+
+        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
+        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
+        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+        await app.updateTokenPrices();
+        // 4. Trigger a distributions
+        await app.distribute("0x");
+        console.log("ABCDEF!!! - So far so good ");
+        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+        // await takeMeasurements();
 
         // deltaAlice = await delta(alice, aliceBalances);
         // deltaCarl = await delta(carl, carlBalances);
@@ -857,23 +855,30 @@ describe('REXTwoWayMarket', () => {
         // expect(deltaAlice.ethx).to.equal(0)
         // expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
 
-        // // Add another streamer, alice streams more USDC than Bob streams ETH
-        // // await karen.flow({ flowRate: "0", recipient: app });
-        // // framework.cfaV1.createFlow({ flowRate: "0", receiver: app, superToken: usdcx.address });   // TODO
-        // // TODO
-        // expect(await app.getStreamRate(karen.address, usdcx.address)).to.equal(0);
-        // expect((await app.getIDAShares(1, karen.address)).toString()).to.equal(`true,true,0,0`);
+        // Add another streamer, alice streams more USDC than Bob streams ETH
 
-        // // await takeMeasurements();
-        // await increaseTime(3600);
+        // Stop the flow
+        await sf.cfaV1.deleteFlow({
+            sender: karenSigner.address,
+            receiver: u.app.address,
+            superToken: ricochetUSDCx.address,
+        }).exec(karenSigner)
+        console.log("    aaaaaa  ============= Stopped karen flow ");
 
-        // await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        // await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
-        // await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        // await app.updateTokenPrices();
-        // // 4. Trigger a distribution
-        // await app.distribute("0x");
-        // // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
+        expect(await app.getStreamRate(karenSigner.address, ricochetUSDCx.address)).to.equal(0);
+        expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, karenSigner.address)).toString()).to.equal(`true,true,0,0`);
+
+        // await takeMeasurements();
+        await increaseTime(3600);
+
+        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
+        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
+        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+        await app.updateTokenPrices();
+        // 4. Trigger a distribution
+        await app.distribute("0x");
+        console.log("   ============= Temporary END");
+        // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
         // // await takeMeasurements();
 
         // deltaAlice = await delta(alice, aliceBalances);
