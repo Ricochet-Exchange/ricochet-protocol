@@ -448,7 +448,7 @@ describe('REXTwoWayMarket', () => {
 
     });
 
-    it.only('should not allow affiliate streams', async () => {
+    it('should not allow affiliate streams', async () => {
       const inflowRateUsdc = '1000000000000000';
 
       console.log('Transfer alice');
@@ -720,7 +720,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
     });
 
-    it('should distribute tokens to streamers', async () => {
+    it.only('should distribute tokens to streamers', async () => {
       await approveSubscriptions([u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address]);
 
       console.log('Transfer alice');
@@ -742,8 +742,8 @@ describe('REXTwoWayMarket', () => {
 
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
-      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,10000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,10000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
@@ -780,12 +780,11 @@ describe('REXTwoWayMarket', () => {
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
       // Flip, alice streams more USDC than Bob streams ETH
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
       await u.alice.flow({ flowRate: (parseInt(inflowRateUsdc) * 10).toString(), recipient: u.app });
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
-      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,180000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,100000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,100000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
@@ -824,14 +823,14 @@ describe('REXTwoWayMarket', () => {
       await u.karen.flow({ flowRate: inflowRateUsdc, recipient: u.app });
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
-      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
+      expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,100000,0`);
       expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
       expect(await app.getStreamRate(u.karen.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.karen.address)).toString()).to.equal(`true,true,980000,0`);
-      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,200000,0`);
+      expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,120000,0`);
 
 
       await takeMeasurements();

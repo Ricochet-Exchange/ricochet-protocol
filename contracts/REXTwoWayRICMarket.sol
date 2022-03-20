@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import './REXMarket.sol';
 
-contract REXTwoWayMarket is REXMarket {
+contract REXTwoWayRICMarket is REXMarket {
   using SafeERC20 for ERC20;
 
   ISuperToken inputTokenA;
@@ -17,9 +17,9 @@ contract REXTwoWayMarket is REXMarket {
   uint32 constant SUBSIDYB_INDEX = 3;
   uint256 lastDistributionTokenAAt;
   uint256 lastDistributionTokenBAt;
-  address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
-  ISuperToken subsidyToken = ISuperToken(ric);
-  uint256 ricRequestId = 77;
+  // address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
+  // Use ETHx as a subsidy, RIC is the token so another token needs to be set as subsidy
+  ISuperToken subsidyToken = ISuperToken(0x27e1e4E6BC79D93032abef01025811B7E4727e85);
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
   ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
@@ -55,7 +55,7 @@ contract REXTwoWayMarket is REXMarket {
     market.rateTolerance = _rateTolerance;
     oracle = tellor;
     market.feeRate = _feeRate;
-    market.affiliateFee = 500000;
+    market.affiliateFee = 100000;
     require(_inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6, "!scaleable");
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId, _inputTokenAShareScaler);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId, _inputTokenBShareScaler);
@@ -68,7 +68,7 @@ contract REXTwoWayMarket is REXMarket {
         address(router),
         2**256 - 1
     );
-    ERC20(inputTokenB.getUnderlyingToken()).safeIncreaseAllowance(
+    ERC20(address(inputTokenB)).safeIncreaseAllowance(
         address(router),
         2**256 - 1
     );
@@ -77,10 +77,13 @@ contract REXTwoWayMarket is REXMarket {
         address(inputTokenA),
         2**256 - 1
     );
-    ERC20(inputTokenB.getUnderlyingToken()).safeIncreaseAllowance(
+    ERC20(address(inputTokenB)).safeIncreaseAllowance(
         address(inputTokenB),
         2**256 - 1
     );
+
+    lastDistributionTokenAAt = block.timestamp;
+    lastDistributionTokenBAt = block.timestamp;
 
   }
 
@@ -90,8 +93,6 @@ contract REXTwoWayMarket is REXMarket {
     require(address(market.outputPools[SUBSIDYA_INDEX].token) == address(0) && address(market.outputPools[SUBSIDYB_INDEX].token) == address(0), "already initialized");
     addOutputPool(subsidyToken, 0, _emissionRate, 77, market.outputPools[OUTPUTB_INDEX].shareScaler);
     addOutputPool(subsidyToken, 0, _emissionRate, 77,  market.outputPools[OUTPUTA_INDEX].shareScaler);
-    lastDistributionTokenAAt = block.timestamp;
-    lastDistributionTokenBAt = block.timestamp;
     // Does not need to add subsidy token to outputPoolIndicies
     // since these pools are hardcoded
   }
@@ -298,9 +299,16 @@ contract REXTwoWayMarket is REXMarket {
 
    inputToken = input.getUnderlyingToken();
    outputToken = output.getUnderlyingToken();
+   // Handle case input or output is native supertoken
+   if(inputToken == address(0)) {
+     inputToken = address(input);
+   } else {
+     input.downgrade(amount);
+   }
+   if(outputToken == address(0)) {
+     outputToken = address(output);
+   }
 
-   // Downgrade and scale the input amount
-   input.downgrade(amount);
    // Scale it to 1e18 for calculations
    amount = ERC20(inputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(inputToken).decimals()));
 
@@ -316,6 +324,8 @@ contract REXTwoWayMarket is REXMarket {
    path = new address[](2);
    path[0] = inputToken;
    path[1] = outputToken;
+   console.log("inputAmount", amount);
+   console.log("minOutput", minOutput);
    router.swapExactTokensForTokens(
       amount,
       minOutput, // Accept any amount but fail if we're too far from the oracle price
@@ -325,10 +335,13 @@ contract REXTwoWayMarket is REXMarket {
    );
    // Assumes `amount` was outputToken.balanceOf(address(this))
    outputAmount = ERC20(outputToken).balanceOf(address(this));
+   console.log("outputAmount", outputAmount);
    // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
-   // Convert the outputToken back to its supertoken version
-   output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
+   // Convert the outputToken back to its supertoken version if needed
+   if(address(output) != outputToken) {
+     output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
+   }
 
    return outputAmount;
  }
