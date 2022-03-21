@@ -274,14 +274,14 @@ describe('REXTwoWayMarket', () => {
         let httpService = new HttpService();
         const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + Constants.COINGECKO_KEY + "&vs_currencies=usd";
         let response = await httpService.get(url);
-        oraclePrice = response.data[Constants.COINGECKO_KEY].usd * 1000000;
+        oraclePrice = parseInt(response.data[Constants.COINGECKO_KEY].usd) * 1000000;
         console.log("oraclePrice: ", oraclePrice.toString());
         await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
         const url2 = "https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd";
         response = await httpService.get(url2);
-        ricOraclePrice = await response.data["richochet"].usd * 1000000;
-        console.log("RIC oraclePrice: ", ricOraclePrice.toString());
+        ricOraclePrice = parseInt(response.data["richochet"].usd) * 1000000;  // Error: underflow when "parseInt" is missing
+        console.log("RIC oraclePrice: ", ricOraclePrice.toString());  // RIC oraclePrice:  514935.99999999994
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, 1000000);
         console.log("=========== Updated the oracles ============");
         // IMP. --> the oracles must be updated before calling initializeTwoWayMarket
@@ -711,17 +711,24 @@ describe('REXTwoWayMarket', () => {
         expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()).to.equal(`true,true,9800000,0`);
         expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,200000,0`); // It's 180,000 if a referral is registered
         expect((await app.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);   // It should be 20,000
+        console.log("======= XYZ executed");
         expect(await app.getStreamRate(bobSigner.address, ricochetETHx.address)).to.equal(inflowRateEth);
+        console.log("======= JSP executed");
         let bobIDAShare = 980000;
         expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()).to.equal(`true,true,${bobIDAShare},0`);
+        console.log("======= RWF executed");
         expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()).to.equal(`true,true,0,0`);
         expect((await app.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()).to.equal(`true,true,20000,0`);
         // await takeMeasurements();
         await increaseTime(3600);
+        console.log("======= 234 executed");
         await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, 1000000);
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await app.updateTokenPrices();
+        console.log("======= 56 executed");   // Last trace that can be seen after adding "parseInt" to the code to update the token price 
+        await app.updateTokenPrices();    // VM Exception while processing transaction: reverted with reason string '!getCurrentValue'
+        // at REXTwoWayMarket.emergencyCloseStream (contracts/REXMarket.sol:124)
+        console.log("======= 78 executed");
         // 4. Trigger a distribution
         await app.distribute("0x");
         // 5. Verify streamer 1 streamed 1/2 streamer 2"s amount and received 1/2 the output
