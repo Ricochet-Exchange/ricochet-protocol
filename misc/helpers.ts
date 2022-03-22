@@ -1,16 +1,16 @@
 // import hre from "hardhat";
-const {
-    web3tx,
-    toWad,
-    wad4human,
-    fromDecimals,
-} = require("@decentral.ee/web3-helpers");
+// const {
+//     web3tx,
+//     toWad,
+//     wad4human,
+//     fromDecimals,
+// } = require("@decentral.ee/web3-helpers");
 
 import { parseEther } from "@ethersproject/units";
 import { hexValue } from "@ethersproject/bytes";
-import { network, ethers } from "hardhat";
+import { network, ethers, waffle, hardhatArguments } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { names } from "../misc/setup";
+// import { names } from "../misc/setup";
 import { Framework } from "@superfluid-finance/sdk-core";
 
 import SuperfluidGovernanceBase from "../test/artifacts/superfluid/SuperfluidGovernanceII.json";
@@ -19,8 +19,11 @@ import { ISuperToken } from "../typechain";
 import { IInstantDistributionAgreementV1 } from "@superfluid-finance/sdk-core/dist/module/typechain";
 import { abi as IInstantDistributionAgreementV1ABI } from "@superfluid-finance/sdk-core/dist/module/abi/IInstantDistributionAgreementV1.json";
 import { PopulatedTransaction } from "ethers";
+import { Constants } from "./Constants";
 // import Operation from "@superfluid-finance/sdk-core/dist/module/Operation";
 const idaInterface = new ethers.utils.Interface(IInstantDistributionAgreementV1ABI);
+const { provider, loadFixture } = waffle;
+const PROVIDER = provider;
 
 export const getBigNumber = (number: number) => ethers.BigNumber.from(number);
 
@@ -32,27 +35,47 @@ export const getDate = (timestamp: number) => new Date(timestamp * 1000).toDateS
 
 export const getSeconds = (days: number) => 3600 * 24 * days; // Changes days to seconds
 
-export async function impersonateAccounts(accounts: { [key: string]: string }) {  //}: Promise<{ [key: string]: SignerWithAddress }> {
+export const impersonateAccounts = async (accounts: any) => {
+    let signers = [];
 
-    let signers: { [key: string]: SignerWithAddress } = {};
-
-    for (let i = 0; i < names.length; ++i) {
+    for (let i = 0; i < accounts.length; ++i) {
         await network.provider.request({
             method: "hardhat_impersonateAccount",
-            params: [accounts[names[i]]]
+            params: [accounts[i]]
         });
 
         await network.provider.send("hardhat_setBalance", [
-            accounts[names[i]],
+            accounts[i],
             hexValue(parseEther("1000")),
         ]);
 
-        signers[names[i]] = await ethers.getSigner(accounts[names[i]]);
-        console.log("AAAAAAAA - accounts[names[i]: " + accounts[names[i]] + " BBBB - : getSigner(accounts[names[i]]): " + signers[names[i]]);
+        signers[i] = await ethers.getSigner(accounts[i]);
     }
 
     return signers;
 }
+
+// export async function impersonateAccounts(accounts: { [key: string]: string }) {  //}: Promise<{ [key: string]: SignerWithAddress }> {
+
+//     let signers: { [key: string]: SignerWithAddress } = {};
+
+//     for (let i = 0; i < names.length; ++i) {
+//         await network.provider.request({
+//             method: "hardhat_impersonateAccount",
+//             params: [accounts[names[i]]]
+//         });
+
+//         await network.provider.send("hardhat_setBalance", [
+//             accounts[names[i]],
+//             hexValue(parseEther("1000")),
+//         ]);
+
+//         signers[names[i]] = await ethers.getSigner(accounts[names[i]]);
+//         console.log("AAAAAAAA - accounts[names[i]: " + accounts[names[i]] + " BBBB - : getSigner(accounts[names[i]]): " + signers[names[i]]);
+//     }
+
+//     return signers;
+// }
 
 export async function impersonateAccount(account: { [key: string]: string }): Promise<void> {
     await network.provider.request({
@@ -116,16 +139,36 @@ export const setNextBlockTimestamp = async (timestamp: number) => {
 /*******************************
 Superfluid specific Functions
 ********************************/
+// Initialize superfluid sdk
+export async function initSuperfluid(): Promise<Framework> {
+    const sf = await Framework.create({
+        provider: PROVIDER,
+        resolverAddress: Constants.SF_RESOLVER,
+        networkName: "hardhat",
+        dataMode: "WEB3_ONLY",
+        protocolReleaseVersion: "test" // "v1"
+    });
+    return sf;
+}
+
 export async function createSFRegistrationKey(sf: Framework, deployer: SignerWithAddress): Promise<string> {
     const registrationKey = `testKey-${Date.now()}`;
-    const appKey = ethers.utils.solidityKeccak256(
-        ['string', 'address', 'string'],
-        [
-            'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
-            deployer,
-            registrationKey,
-        ],
-    );
+    console.log("_________ Inside createSFRegistrationKey ___________");
+    // const encodedKey = ethers.utils.keccak256(
+    //     ethers.utils.defaultAbiCoder.encode(
+    //         ["string", "address", "string"],
+
+    // const appKey = ethers.utils.solidityKeccak256(
+    //     ethers.utils.defaultAbiCoder.encode(
+    //         ['string', 'address', 'string'],
+    //         [
+    //             'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
+    //             // deployer.address,
+    //             Constants.OWNER_ADDRESS,   // temp.
+    //             registrationKey,
+    //         ],
+    //     )
+    // );
 
     const governance = await sf.host.hostContract.getGovernance();
     console.log(`SF Governance: ${governance}`);
@@ -140,7 +183,7 @@ export async function createSFRegistrationKey(sf: Framework, deployer: SignerWit
         .getContractAt(SuperfluidGovernanceBase.abi, governance, await ethers.getSigner(govOwner));
 
     // await sfGovernance.whiteListNewApp(sf.host.address, appKey);
-    await sfGovernance.whiteListNewApp(sf.host.hostContract.address, appKey);
+    await sfGovernance.whiteListNewApp(sf.host.hostContract.address, registrationKey);  // appKey);
 
     return registrationKey;
 }
