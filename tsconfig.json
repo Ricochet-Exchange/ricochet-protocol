@@ -14,7 +14,7 @@
         "./typechain"
     ],
     "files": [
-        "hardhat.config.ts"
+        "./hardhat.config.ts"
     ],
     "ts-node": {
         "transpileOnly": true,

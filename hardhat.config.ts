@@ -1,16 +1,20 @@
 import * as dotenv from "dotenv";
 
 import { HardhatUserConfig, task } from "hardhat/config";
+// This adds support for typescript paths mappings
+// import "tsconfig-paths/register";
+
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
-import "@nomiclabs/hardhat-ethers";    
+import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 import "solidity-coverage";
+import { ethers } from "ethers";
 
 dotenv.config();
 
@@ -62,18 +66,25 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.POLYGON_NODE_URL || '',
-      //   accounts: [process.env.POLYGON_PRIVATE_KEY],
+        url: process.env.POLYGON_NODE_URL,
+        accounts: [process.env.POLYGON_PRIVATE_KEY],
         enabled: true,
         blockNumber: 22877930     // Essential for mainnet forking !!
       },
+      // blockGasLimit: 20000000,
+      // gasPrice: 30000000000,
+      // accounts: [{
+      //   privateKey: `${process.env.POLYGON_PRIVATE_KEY}`,
+      //   balance: ethers.utils.parseUnits("10000", 18).toString()
+      // }],
+      // saveDeployments: false
     },
-    // polygon: {
-    //   url: process.env.POLYGON_NODE_URL,
-    //   accounts: [process.env.POLYGON_PRIVATE_KEY],
-    //   blockGasLimit: 20000000,
-    //   gasPrice: 35000000000 // 35 Gwei
-    // }
+    polygon: {
+      url: process.env.POLYGON_NODE_URL,
+      // accounts: [process.env.POLYGON_PRIVATE_KEY],
+      blockGasLimit: 20000000,
+      gasPrice: 35000000000 // 35 Gwei
+    },
   },
   mocha: {
     timeout: 0,
@@ -92,12 +103,12 @@ const config: HardhatUserConfig = {
   // Configuration from the old Rex-Bank repository
   // networks: {
   //   hardhat: {
-      // forking: {
-      //   url: `https://green-nameless-water.matic.quiknode.pro/${process.env.QUICKNODE_ENDPOINT}/`,
-      // accounts: [process.env.MATIC_PRIVATE_KEY],
-      // blockNumber: parseInt(`${process.env.FORK_BLOCK_NUMBER}`),
-      // gasPrice: 50000000000,
-      // network_id: 137,
+  // forking: {
+  //   url: `https://green-nameless-water.matic.quiknode.pro/${process.env.QUICKNODE_ENDPOINT}/`,
+  // accounts: [process.env.MATIC_PRIVATE_KEY],
+  // blockNumber: parseInt(`${process.env.FORK_BLOCK_NUMBER}`),
+  // gasPrice: 50000000000,
+  // network_id: 137,
   //   },
   // }
 };
