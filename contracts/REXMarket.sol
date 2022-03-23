@@ -845,10 +845,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData,
             _superToken
         );
+        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 
         _onlyScalable(_superToken, _flowRate);
-
-        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx);

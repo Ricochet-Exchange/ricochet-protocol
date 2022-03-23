@@ -4,7 +4,7 @@ const {
 const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 
 
-const REXMARKET_CONTRACT_ADDRESS = "0x58Db2937B08713214014d2a579C3088db826Fad1";
+const REXMARKET_CONTRACT_ADDRESS = "0xF6a03FCf12Cdc8066aFaf12255105CA301E15ba6";
 
 
 async function main() {
