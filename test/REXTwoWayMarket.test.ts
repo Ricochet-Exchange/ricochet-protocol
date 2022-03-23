@@ -17,7 +17,7 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // Required by the Tellor oracle
+const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -142,7 +142,7 @@ describe('REXTwoWayMarket', () => {
         console.log(" checkBalance END ====================================================== ");
     }
 
-    async function delta(account: SignerWithAddress, balances: any) {  // : SuperTokensBalances) {
+    async function delta(account: SignerWithAddress, balances: any) {  
         const len = balances.ethx.length;
         const changeInOutToken = balances.ethx[len - 1] - balances.ethx[len - 2];
         const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
@@ -278,10 +278,10 @@ describe('REXTwoWayMarket', () => {
         const url2 = "https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd";
         response = await httpService.get(url2);
         ricOraclePrice = response.data["richochet"].usd * ORACLE_PRECISION_DIGITS;
-        console.log("RIC oraclePrice: ", ricOraclePrice.toString());  // RIC oraclePrice:  514935.99999999994
+        console.log("RIC oraclePrice: ", ricOraclePrice.toString());  
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
         console.log("=========== Updated the oracles ============");
-        // IMP. --> the oracles must be updated before calling initializeTwoWayMarket
+        // IMPORTANT --> the oracles must be updated before calling initializeTwoWayMarket
 
         await twoWayMarket.initializeTwoWayMarket(
             ricochetUSDCx.address,
@@ -377,7 +377,7 @@ describe('REXTwoWayMarket', () => {
                 userData: "0x"
             }).exec(aliceSigner);
 
-        expect(await twoWayMarket.isAppJailed()).to.equal(false);   // It's working
+        expect(await twoWayMarket.isAppJailed()).to.equal(false);   
     });
 
     xit("should not allow small streams", async () => {
@@ -580,11 +580,11 @@ describe('REXTwoWayMarket', () => {
         await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
             [adminSigner, aliceSigner, bobSigner, carlSigner, karenSigner]);
 
-        const initialAmount = ethers.utils.parseUnits("400", 18).toString();   // 18 is important !!
+        const initialAmount = ethers.utils.parseUnits("400", 18).toString();  
         await ricochetUSDCx
             .transfer({
                 receiver: aliceSigner.address,
-                amount: initialAmount,     // transferFrom does NOT work !!
+                amount: initialAmount,     
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to alice =======");
         // checkBalance(aliceSigner, "Alice");   
@@ -602,11 +602,9 @@ describe('REXTwoWayMarket', () => {
         const inflowRateEth = "10000000000000";
         const inflowRateIDASharesUsdc = "1000000";
         const inflowRateIDASharesEth = "10000";
-        let inflowRate = parseUnits("30", 18);   // .div(ethers.BigNumber.from(30));  // getBigNumber(getSeconds(30)));
+        let inflowRate = parseUnits("30", 18);   
         // 1. Initialize a stream exchange
         // 2. Create 2 streamers, one with 2x the rate of the other
-
-        // await alice.flow({ flowRate: inflowRateUsdc, recipient: app, userData: web3.eth.abi.encodeParameter("string", "carl") });
 
         console.log(" ====== Create alice flow ======= ");
         console.log("address: ", aliceSigner.address, "receiver: ", twoWayMarket.address,
@@ -712,8 +710,7 @@ describe('REXTwoWayMarket', () => {
         await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
         await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
         await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        await twoWayMarket.updateTokenPrices();    // VM Exception while processing transaction: reverted with reason string '!getCurrentValue'
-        // at REXTwoWayMarket.emergencyCloseStream (contracts/REXMarket.sol:124)
+        await twoWayMarket.updateTokenPrices();    // Solved error ---> VM Exception while processing transaction: reverted with reason string '!getCurrentValue'
 
         // 4. Trigger a distribution
         await twoWayMarket.distribute("0x");
