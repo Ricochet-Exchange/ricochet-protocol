@@ -730,6 +730,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         internal
         virtual
     {
+        console.log("  ======= Inside REXMarket._onlyScalable");
+        // console.log(_flowRate);
         // Enforce speed limit on flowRate
         require(
             uint128(uint256(int256(_flowRate))) %

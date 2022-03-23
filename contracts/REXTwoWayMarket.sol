@@ -447,6 +447,7 @@ contract REXTwoWayMarket is REXMarket {
  }
 
  function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal override {
+   console.log("  ======= Inside REXTwoWayMarket._onlyScalable");
    if (market.outputPoolIndicies[_superToken] == OUTPUTA_INDEX) {
      require(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) == 0, "notScalable");
    } else {
