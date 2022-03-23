@@ -21,9 +21,6 @@ const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 const traveler = require('ganache-time-traveler');
 const SuperfluidGovernanceBase = require('./artifacts/superfluid/SuperfluidGovernanceII.json');
 
-const superTokenAbi=[{"inputs":[{"internalType":"contract ISuperfluid","name":"host","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"bytes","name":"state","type":"bytes"}],"name":"AgreementAccountStateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":false,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":false,"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"AgreementCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":false,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":true,"internalType":"address","name":"penaltyAccount","type":"address"},{"indexed":true,"internalType":"address","name":"rewardAccount","type":"address"},{"indexed":false,"internalType":"uint256","name":"rewardAmount","type":"uint256"}],"name":"AgreementLiquidated","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"liquidatorAccount","type":"address"},{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":false,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":true,"internalType":"address","name":"penaltyAccount","type":"address"},{"indexed":true,"internalType":"address","name":"bondAccount","type":"address"},{"indexed":false,"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"bailoutAmount","type":"uint256"}],"name":"AgreementLiquidatedBy","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"uint256","name":"slotId","type":"uint256"}],"name":"AgreementStateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":false,"internalType":"bytes32","name":"id","type":"bytes32"}],"name":"AgreementTerminated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"agreementClass","type":"address"},{"indexed":false,"internalType":"bytes32","name":"id","type":"bytes32"},{"indexed":false,"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"AgreementUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"tokenHolder","type":"address"}],"name":"AuthorizedOperator","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"bailoutAccount","type":"address"},{"indexed":false,"internalType":"uint256","name":"bailoutAmount","type":"uint256"}],"name":"Bailout","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bytes","name":"data","type":"bytes"},{"indexed":false,"internalType":"bytes","name":"operatorData","type":"bytes"}],"name":"Burned","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes32","name":"uuid","type":"bytes32"},{"indexed":false,"internalType":"address","name":"codeAddress","type":"address"}],"name":"CodeUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bytes","name":"data","type":"bytes"},{"indexed":false,"internalType":"bytes","name":"operatorData","type":"bytes"}],"name":"Minted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"tokenHolder","type":"address"}],"name":"RevokedOperator","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"bytes","name":"data","type":"bytes"},{"indexed":false,"internalType":"bytes","name":"operatorData","type":"bytes"}],"name":"Sent","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"TokenDowngraded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"TokenUpgraded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"authorizeOperator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"createAgreement","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"defaultOperators","outputs":[{"internalType":"address[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"downgrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"getAccountActiveAgreements","outputs":[{"internalType":"contract ISuperAgreement[]","name":"","type":"address[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"agreementClass","type":"address"},{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"uint256","name":"dataLength","type":"uint256"}],"name":"getAgreementData","outputs":[{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"agreementClass","type":"address"},{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"slotId","type":"uint256"},{"internalType":"uint256","name":"dataLength","type":"uint256"}],"name":"getAgreementStateSlot","outputs":[{"internalType":"bytes32[]","name":"slotData","type":"bytes32[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getCodeAddress","outputs":[{"internalType":"address","name":"codeAddress","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getHost","outputs":[{"internalType":"address","name":"host","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getUnderlyingToken","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"granularity","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"contract IERC20","name":"underlyingToken","type":"address"},{"internalType":"uint8","name":"underlyingDecimals","type":"uint8"},{"internalType":"string","name":"n","type":"string"},{"internalType":"string","name":"s","type":"string"}],"name":"initialize","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"isAccountCritical","outputs":[{"internalType":"bool","name":"isCritical","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isAccountCriticalNow","outputs":[{"internalType":"bool","name":"isCritical","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"isAccountSolvent","outputs":[{"internalType":"bool","name":"isSolvent","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"isAccountSolventNow","outputs":[{"internalType":"bool","name":"isSolvent","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"address","name":"tokenHolder","type":"address"}],"name":"isOperatorFor","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"address","name":"liquidator","type":"address"},{"internalType":"address","name":"penaltyAccount","type":"address"},{"internalType":"uint256","name":"rewardAmount","type":"uint256"},{"internalType":"uint256","name":"bailoutAmount","type":"uint256"}],"name":"makeLiquidationPayouts","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"operationApprove","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"operationDowngrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"operationTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"operationUpgrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"},{"internalType":"bytes","name":"operatorData","type":"bytes"}],"name":"operatorBurn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"},{"internalType":"bytes","name":"operatorData","type":"bytes"}],"name":"operatorSend","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"proxiableUUID","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"realtimeBalanceOf","outputs":[{"internalType":"int256","name":"availableBalance","type":"int256"},{"internalType":"uint256","name":"deposit","type":"uint256"},{"internalType":"uint256","name":"owedDeposit","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"realtimeBalanceOfNow","outputs":[{"internalType":"int256","name":"availableBalance","type":"int256"},{"internalType":"uint256","name":"deposit","type":"uint256"},{"internalType":"uint256","name":"owedDeposit","type":"uint256"},{"internalType":"uint256","name":"timestamp","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"revokeOperator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"userData","type":"bytes"}],"name":"selfBurn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"userData","type":"bytes"}],"name":"selfMint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"send","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"int256","name":"delta","type":"int256"}],"name":"settleBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"uint256","name":"dataLength","type":"uint256"}],"name":"terminateAgreement","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"recipient","type":"address"}],"name":"transferAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"holder","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"id","type":"bytes32"},{"internalType":"bytes32[]","name":"data","type":"bytes32[]"}],"name":"updateAgreementData","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"slotId","type":"uint256"},{"internalType":"bytes32[]","name":"slotData","type":"bytes32[]"}],"name":"updateAgreementStateSlot","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newAddress","type":"address"}],"name":"updateCode","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"upgrade","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeTo","outputs":[],"stateMutability":"nonpayable","type":"function"}]
-
-
 const TEST_TRAVEL_TIME = 3600 * 2; // 1 hours
 
 function sleep(ms) {
@@ -82,22 +79,25 @@ async function createSFRegistrationKey(sf, deployer) {
   return registrationKey;
 }
 
-describe('REXTwoWayMarket', () => {
+describe('REXTwoWayRICMarket', () => {
   const errorHandler = (err) => {
     if (err) throw err;
   };
 
-  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'MaticSpender'];
+  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender', 'RicSpender'];
 
   let sf;
   let dai;
   let daix;
-  let maticx;
-  let wmatic;
+  let ethx;
+  let wbtc;
+  let wbtcx;
   let usd;
   let usdcx;
   let ric;
   let usdc;
+  let eth;
+  let weth;
   let app;
   let tp; // Tellor playground
   let usingTellor;
@@ -110,19 +110,21 @@ describe('REXTwoWayMarket', () => {
   let bob;
   let carl;
   let usdcSpender;
-  let maticSpender;
+  let ricSpender;
   const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
   const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
-  const TELLOR_MATIC_REQUEST_ID = 6;
+  const TELLOR_ETH_REQUEST_ID = 1;
   const TELLOR_USDC_REQUEST_ID = 78;
   const TELLOR_RIC_REQUEST_ID = 77;
-  const COINGECKO_KEY = 'matic-network';
+  const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
-  const USDCX_SOURCE_ADDRESS = '0x323578F3743Cd013fF6b3a1A1Ac708194527E007';
-  const MATICX_SOURCE_ADDRESS = '0xC2F9fE8b6827c43D36AE8d770e65b3F36F6A04b4';
+  const RIC_SOURCE_ADDRESS = '0xfcDc6352821B3e72a724117d5b56e275327D5FE6';
+  const USDCX_SOURCE_ADDRESS = '0xA08f80dc1759b12fdC40A4dc64562b322C418E1f';
+  const ETHX_SOURCE_ADDRESS = '0x6EAA11eec98c663ba096593cc779217A7e20665a';
+  const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
   const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
   const OUTPUT_TOKEN_ADDRESS = '0xB63E38D21B31719e6dF314D3d2c351dF0D4a9162'; // IDLE
 
@@ -137,38 +139,50 @@ describe('REXTwoWayMarket', () => {
   let ricOraclePrice;
 
   const appBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
   const ownerBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
   const aliceBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
   const bobBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
   const carlBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
   };
 
   const karenBalances = {
-    maticx: [],
+    outputx: [],
+    ethx: [],
+    wbtcx: [],
     daix: [],
     usdcx: [],
     ric: [],
@@ -176,7 +190,7 @@ describe('REXTwoWayMarket', () => {
 
   async function approveSubscriptions(
     users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
-    tokens = [usdcx.address, maticx.address, ric.address, ric.address],
+    tokens = [usdcx.address, ric.address],
   ) {
     // Do approvals
     // Already approved?
@@ -206,7 +220,7 @@ describe('REXTwoWayMarket', () => {
     // ==============
     // impersonate accounts and set balances
 
-    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, MATICX_SOURCE_ADDRESS];
+    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS, RIC_SOURCE_ADDRESS];
 
     accountAddrs.forEach(async (account) => {
       await impersonateAndSetBalance(account);
@@ -221,8 +235,9 @@ describe('REXTwoWayMarket', () => {
     carl = await ethers.provider.getSigner(CARL_ADDRESS);
     karen = await ethers.provider.getSigner(KAREN_ADDRESS);
     usdcSpender = await ethers.provider.getSigner(USDCX_SOURCE_ADDRESS);
-    maticSpender = await ethers.provider.getSigner(MATICX_SOURCE_ADDRESS);
-    const accounts = [owner, alice, bob, carl, karen, usdcSpender, maticSpender];
+    ethSpender = await ethers.provider.getSigner(ETHX_SOURCE_ADDRESS);
+    ricSpender = await ethers.provider.getSigner(RIC_SOURCE_ADDRESS);
+    const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender, ricSpender];
 
     // ==============
     // Init Superfluid Framework
@@ -230,14 +245,16 @@ describe('REXTwoWayMarket', () => {
     sf = new SuperfluidSDK.Framework({
       web3,
       resolverAddress: SF_RESOLVER,
-      tokens: ['MATICx', 'WBTC', 'DAI', 'USDC'],
+      tokens: ['WBTC', 'DAI', 'USDC', 'ETH'],
       version: 'v1',
     });
     await sf.initialize();
-    maticx = sf.tokens.MATICx
-    console.log("MATICx Address", maticx.address);
+    ethx = sf.tokens.ETHx;
+    wbtcx = sf.tokens.WBTCx;
     daix = sf.tokens.DAIx;
     usdcx = sf.tokens.USDCx;
+    const RicochetToken = await ethers.getContractFactory('RicochetToken');
+    ric = await RicochetToken.attach(RIC_TOKEN_ADDRESS);
 
     // ==============
     // Init SF users
@@ -247,7 +264,7 @@ describe('REXTwoWayMarket', () => {
       if (names[i].toLowerCase() == "bob") {
         u[names[i].toLowerCase()] = sf.user({
           address: accounts[i]._address || accounts[i].address,
-          token: maticx.address,
+          token: ric.address,
         });
       } else {
         u[names[i].toLowerCase()] = sf.user({
@@ -272,14 +289,14 @@ describe('REXTwoWayMarket', () => {
     // Setup tokens
 
     const ERC20 = await ethers.getContractFactory('ERC20');
-    ric = await ERC20.attach(RIC_TOKEN_ADDRESS);
-    wmatic = await ERC20.attach(await maticx.getUnderlyingToken());
+    weth = await ERC20.attach(await ethx.getUnderlyingToken());
+    wbtc = await ERC20.attach(await wbtcx.getUnderlyingToken());
     usdc = await ERC20.attach(await usdcx.getUnderlyingToken());
-    ric = ric.connect(owner);
+    ric = ric.connect(ricSpender);
 
     // Attach alice to the SLP token
-    outputx = maticx;
-    output = await ERC20.attach(await outputx.getUnderlyingToken());
+    outputx = ric;
+    output = ric; //await ERC20.attach(await outputx.getUnderlyingToken());
 
 
   });
@@ -290,11 +307,12 @@ describe('REXTwoWayMarket', () => {
     let response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
     oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1000000).toString();
     console.log('oraclePrice', oraclePrice);
-    await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
     await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
     response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd');
     ricOraclePrice = parseInt(response.data['richochet'].usd * 1000000).toString();
-    await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
+    console.log('ricOraclePrice', ricOraclePrice)
+    await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
 
     // ==============
     // Deploy REX Market
@@ -306,14 +324,14 @@ describe('REXTwoWayMarket', () => {
     referral = await RexReferral.deploy();
     await referral.deployed();
 
-    const REXTwoWayMarket = await ethers.getContractFactory('REXTwoWayMaticMarket', {
+    const REXTwoWayRICMarket = await ethers.getContractFactory('REXTwoWayRICMarket', {
       signer: owner,
     });
 
     const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
     console.log(registrationKey);
-    console.log('Deploying REXTwoWayMarket...');
-    app = await REXTwoWayMarket.deploy(
+    console.log('Deploying REXTwoWayRICMarket...');
+    app = await REXTwoWayRICMarket.deploy(
       u.admin.address,
       sf.host.address,
       sf.agreements.cfa.address,
@@ -321,22 +339,22 @@ describe('REXTwoWayMarket', () => {
       registrationKey,
       referral.address);
 
-    console.log('Deployed REXTwoWayMarket');
+    console.log('Deployed REXTwoWayRICMarket');
 
     await app.initializeTwoWayMarket(
       usdcx.address,
       TELLOR_USDC_REQUEST_ID,
       1e9,
-      maticx.address,
-      TELLOR_MATIC_REQUEST_ID,
+      ric.address,
+      TELLOR_RIC_REQUEST_ID,
       1e9,
       20000,
       20000
     )
 
-    await app.initializeSubsidies(10000000000000);
+    await app.initializeSubsidies(0);
     // send the contract some RIC
-    await ric.transfer(app.address, '3971239975789381077848')
+    // await ric.transfer(app.address, '3971239975789381077848')
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);
@@ -349,7 +367,7 @@ describe('REXTwoWayMarket', () => {
 
     u.app = sf.user({
       address: app.address,
-      token: outputx.address,
+      token: ric.address,
     });
     u.app.alias = 'App';
     // ==============
@@ -360,22 +378,22 @@ describe('REXTwoWayMarket', () => {
   async function checkBalance(user) {
     console.log('Balance of ', user.alias);
     console.log('usdcx: ', (await usdcx.balanceOf(user.address)).toString());
-    console.log('maticx: ', (await maticx.balanceOf(user.address)).toString());
+    console.log('ethx: ', (await ethx.balanceOf(user.address)).toString());
     console.log('ric: ', (await ric.balanceOf(user.address)).toString());
   }
 
   async function delta(account, balances) {
-    const len = balances.maticx.length;
-    const changeInOutToken = balances.maticx[len - 1] - balances.maticx[len - 2];
+    const len = balances.ethx.length;
+    const changeInOutToken = balances.ethx[len - 1] - balances.ethx[len - 2];
     const changeInInToken = balances.usdcx[len - 1] - balances.usdcx[len - 2];
     const changeInSubsidyToken = balances.ric[len - 1] - balances.ric[len - 2];
     console.log();
     console.log('Change in balances for ', account);
-    console.log('Maticx:', changeInOutToken, 'Bal:', balances.maticx[len - 1]);
+    console.log('Ethx:', changeInOutToken, 'Bal:', balances.ethx[len - 1]);
     console.log('Usdcx:', changeInInToken, 'Bal:', balances.usdcx[len - 1]);
     console.log('Ric:', changeInSubsidyToken, 'Bal:', balances.ric[len - 1]);
     return {
-      maticx: changeInOutToken,
+      ethx: changeInOutToken,
       usdcx: changeInInToken,
       ric: changeInSubsidyToken
     }
@@ -383,12 +401,12 @@ describe('REXTwoWayMarket', () => {
 
   async function takeMeasurements() {
 
-    appBalances.maticx.push((await maticx.balanceOf(app.address)).toString());
-    ownerBalances.maticx.push((await maticx.balanceOf(u.admin.address)).toString());
-    aliceBalances.maticx.push((await maticx.balanceOf(u.alice.address)).toString());
-    carlBalances.maticx.push((await maticx.balanceOf(u.carl.address)).toString());
-    karenBalances.maticx.push((await maticx.balanceOf(u.karen.address)).toString());
-    bobBalances.maticx.push((await maticx.balanceOf(u.bob.address)).toString());
+    appBalances.ethx.push((await ethx.balanceOf(app.address)).toString());
+    ownerBalances.ethx.push((await ethx.balanceOf(u.admin.address)).toString());
+    aliceBalances.ethx.push((await ethx.balanceOf(u.alice.address)).toString());
+    carlBalances.ethx.push((await ethx.balanceOf(u.carl.address)).toString());
+    karenBalances.ethx.push((await ethx.balanceOf(u.karen.address)).toString());
+    bobBalances.ethx.push((await ethx.balanceOf(u.bob.address)).toString());
 
     appBalances.usdcx.push((await usdcx.balanceOf(app.address)).toString());
     ownerBalances.usdcx.push((await usdcx.balanceOf(u.admin.address)).toString());
@@ -405,45 +423,32 @@ describe('REXTwoWayMarket', () => {
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
   }
 
-  describe.only('REXTwoWayMarket', async () => {
+  describe.only('REXTwoWayRICMarket', async () => {
 
     xit('should not allow two streams', async () => {
       const inflowRateUsdc = '1000000000000000';
-      const inflowRateMatic  = '10000000000000';
+      const inflowRateEth  = '10000000000000';
+      const inflowRateIDASharesUsdc = '1000000';
+      const inflowRateIDASharesEth = '10000';
 
 
-      console.log('Transfer alice usdc');
+      console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
-      console.log('Transfer alice matic');
-      await maticx.transfer(u.alice.address, toWad(1), { from: u.maticspender.address });
+      console.log('Transfer bob');
+      await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
-      await approveSubscriptions([u.alice.address]);
+      await approveSubscriptions([u.alice.address, u.bob.address]);
 
       await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app });
-      const aliceMatic = await sf.user({
+      const aliceEth = await sf.user({
         address: u.alice.address,
-        token: maticx.address,
+        token: ethx.address,
       });
 
       await expect(
-        aliceMatic.flow({ flowRate: inflowRateMatic, recipient: u.app })
+        aliceEth.flow({ flowRate: inflowRateEth, recipient: u.app })
       ).to.be.revertedWith("Already streaming");
-
-    });
-
-    it('should not allow affiliate streams', async () => {
-      const inflowRateUsdc = '1000000000000000';
-
-      console.log('Transfer alice');
-      await usdcx.transfer(u.carl.address, toWad(400), { from: u.usdcspender.address });
-      console.log('Done');
-
-      await approveSubscriptions([u.carl.address]);
-
-      await expect(
-        u.carl.flow({ flowRate: inflowRateUsdc, recipient: u.app })
-      ).to.be.revertedWith("noAffiliates");
 
     });
 
@@ -456,14 +461,14 @@ describe('REXTwoWayMarket', () => {
       const inflowRateTooLow  = '100000000000';
       const inflowRateNot10   = '1000000000001';
 
-      const inflowRateMinMATIC     = '10000000000';
-      const inflowRatePrimeMATIC   = '130000000000';
-      const inflowRateTooLowMATIC  = '1000000000';
-      const inflowRateNot10MATIC   = '10000000001';
+      const inflowRateMinETH     = '10000000000';
+      const inflowRatePrimeETH   = '130000000000';
+      const inflowRateTooLowETH  = '1000000000';
+      const inflowRateNot10ETH   = '10000000001';
 
       console.log('Transfer alice USDCx');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
-      await maticx.transfer(u.bob.address, toWad(1), { from: u.maticspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
 
       // console.log('Transfer alice ETH');
       // await ethx.transfer(u.alice.address, toWad(1), { from: u.ethspender.address });
@@ -531,16 +536,16 @@ describe('REXTwoWayMarket', () => {
 
       // Make sure it reverts not scalable values
       await expect(
-        u.bob.flow({ flowRate: inflowRateTooLowMATIC, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        u.bob.flow({ flowRate: inflowRateTooLowETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
       ).to.be.revertedWith("notScalable");
 
       await expect(
-        u.bob.flow({ flowRate: inflowRateNot10MATIC, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
+        u.bob.flow({ flowRate: inflowRateNot10ETH, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl') })
       ).to.be.revertedWith("notScalable");
 
       // Make sure it works with scalable, prime flow rates
       await u.bob.flow({
-        flowRate: inflowRatePrimeMATIC,
+        flowRate: inflowRatePrimeETH,
         recipient: u.app,
         userData: web3.eth.abi.encodeParameter('string', 'carl')
       });
@@ -563,7 +568,7 @@ describe('REXTwoWayMarket', () => {
 
       // Test minimum flow rate
       await u.bob.flow({
-        flowRate: inflowRateMinMATIC,
+        flowRate: inflowRateMinETH,
         recipient: u.app,
         userData: web3.eth.abi.encodeParameter('string', 'carl')
       });
@@ -614,7 +619,7 @@ describe('REXTwoWayMarket', () => {
       await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
       // 3. Increase time by 1 hour
       await traveler.advanceTimeAndBlock(60*60);
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
@@ -642,7 +647,7 @@ describe('REXTwoWayMarket', () => {
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await maticx.transfer(u.bob.address, toWad(1), { from: u.maticspender.address });
+      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
       console.log('Done');
 
       await approveSubscriptions([u.alice.address, u.bob.address]);
@@ -653,7 +658,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRate);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
       expect((await app.getIDAShares(0, u.alice.address)).toString()).to.equal(`true,true,0,0`);
-      expect(await app.getStreamRate(u.bob.address, maticx.address)).to.equal(inflowRate);
+      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRate);
       expect((await app.getIDAShares(1, u.bob.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,${inflowRateIDAShares},0`);
 
@@ -665,7 +670,7 @@ describe('REXTwoWayMarket', () => {
         .to.be.equal(ethers.constants.MaxUint256);
       expect(await usdc.allowance(app.address, SUSHISWAP_ROUTER_ADDRESS))
         .to.be.equal(ethers.constants.MaxUint256);
-      expect(await output.allowance(app.address, maticx.address))
+      expect(await output.allowance(app.address, ethx.address))
         .to.be.equal(ethers.constants.MaxUint256);
       expect(await usdc.allowance(app.address, usdcx.address))
         .to.be.equal(ethers.constants.MaxUint256);
@@ -677,25 +682,25 @@ describe('REXTwoWayMarket', () => {
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await maticx.transfer(u.bob.address, toWad(300), { from: u.maticspender.address });
+      await ric.transfer(u.bob.address, '500000000000000000000');
       console.log('Done');
 
       const inflowRateUsdc = '1000000000000000';
-      const inflowRateMatic  = '1000000000000000';
+      const inflowRateEth  = '1000000000000000';
       const inflowRateIDASharesUsdc = '1000000';
-      const inflowRateIDASharesMatic = '10000';
+      const inflowRateIDASharesEth = '10000';
 
       // 1. Initialize a stream exchange
       // 2. Create 2 streamers, one with 2x the rate of the other
       await u.alice.flow({ flowRate: inflowRateUsdc, recipient: u.app, userData: web3.eth.abi.encodeParameter('string', 'carl')});
-      await u.bob.flow({ flowRate: inflowRateMatic, recipient: u.app });
+      await u.bob.flow({ flowRate: inflowRateEth, recipient: u.app });
       await takeMeasurements();
 
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal(inflowRateUsdc);
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
-      expect(await app.getStreamRate(u.bob.address, maticx.address)).to.equal(inflowRateMatic);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
@@ -704,9 +709,9 @@ describe('REXTwoWayMarket', () => {
       console.log("Fast forward")
       await checkBalance(u.alice)
       await checkBalance(u.bob)
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await tp.submitValue(TELLOR_RIC_REQUEST_ID, 1000000);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -725,8 +730,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.maticx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.maticx * 0.98, deltaAlice.maticx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
 
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
@@ -737,13 +742,13 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,180000,0`);
-      expect(await app.getStreamRate(u.bob.address, maticx.address)).to.equal(inflowRateMatic);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
@@ -764,8 +769,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.maticx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.maticx * 0.98, deltaAlice.maticx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
 
       console.log('Transfer karen');
       await usdcx.transfer(u.karen.address, toWad(400), { from: u.usdcspender.address });
@@ -776,7 +781,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
-      expect(await app.getStreamRate(u.bob.address, maticx.address)).to.equal(inflowRateMatic);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
@@ -788,7 +793,7 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
       await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
       await app.updateTokenPrices();
@@ -809,9 +814,9 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.maticx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.maticx * 0.98, deltaAlice.maticx * 1.06)
-      expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.maticx * 0.98, deltaKaren.maticx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
+      expect(deltaKaren.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaKaren.ric * 0.98, deltaKaren.ric * 1.06)
 
       let aliceBeforeBalance = parseInt(await usdcx.balanceOf(u.alice.address));
       console.log("before", aliceBeforeBalance.toString());
@@ -827,9 +832,9 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, parseInt(ricOraclePrice * 1.02));
       await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
@@ -848,10 +853,10 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.maticx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
       expect(deltaAlice.usdcx).to.equal(0)
-      expect(deltaAlice.maticx).to.equal(0)
-      expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.maticx * 0.98, deltaKaren.maticx * 1.06)
+      expect(deltaAlice.ric).to.equal(0)
+      expect(deltaKaren.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaKaren.ric * 0.98, deltaKaren.ric * 1.06)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
       await u.karen.flow({ flowRate: '0', recipient: u.app });
@@ -861,9 +866,9 @@ describe('REXTwoWayMarket', () => {
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
 
-      await tp.submitValue(TELLOR_MATIC_REQUEST_ID, oraclePrice);
+      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
       await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
-      await tp.submitValue(TELLOR_RIC_REQUEST_ID, ricOraclePrice);
+      await tp.submitValue(TELLOR_RIC_REQUEST_ID, parseInt(ricOraclePrice * 1.03));
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -882,9 +887,9 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.maticx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
       expect(deltaKaren.usdcx).to.equal(0)
-      expect(deltaKaren.maticx).to.equal(0)
+      expect(deltaKaren.ric).to.equal(0)
 
     });
 
