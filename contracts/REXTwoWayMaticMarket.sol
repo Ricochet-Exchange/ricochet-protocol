@@ -5,8 +5,12 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import './REXMarket.sol';
+import './ISETHCustom.sol';
 
-contract REXTwoWayMarket is REXMarket {
+error NotScalable();
+error NotCurrentValue();
+
+contract REXTwoWayMaticMarket is REXMarket {
   using SafeERC20 for ERC20;
 
   ISuperToken inputTokenA;
@@ -17,9 +21,8 @@ contract REXTwoWayMarket is REXMarket {
   uint32 constant SUBSIDYB_INDEX = 3;
   uint256 lastDistributionTokenAAt;
   uint256 lastDistributionTokenBAt;
-  address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
-  ISuperToken subsidyToken = ISuperToken(ric);
-  uint256 ricRequestId = 77;
+  address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
+  ISuperToken subsidyToken = ISuperToken(0x263026E7e53DBFDce5ae55Ade22493f828922965);
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
   ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
@@ -55,8 +58,10 @@ contract REXTwoWayMarket is REXMarket {
     market.rateTolerance = _rateTolerance;
     oracle = tellor;
     market.feeRate = _feeRate;
-    market.affiliateFee = 500000;
-    require(_inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6, "!scaleable");
+    market.affiliateFee = 100000;
+    if(_inputTokenAShareScaler < 1e6 && _inputTokenBShareScaler < 1e6) {
+      revert NotScalable();
+    }
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId, _inputTokenAShareScaler);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId, _inputTokenBShareScaler);
     market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
@@ -126,8 +131,12 @@ contract REXTwoWayMarket is REXMarket {
 
     newCtx = ctx;
 
-    require(market.oracles[market.outputPools[OUTPUTA_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValueA");
-    require(market.oracles[market.outputPools[OUTPUTB_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValueB");
+    if(market.oracles[market.outputPools[OUTPUTA_INDEX].token].lastUpdatedAt < block.timestamp - 3600) {
+      revert NotCurrentValue();
+    }
+    if(market.oracles[market.outputPools[OUTPUTB_INDEX].token].lastUpdatedAt < block.timestamp - 3600) {
+      revert NotCurrentValue();
+    }
 
     // Figure out the surplus and make the swap needed to fulfill this distribution
 
@@ -136,12 +145,12 @@ contract REXTwoWayMarket is REXMarket {
     // If we have more tokenA than we need, swap the surplus to inputTokenB
     if (tokenHave < inputTokenA.balanceOf(address(this))) {
       tokenHave = inputTokenA.balanceOf(address(this)) - tokenHave;
-      _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
+      _swap(inputTokenA, inputTokenB, tokenHave);
       // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
     } else {
       tokenHave = inputTokenA.balanceOf(address(this)) * market.oracles[inputTokenA].usdPrice / market.oracles[inputTokenB].usdPrice;
       tokenHave = inputTokenB.balanceOf(address(this)) - tokenHave;
-      _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
+      _swap(inputTokenB, inputTokenA, tokenHave);
     }
 
      // At this point, we've got enough of tokenA and tokenB to perform the distribution
@@ -217,16 +226,16 @@ contract REXTwoWayMarket is REXMarket {
       address _agreementClass,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
-      bytes calldata _ctx
+      bytes calldata // _ctx
   ) external view virtual override returns (bytes memory _cbdata) {
-    _onlyHost();
-    if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-        return _ctx;
-    (address shareholder, ) = abi.decode(_agreementData, (address, address));
-    (,,uint128 shares,) = getIDAShares(OUTPUTA_INDEX, shareholder);
-    require(shares == 0, "Already streaming");
-    (,,shares,) = getIDAShares(OUTPUTB_INDEX, shareholder);
-    require(shares == 0, "Already streaming");
+    // _onlyHost();
+    if(_isCFAv1(_agreementClass)) {
+      (address shareholder, ) = abi.decode(_agreementData, (address, address));
+      (,,uint128 shares,) = getIDAShares(OUTPUTA_INDEX, shareholder);
+      require(shares == 0, "streaming");
+      (,,shares,) = getIDAShares(OUTPUTB_INDEX, shareholder);
+      require(shares == 0, "streaming");
+    }
   }
 
   function beforeAgreementTerminated(
@@ -286,9 +295,8 @@ contract REXTwoWayMarket is REXMarket {
   function _swap(
         ISuperToken input,
         ISuperToken output,
-        uint256 amount,
-        uint256 deadline
-  ) internal returns(uint) {
+        uint256 amount
+  ) internal {
 
    address inputToken;           // The underlying input token address
    address outputToken;          // The underlying output token address
@@ -316,21 +324,28 @@ contract REXTwoWayMarket is REXMarket {
    path = new address[](2);
    path[0] = inputToken;
    path[1] = outputToken;
-   router.swapExactTokensForTokens(
-      amount,
-      minOutput, // Accept any amount but fail if we're too far from the oracle price
-      path,
-      address(this),
-      deadline
-   );
-   // Assumes `amount` was outputToken.balanceOf(address(this))
-   outputAmount = ERC20(outputToken).balanceOf(address(this));
-   // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
    // Convert the outputToken back to its supertoken version
-   output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
+   if (address(output) == MATICX) {
+     router.swapExactTokensForETH(
+        amount,
+        minOutput,
+        path,
+        address(this),
+        block.timestamp + 3600
+     );
+     ISETHCustom(address(output)).upgradeByETH{value: address(this).balance}();
+   } else {
+     router.swapExactTokensForTokens(
+        amount,
+        minOutput,
+        path,
+        address(this),
+        block.timestamp + 3600
+     );
+     output.upgrade(ERC20(outputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(outputToken).decimals())));
+   }
 
-   return outputAmount;
  }
 
  function _updateShareholder(
@@ -448,10 +463,16 @@ contract REXTwoWayMarket is REXMarket {
 
  function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal override {
    if (market.outputPoolIndicies[_superToken] == OUTPUTA_INDEX) {
-     require(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) == 0, "notScalable");
+     if(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) != 0) {
+       revert NotScalable();
+     }
    } else {
-     require(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTA_INDEX].shareScaler * 1e3) == 0, "notScalable");
+     if(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTA_INDEX].shareScaler * 1e3) != 0) {
+       revert NotScalable();
+     }
    }
  }
+
+ receive() external payable {}
 
 }

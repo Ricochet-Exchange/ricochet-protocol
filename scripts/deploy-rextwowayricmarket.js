@@ -18,15 +18,13 @@ async function main() {
   DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
   TELLOR_USDC_REQUEST_ID = 78;
-  ETHX_ADDRESS = "0x27e1e4E6BC79D93032abef01025811B7E4727e85";
-  TELLOR_ETH_REQUEST_ID = 1;
-  WBTCX_ADDRESS = "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92";
-  TELLOR_WBTC_REQUEST_ID = 60;
+  RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  TELLOR_RIC_REQUEST_ID = 77;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const REXTwoWayMarket = await ethers.getContractFactory("REXTwoWayMarket");
+  const REXTwoWayMarket = await ethers.getContractFactory("REXTwoWayRICMarket");
   // const rexTwoWayMarket = await REXTwoWayMarket.attach("0x3047B6AF355D9D35f0c976f1c0F90EeE13a9a6FD");
 
   console.log("Deploying REXTwoWayMarket")
@@ -43,11 +41,11 @@ async function main() {
    console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
 
   await rexTwoWayMarket.initializeTwoWayMarket(
-    DAIX_ADDRESS,
+    USDCX_ADDRESS,
     TELLOR_USDC_REQUEST_ID,
-    1e7,
-    WBTCX_ADDRESS,
-    TELLOR_WBTC_REQUEST_ID,
+    1e9,
+    RIC_ADDRESS,
+    TELLOR_RIC_REQUEST_ID,
     1e9,
     20000,
     20000,

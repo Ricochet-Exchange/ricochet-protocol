@@ -1,42 +1,31 @@
-# Advanced Sample Hardhat Project
+# Ricochet Exchange Protocol
+![Ricochet Exchange](images/ricochet-exchange.gif)
+**_Effortless Real-time Crypto Investing_**
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+Ricochet puts power in the hands of passive investors
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+* **Streaming** - Stream your money into a variety of crypto assets, from ETH and BTC to yield-bearing LP positions. Using Superfluid, it just takes one transaction to set off a perpetual Ricochet investment stream.
 
-Try running some of the following tasks:
+* **Non-custodial** - As long as your stream token's balance is above zero, your investment stream carries on. This means you're free to do other cool crypto stuff with your money all while your investment stream runs.
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.js
-node scripts/deploy.js
-npx eslint '**/*.js'
-npx eslint '**/*.js' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
+* **Responsible** - Why buy at a couple prices when you can buy at every price. Ricochet lets you take on price risk gradually instead of in lumps. Kick back, relax, and forget about the FOMO and overtrading
+
+## Developer Quickstart
+1. Set required environment variables for Hardhat in a `.env` file:
 ```
-
-# Etherscan verification
-
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
-
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
-
-```shell
-hardhat run --network ropsten scripts/deploy.js
+cp env.example .env
+vi .env
 ```
-
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
-
-```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
+2. Run a contract `REXTwoWayMarket.test.js`
 ```
+npx hardhat test test/REXTwoWayMarket.test.js
+```
+The test uses mainnet forking to test against the current Polygon mainnet state. This can take a while depending on your RPC provider.
+3. If tests pass, use `scripts/deploy-rextwowaymarket.js` to deploy:
+```
+npx hardhat run scripts/deploy-rextwowaymarket.js --network polygon
+```
+Edit the inputs in `scripts/deploy-rextwowaymarket.js` based on the type of REX Market you want to deploy.
+4. Verify the contract on Polygonscan:
+```
+npx hardhat verify 0xAAAA....AAAA --network polygon --constructor-args scripts/arguments.js

@@ -168,14 +168,14 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Sets fee rate for a output pool/token
     /// @param _index IDA index for the output pool/token
-    /// @param _feeRate Fee rate for the ouput pool/token
+    /// @param _feeRate Fee rate for the output pool/token
     function setFeeRate(uint32 _index, uint128 _feeRate) external onlyOwner {
         market.outputPools[_index].feeRate = _feeRate;
     }
 
     /// @dev Sets emission rate for a output pool/token
     /// @param _index IDA index for the output pool/token
-    /// @param _emissionRate Emission rate for the ouput pool/token
+    /// @param _emissionRate Emission rate for the output pool/token
     function setEmissionRate(uint32 _index, uint128 _emissionRate)
         external
         onlyOwner
@@ -193,7 +193,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Get output token address
     /// @return output token address
-    function getOuputPool(uint32 _index)
+    function getOutputPool(uint32 _index)
         external
         view
         returns (OutputPool memory)
@@ -464,25 +464,19 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         if (address(0) != affiliateAddress) {
           affiliateShares += feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
-          daoShares += feeShares;
-        } else {
-          daoShares += feeShares;
         }
+        daoShares += feeShares;
       } else {
         // Make the rate positive
         changeInFlowRate = -1 * changeInFlowRate;
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
         if (address(0) != affiliateAddress) {
-          affiliateShares -= feeShares * market.affiliateFee / 1e6;
+          affiliateShares -= (feeShares * market.affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
-          daoShares -= feeShares;
-        } else {
-          daoShares -= feeShares;
         }
+        daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
       }
-
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
-      console.log("userShares", uint(userShares));
 
       // Scale back shares
       affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
@@ -549,8 +543,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     // Superfluid Agreement Management Methods
 
     function _createIndex(uint256 index, ISuperToken distToken) internal {
-      console.log("index", index);
-      console.log("distToken", address(distToken));
         host.callAgreement(
             ida,
             abi.encodeWithSelector(
@@ -675,18 +667,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         require(msg.sender == address(host), "!host");
     }
 
-    /// @dev Accept only input token for CFA, output and subsidy tokens for IDA
-    function _onlyExpected(ISuperToken _superToken, address _agreementClass)
-        internal
-        view
-    {
-        if (_isCFAv1(_agreementClass)) {
-            require(_isInputToken(_superToken), "!inputAccepted");
-        } else if (_isIDAv1(_agreementClass)) {
-            require(_isOutputToken(_superToken), "!outputAccepted");
-        }
-    }
-
     function _shouldDistribute() internal virtual returns (bool) {
 
       (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
@@ -702,6 +682,24 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       );
 
       return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
+    }
+
+    function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal virtual {
+      // Enforce speed limit on flowRate
+      require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
+    }
+
+    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
+      require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
+      ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
+      string memory affiliateId;
+      if (decompiledContext.userData.length > 0) {
+        (affiliateId) = abi.decode(decompiledContext.userData, (string));
+      } else {
+        affiliateId = "";
+      }
+
+      referrals.safeRegisterCustomer(_shareholder, affiliateId);
     }
 
     // Superfluid Functions
@@ -725,8 +723,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
-        _onlyExpected(_superToken, _agreementClass);
-
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
 
@@ -740,31 +736,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
+        _onlyScalable(_superToken, _flowRate);
+
         _registerReferral(_newCtx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
           _shareholder, 0, _flowRate, _superToken
         );
 
-        // TODO: Update shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
     }
-
-    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
-      // Register with RexReferral
-      ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
-      string memory affiliateId;
-      if (decompiledContext.userData.length > 0) {
-        (affiliateId) = abi.decode(decompiledContext.userData, (string));
-      } else {
-        affiliateId = "";
-      }
-
-
-      referrals.safeRegisterCustomer(_shareholder, affiliateId);
-    }
-
 
     function beforeAgreementUpdated(
         ISuperToken _superToken,
@@ -773,7 +755,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
-
+      _onlyHost();
       if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
           return _ctx;
 
@@ -795,8 +777,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
-        _onlyExpected(_superToken, _agreementClass);
-
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
 
@@ -804,6 +784,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
             _agreementData, _superToken
         );
+
+        _onlyScalable(_superToken, _flowRate);
+
         int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 
 
@@ -825,10 +808,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         address _agreementClass,
         bytes32, //_agreementId,
         bytes calldata _agreementData,
-        bytes calldata // _ctx
+        bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
         _onlyHost();
-        _onlyExpected(_superToken, _agreementClass);
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
 
         (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
@@ -850,7 +834,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
-        _onlyExpected(_superToken, _agreementClass);
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
 
         _newCtx = _ctx;
         (address _shareholder, ) = abi.decode(_agreementData, (address, address));
