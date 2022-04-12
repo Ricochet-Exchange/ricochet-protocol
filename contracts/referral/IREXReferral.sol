@@ -66,3 +66,4 @@ interface IREXReferral {
      */
     function safeRegisterCustomer(address customerAddr, string memory affiliateId) external;
 }
+
