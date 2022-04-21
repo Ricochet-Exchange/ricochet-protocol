@@ -254,36 +254,6 @@ contract REXTwoWayRICMarket is REXMarket {
   }
 
 
-  function afterAgreementTerminated(
-      ISuperToken _superToken,
-      address _agreementClass,
-      bytes32, //_agreementId,
-      bytes calldata _agreementData,
-      bytes calldata _cbdata, //_cbdata,
-      bytes calldata _ctx
-  ) external virtual override returns (bytes memory _newCtx) {
-      _onlyHost();
-      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-          return _ctx;
-
-      _newCtx = _ctx;
-      (address _shareholder, ) = abi.decode(_agreementData, (address, address));
-      (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
-
-      ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-        _shareholder, _beforeFlowRate, 0, _superToken
-      );
-
-      _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-      // Refund the unswapped amount back to the person who started the stream
-      _superToken.transferFrom(
-          address(this),
-          _shareholder,
-          _uninvestAmount
-      );
-  }
-
-
   function _swap(
         ISuperToken input,
         ISuperToken output,
