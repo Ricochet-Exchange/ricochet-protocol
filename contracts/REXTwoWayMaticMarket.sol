@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import './REXMarket.sol';
 import './ISETHCustom.sol';
 
+error NotScalable();
+error NotCurrentValue();
+
 contract REXTwoWayMaticMarket is REXMarket {
   using SafeERC20 for ERC20;
 
@@ -56,7 +59,9 @@ contract REXTwoWayMaticMarket is REXMarket {
     oracle = tellor;
     market.feeRate = _feeRate;
     market.affiliateFee = 100000;
-    require(_inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6, "!scaleable");
+    if(_inputTokenAShareScaler < 1e6 && _inputTokenBShareScaler < 1e6) {
+      revert NotScalable();
+    }
     addOutputPool(inputTokenA, _feeRate, 0, _inputTokenARequestId, _inputTokenAShareScaler);
     addOutputPool(inputTokenB, _feeRate, 0, _inputTokenBRequestId, _inputTokenBShareScaler);
     market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
@@ -126,8 +131,12 @@ contract REXTwoWayMaticMarket is REXMarket {
 
     newCtx = ctx;
 
-    require(market.oracles[market.outputPools[OUTPUTA_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValueA");
-    require(market.oracles[market.outputPools[OUTPUTB_INDEX].token].lastUpdatedAt >= block.timestamp - 3600, "!currentValueB");
+    if(market.oracles[market.outputPools[OUTPUTA_INDEX].token].lastUpdatedAt < block.timestamp - 3600) {
+      revert NotCurrentValue();
+    }
+    if(market.oracles[market.outputPools[OUTPUTB_INDEX].token].lastUpdatedAt < block.timestamp - 3600) {
+      revert NotCurrentValue();
+    }
 
     // Figure out the surplus and make the swap needed to fulfill this distribution
 
@@ -234,10 +243,11 @@ contract REXTwoWayMaticMarket is REXMarket {
       address _agreementClass,
       bytes32, //_agreementId,
       bytes calldata _agreementData,
-      bytes calldata // _ctx
+      bytes calldata _ctx
   ) external view virtual override returns (bytes memory _cbdata) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
 
       (address _shareholder, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(_agreementData, _superToken);
 
@@ -261,7 +271,8 @@ contract REXTwoWayMaticMarket is REXMarket {
       bytes calldata _ctx
   ) external virtual override returns (bytes memory _newCtx) {
       _onlyHost();
-      _onlyExpected(_superToken, _agreementClass);
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
 
       _newCtx = _ctx;
       (address _shareholder, ) = abi.decode(_agreementData, (address, address));
@@ -452,9 +463,13 @@ contract REXTwoWayMaticMarket is REXMarket {
 
  function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal override {
    if (market.outputPoolIndicies[_superToken] == OUTPUTA_INDEX) {
-     require(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) == 0, "notScalable");
+     if(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) != 0) {
+       revert NotScalable();
+     }
    } else {
-     require(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTA_INDEX].shareScaler * 1e3) == 0, "notScalable");
+     if(uint128(uint(int(_flowRate))) % (market.outputPools[OUTPUTA_INDEX].shareScaler * 1e3) != 0) {
+       revert NotScalable();
+     }
    }
  }
 

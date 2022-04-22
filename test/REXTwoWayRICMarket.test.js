@@ -89,12 +89,12 @@ function uintTob32(n){
     return vars
   }
 
-describe('REXTwoWayMarket', () => {
+describe('REXTwoWayRICMarket', () => {
   const errorHandler = (err) => {
     if (err) throw err;
   };
 
-  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender'];
+  const names = ['Admin', 'Alice', 'Bob', 'Carl', 'Karen', 'UsdcSpender', 'EthSpender', 'RicSpender'];
 
   let sf;
   let dai;
@@ -125,8 +125,8 @@ describe('REXTwoWayMarket', () => {
   let bob;
   let carl;
   let usdcSpender;
-  let ethSpender;
-  let abiCoder = new ethers.utils.AbiCoder
+  let ricSpender;
+  let abiCoder = new ethers.utils.AbiCoder;
   const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
@@ -142,7 +142,8 @@ describe('REXTwoWayMarket', () => {
   const COINGECKO_KEY = 'ethereum';
 
   // random address from polygonscan that have a lot of usdcx
-  const USDCX_SOURCE_ADDRESS = '0x7b9deffca9356a99f95759afc6e709422d845a7c';
+  const RIC_SOURCE_ADDRESS = '0xfcDc6352821B3e72a724117d5b56e275327D5FE6';
+  const USDCX_SOURCE_ADDRESS = '0xA08f80dc1759b12fdC40A4dc64562b322C418E1f';
   const ETHX_SOURCE_ADDRESS = '0x6EAA11eec98c663ba096593cc779217A7e20665a';
   const WBTC_SOURCE_ADDRESS = '0x5c2ed810328349100A66B82b78a1791B101C9D61';
   const USDC_SOURCE_ADDRESS = '0x1a13f4ca1d028320a707d99520abfefca3998b7f';
@@ -210,7 +211,7 @@ describe('REXTwoWayMarket', () => {
 
   async function approveSubscriptions(
     users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
-    tokens = [usdcx.address, ethx.address, ric.address, ric.address],
+    tokens = [usdcx.address, ric.address],
   ) {
     // Do approvals
     // Already approved?
@@ -240,7 +241,7 @@ describe('REXTwoWayMarket', () => {
     // ==============
     // impersonate accounts and set balances
 
-    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS];
+    const accountAddrs = [OWNER_ADDRESS, ALICE_ADDRESS, BOB_ADDRESS, CARL_ADDRESS, KAREN_ADDRESS, USDCX_SOURCE_ADDRESS, ETHX_SOURCE_ADDRESS, RIC_SOURCE_ADDRESS];
 
     accountAddrs.forEach(async (account) => {
       await impersonateAndSetBalance(account);
@@ -256,7 +257,8 @@ describe('REXTwoWayMarket', () => {
     karen = await ethers.provider.getSigner(KAREN_ADDRESS);
     usdcSpender = await ethers.provider.getSigner(USDCX_SOURCE_ADDRESS);
     ethSpender = await ethers.provider.getSigner(ETHX_SOURCE_ADDRESS);
-    const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender];
+    ricSpender = await ethers.provider.getSigner(RIC_SOURCE_ADDRESS);
+    const accounts = [owner, alice, bob, carl, karen, usdcSpender, ethSpender, ricSpender];
 
     // ==============
     // Init Superfluid Framework
@@ -272,6 +274,8 @@ describe('REXTwoWayMarket', () => {
     wbtcx = sf.tokens.WBTCx;
     daix = sf.tokens.DAIx;
     usdcx = sf.tokens.USDCx;
+    const RicochetToken = await ethers.getContractFactory('RicochetToken');
+    ric = await RicochetToken.attach(RIC_TOKEN_ADDRESS);
 
     // ==============
     // Init SF users
@@ -281,7 +285,7 @@ describe('REXTwoWayMarket', () => {
       if (names[i].toLowerCase() == "bob") {
         u[names[i].toLowerCase()] = sf.user({
           address: accounts[i]._address || accounts[i].address,
-          token: ethx.address,
+          token: ric.address,
         });
       } else {
         u[names[i].toLowerCase()] = sf.user({
@@ -298,15 +302,14 @@ describe('REXTwoWayMarket', () => {
     // Setup tokens
 
     const ERC20 = await ethers.getContractFactory('ERC20');
-    ric = await ERC20.attach(RIC_TOKEN_ADDRESS);
     weth = await ERC20.attach(await ethx.getUnderlyingToken());
     wbtc = await ERC20.attach(await wbtcx.getUnderlyingToken());
     usdc = await ERC20.attach(await usdcx.getUnderlyingToken());
-    ric = ric.connect(owner);
+    ric = ric.connect(ricSpender);
 
     // Attach alice to the SLP token
-    outputx = ethx;
-    output = await ERC20.attach(await outputx.getUnderlyingToken());
+    outputx = ric;
+    output = ric; //await ERC20.attach(await outputx.getUnderlyingToken());
 
     // ==============
     // NOTE: Assume the oracle is up to date
@@ -341,7 +344,8 @@ describe('REXTwoWayMarket', () => {
     await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
     response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=richochet&vs_currencies=usd');
     ricOraclePrice = parseInt(response.data['richochet'].usd * 1000000).toString();
-    await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(1000000), 0, TELLOR_RIC_QUERY_DATA);
+    console.log('ricOraclePrice', ricOraclePrice)
+    await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(parseInt(ricOraclePrice)), 0, TELLOR_RIC_QUERY_DATA);
 
     // ==============
     // Deploy REX Market
@@ -353,14 +357,14 @@ describe('REXTwoWayMarket', () => {
     referral = await RexReferral.deploy();
     await referral.deployed();
 
-    const REXTwoWayMarket = await ethers.getContractFactory('REXTwoWayMarket', {
+    const REXTwoWayRICMarket = await ethers.getContractFactory('REXTwoWayRICMarket', {
       signer: owner,
     });
 
     const registrationKey = await createSFRegistrationKey(sf, u.admin.address);
     console.log(registrationKey);
-    console.log('Deploying REXTwoWayMarket...');
-    app = await REXTwoWayMarket.deploy(
+    console.log('Deploying REXTwoWayRICMarket...');
+    app = await REXTwoWayRICMarket.deploy(
       u.admin.address,
       sf.host.address,
       sf.agreements.cfa.address,
@@ -368,22 +372,22 @@ describe('REXTwoWayMarket', () => {
       registrationKey,
       referral.address);
 
-    console.log('Deployed REXTwoWayMarket');
+    console.log('Deployed REXTwoWayRICMarket');
 
     await app.initializeTwoWayMarket(
       usdcx.address,
       TELLOR_USDC_QUERY_ID,
-      1e7,
-      ethx.address,
-      TELLOR_ETH_QUERY_ID,
+      1e9,
+      ric.address,
+      TELLOR_RIC_QUERY_ID,
       1e9,
       20000,
       20000
     )
 
-    await app.initializeSubsidies(10000000000000);
+    await app.initializeSubsidies(0);
     // send the contract some RIC
-    await ric.transfer(app.address, '3971239975789381077848')
+    // await ric.transfer(app.address, '3971239975789381077848')
 
     // Register the market with REXReferral
     await referral.registerApp(app.address);
@@ -395,7 +399,7 @@ describe('REXTwoWayMarket', () => {
 
     u.app = sf.user({
       address: app.address,
-      token: outputx.address,
+      token: ric.address,
     });
     u.app.alias = 'App';
     // ==============
@@ -451,7 +455,7 @@ describe('REXTwoWayMarket', () => {
     bobBalances.ric.push((await ric.balanceOf(u.bob.address)).toString());
   }
 
-  describe.only('REXTwoWayMarket', async () => {
+  describe.only('REXTwoWayRICMarket', async () => {
 
     xit('should not allow two streams', async () => {
       const inflowRateUsdc = '1000000000000000';
@@ -710,11 +714,11 @@ describe('REXTwoWayMarket', () => {
       console.log('Transfer alice');
       await usdcx.transfer(u.alice.address, toWad(400), { from: u.usdcspender.address });
       console.log('Transfer bob');
-      await ethx.transfer(u.bob.address, toWad(1), { from: u.ethspender.address });
+      await ric.transfer(u.bob.address, '500000000000000000000');
       console.log('Done');
 
       const inflowRateUsdc = '1000000000000000';
-      const inflowRateEth  = '10000000000000';
+      const inflowRateEth  = '1000000000000000';
       const inflowRateIDASharesUsdc = '1000000';
       const inflowRateIDASharesEth = '10000';
 
@@ -728,7 +732,7 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,18000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,2000,0`);
-      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
@@ -739,7 +743,7 @@ describe('REXTwoWayMarket', () => {
       await checkBalance(u.bob)
       await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
       await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
-      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(1000000), 0, TELLOR_RIC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(parseInt(ricOraclePrice)), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -758,8 +762,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
 
       // TODO: Check that there was a sushiswap event with Bobs ETH less alices USD gets Swapped
 
@@ -770,7 +774,7 @@ describe('REXTwoWayMarket', () => {
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
       expect((await app.getIDAShares(1, u.admin.address)).toString()).to.equal(`true,true,180000,0`);
-      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
@@ -797,8 +801,8 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
 
       console.log('Transfer karen');
       await usdcx.transfer(u.karen.address, toWad(400), { from: u.usdcspender.address });
@@ -809,7 +813,7 @@ describe('REXTwoWayMarket', () => {
       expect(await app.getStreamRate(u.alice.address, usdcx.address)).to.equal('10000000000000000');
       expect((await app.getIDAShares(1, u.alice.address)).toString()).to.equal(`true,true,9800000,0`);
       expect((await app.getIDAShares(1, u.carl.address)).toString()).to.equal(`true,true,20000,0`);
-      expect(await app.getStreamRate(u.bob.address, ethx.address)).to.equal(inflowRateEth);
+      expect(await app.getStreamRate(u.bob.address, ric.address)).to.equal(inflowRateEth);
       expect((await app.getIDAShares(0, u.bob.address)).toString()).to.equal(`true,true,980000,0`);
       expect((await app.getIDAShares(0, u.carl.address)).toString()).to.equal(`true,true,0,0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,20000,0`);
@@ -842,9 +846,9 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
-      expect(deltaAlice.usdcx / oraclePrice * 1e6 * -1).to.within(deltaAlice.ethx * 0.98, deltaAlice.ethx * 1.06)
-      // expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaAlice.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaAlice.ric * 0.98, deltaAlice.ric * 1.06)
+      expect(deltaKaren.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaKaren.ric * 0.98, deltaKaren.ric * 1.06)
 
       let aliceBeforeBalance = parseInt(await usdcx.balanceOf(u.alice.address));
       console.log("before", aliceBeforeBalance.toString());
@@ -862,7 +866,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
       await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
-      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(parseInt(ricOraclePrice * 1.02)), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distributions
       await app.distribute('0x');
@@ -881,10 +885,10 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
       expect(deltaAlice.usdcx).to.equal(0)
-      expect(deltaAlice.ethx).to.equal(0)
-      expect(deltaKaren.usdcx / oraclePrice * 1e6 * -1).to.within(deltaKaren.ethx * 0.98, deltaKaren.ethx * 1.06)
+      expect(deltaAlice.ric).to.equal(0)
+      expect(deltaKaren.usdcx / ricOraclePrice * 1e6 * -1).to.within(deltaKaren.ric * 0.98, deltaKaren.ric * 1.06)
 
       // Add another streamer, alice streams more USDC than Bob streams ETH
       await u.karen.flow({ flowRate: '0', recipient: u.app });
@@ -896,7 +900,7 @@ describe('REXTwoWayMarket', () => {
 
       await tp.connect(reporter1).submitValue(TELLOR_ETH_QUERY_ID, uintTob32(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
       await tp.connect(reporter2).submitValue(TELLOR_USDC_QUERY_ID, uintTob32(1000000), 0, TELLOR_USDC_QUERY_DATA);
-      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+      await tp.connect(reporter3).submitValue(TELLOR_RIC_QUERY_ID, uintTob32(parseInt(ricOraclePrice * 1.03)), 0, TELLOR_RIC_QUERY_DATA);
       await app.updateTokenPrices();
       // 4. Trigger a distribution
       await app.distribute('0x');
@@ -915,9 +919,9 @@ describe('REXTwoWayMarket', () => {
       console.log(deltaAlice)
       console.log(deltaBob)
       // Fee taken during harvest, can be a larger % of what's actually distributed via IDA due to rounding the actual amount
-      expect(deltaBob.ethx * oraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
+      expect(deltaBob.ric * ricOraclePrice / 1e6 * -1 ).to.within(deltaBob.usdcx * 0.98, deltaBob.usdcx * 1.06)
       expect(deltaKaren.usdcx).to.equal(0)
-      expect(deltaKaren.ethx).to.equal(0)
+      expect(deltaKaren.ric).to.equal(0)
 
     });
 
