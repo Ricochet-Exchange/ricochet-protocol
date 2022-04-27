@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "./tellor/ITellor.sol";
+import "./tellor/ITellorMini.sol";
 import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
@@ -73,7 +73,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellor internal oracle; // Address of deployed simple oracle for input//output token
+    ITellorMini internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -270,7 +270,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function initializeMarket(
         ISuperToken _inputToken,
         uint256 _rateTolerance,
-        ITellor _tellor,
+        ITellorMini _tellor,
         bytes32 _inputTokenQueryId,
         uint128 _affiliateFee,
         uint128 _feeRate
