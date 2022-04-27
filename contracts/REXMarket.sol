@@ -733,7 +733,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         _onlyScalable(_superToken, _flowRate);
 
-        _registerReferral(_newCtx, _shareholder);
+        _registerReferral(_ctx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
           _shareholder, 0, _flowRate, _superToken
