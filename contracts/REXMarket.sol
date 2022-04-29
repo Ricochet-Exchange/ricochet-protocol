@@ -352,7 +352,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     {
         uint256 _quantity;
         (_value, _quantity) = oracle.getMedian(_queryId, block.timestamp, 660, 10);
-        if (_quantity > 0) return (true, _value, block.timestamp - 330);
+        if (_quantity > 0) return (true, _value/1e12, block.timestamp - 330);
         return (false, 0, 0);
     }
 
