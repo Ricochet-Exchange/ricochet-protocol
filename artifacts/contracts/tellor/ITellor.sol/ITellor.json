@@ -6,19 +6,20 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_tip",
-          "type": "uint256"
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
         }
       ],
-      "name": "addTip",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "name": "addresses",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -97,6 +98,35 @@
       "inputs": [
         {
           "internalType": "address",
+          "name": "_from",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "approveAndTransferFrom",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "_user",
           "type": "address"
         }
@@ -139,18 +169,13 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
         },
         {
           "internalType": "uint256",
           "name": "_timestamp",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_minerIndex",
           "type": "uint256"
         }
       ],
@@ -160,8 +185,210 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "burn",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
-      "name": "claimOwnership",
+      "name": "burnTips",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "buyTreasury",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_addy",
+          "type": "address"
+        }
+      ],
+      "name": "changeAddressVar",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newController",
+          "type": "address"
+        }
+      ],
+      "name": "changeControllerContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newDeity",
+          "type": "address"
+        }
+      ],
+      "name": "changeDeity",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newGovernance",
+          "type": "address"
+        }
+      ],
+      "name": "changeGovernanceContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newOracle",
+          "type": "address"
+        }
+      ],
+      "name": "changeOracleContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "changeOwner",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_newReportingLock",
+          "type": "uint256"
+        }
+      ],
+      "name": "changeReportingLock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reporter",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_status",
+          "type": "uint256"
+        }
+      ],
+      "name": "changeStakingStatus",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_tContract",
+          "type": "address"
+        }
+      ],
+      "name": "changeTellorContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_newTimeBasedReward",
+          "type": "uint256"
+        }
+      ],
+      "name": "changeTimeBasedReward",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newTreasury",
+          "type": "address"
+        }
+      ],
+      "name": "changeTreasuryContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_target",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "changeUint",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -180,6 +407,43 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_delegate",
+          "type": "address"
+        }
+      ],
+      "name": "delegate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_blockNumber",
+          "type": "uint256"
+        }
+      ],
+      "name": "delegateOfAt",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "depositStake",
       "outputs": [],
@@ -189,17 +453,17 @@
     {
       "inputs": [
         {
-          "internalType": "bytes32",
-          "name": "_challenge",
-          "type": "bytes32"
+          "internalType": "uint256",
+          "name": "_disputeId",
+          "type": "uint256"
         },
         {
           "internalType": "address",
-          "name": "_miner",
+          "name": "_voter",
           "type": "address"
         }
       ],
-      "name": "didMine",
+      "name": "didVote",
       "outputs": [
         {
           "internalType": "bool",
@@ -216,22 +480,11 @@
           "internalType": "uint256",
           "name": "_disputeId",
           "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "_address",
-          "type": "address"
         }
       ],
-      "name": "didVote",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
+      "name": "executeVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -313,16 +566,41 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getCurrentVariables",
-      "outputs": [
+      "inputs": [
         {
           "internalType": "bytes32",
-          "name": "",
+          "name": "_queryId",
           "type": "bytes32"
         },
         {
           "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "getBlockNumberByTimestamp",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getCurrentReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
           "name": "",
           "type": "uint256"
         },
@@ -330,16 +608,44 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        },
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
         {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getCurrentValue",
+      "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "bytes",
           "name": "",
-          "type": "uint256"
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_holder",
+          "type": "address"
+        }
+      ],
+      "name": "getDelegateInfo",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
         },
         {
           "internalType": "uint256",
@@ -375,6 +681,40 @@
           "internalType": "uint256",
           "name": "_disputeId",
           "type": "uint256"
+        }
+      ],
+      "name": "getDisputeInfo",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_disputeId",
+          "type": "uint256"
         },
         {
           "internalType": "bytes32",
@@ -388,24 +728,6 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getLastNewValue",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -436,75 +758,46 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_timestamp",
-          "type": "uint256"
-        }
-      ],
-      "name": "getMinedBlockNum",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_timestamp",
-          "type": "uint256"
-        }
-      ],
-      "name": "getMinersByRequestIdAndTimestamp",
-      "outputs": [
-        {
-          "internalType": "address[5]",
-          "name": "",
-          "type": "address[5]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [],
       "name": "getNewCurrentVariables",
       "outputs": [
         {
           "internalType": "bytes32",
-          "name": "_challenge",
+          "name": "_c",
           "type": "bytes32"
         },
         {
           "internalType": "uint256[5]",
-          "name": "_requestIds",
+          "name": "_r",
           "type": "uint256[5]"
         },
         {
           "internalType": "uint256",
-          "name": "_difficutly",
+          "name": "_d",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "_tip",
+          "name": "_t",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getNewValueCountbyQueryId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -531,32 +824,14 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getNewVariablesOnDeck",
-      "outputs": [
-        {
-          "internalType": "uint256[5]",
-          "name": "idsOnDeck",
-          "type": "uint256[5]"
-        },
-        {
-          "internalType": "uint256[5]",
-          "name": "tipsOnDeck",
-          "type": "uint256[5]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "bytes32",
-          "name": "_request",
+          "name": "_queryId",
           "type": "bytes32"
         }
       ],
-      "name": "getRequestIdByQueryHash",
+      "name": "getOpenDisputesOnId",
       "outputs": [
         {
           "internalType": "uint256",
@@ -569,13 +844,18 @@
     },
     {
       "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
         {
           "internalType": "uint256",
           "name": "_index",
           "type": "uint256"
         }
       ],
-      "name": "getRequestIdByRequestQIndex",
+      "name": "getReportTimestampByIndex",
       "outputs": [
         {
           "internalType": "uint256",
@@ -589,12 +869,36 @@
     {
       "inputs": [
         {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
           "internalType": "uint256",
           "name": "_timestamp",
           "type": "uint256"
         }
       ],
-      "name": "getRequestIdByTimestamp",
+      "name": "getReporterByTimestamp",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reporter",
+          "type": "address"
+        }
+      ],
+      "name": "getReporterLastTimestamp",
       "outputs": [
         {
           "internalType": "uint256",
@@ -607,31 +911,7 @@
     },
     {
       "inputs": [],
-      "name": "getRequestQ",
-      "outputs": [
-        {
-          "internalType": "uint256[51]",
-          "name": "",
-          "type": "uint256[51]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "_data",
-          "type": "bytes32"
-        }
-      ],
-      "name": "getRequestUintVars",
+      "name": "getReportingLock",
       "outputs": [
         {
           "internalType": "uint256",
@@ -645,38 +925,13 @@
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "_reporter",
+          "type": "address"
         }
       ],
-      "name": "getRequestVars",
+      "name": "getReportsSubmittedByAddress",
       "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
         {
           "internalType": "uint256",
           "name": "",
@@ -711,11 +966,56 @@
       "type": "function"
     },
     {
-      "inputs": [
+      "inputs": [],
+      "name": "getTimeBasedReward",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "_requestId",
+          "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTimeOfLastNewValue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getTimestampCountById",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
         },
         {
           "internalType": "uint256",
@@ -723,12 +1023,36 @@
           "type": "uint256"
         }
       ],
-      "name": "getSubmissionsByTimestamp",
+      "name": "getTimestampIndexByTimestamp",
       "outputs": [
         {
-          "internalType": "uint256[5]",
+          "internalType": "uint256",
           "name": "",
-          "type": "uint256[5]"
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "getTimestampbyQueryIdandIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -738,7 +1062,7 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "_requestID",
+          "name": "_requestId",
           "type": "uint256"
         },
         {
@@ -759,13 +1083,157 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "getTopRequestIDs",
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getTipsById",
       "outputs": [
         {
-          "internalType": "uint256[5]",
-          "name": "_requestIds",
-          "type": "uint256[5]"
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        }
+      ],
+      "name": "getTipsByUser",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_investor",
+          "type": "address"
+        }
+      ],
+      "name": "getTreasuryAccount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getTreasuryCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getTreasuryDetails",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        }
+      ],
+      "name": "getTreasuryFundsByUser",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        }
+      ],
+      "name": "getTreasuryOwners",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
         }
       ],
       "stateMutability": "view",
@@ -791,23 +1259,37 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "getValueByTimestamp",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
-      "name": "getVariablesOnDeck",
+      "name": "getVoteCount",
       "outputs": [
         {
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        },
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
         }
       ],
       "stateMutability": "view",
@@ -817,16 +1299,105 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_timestamp",
+          "name": "_disputeId",
           "type": "uint256"
         }
       ],
-      "name": "isInDispute",
+      "name": "getVoteInfo",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256[9]",
+          "name": "",
+          "type": "uint256[9]"
+        },
+        {
+          "internalType": "bool[2]",
+          "name": "",
+          "type": "bool[2]"
+        },
+        {
+          "internalType": "enum ITellor.VoteResult",
+          "name": "",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        },
+        {
+          "internalType": "address[2]",
+          "name": "",
+          "type": "address[2]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_hash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getVoteRounds",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "init",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_contract",
+          "type": "address"
+        }
+      ],
+      "name": "isApprovedGovernanceContract",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "_func",
+          "type": "bytes4"
+        }
+      ],
+      "name": "isFunctionApproved",
       "outputs": [
         {
           "internalType": "bool",
@@ -835,6 +1406,98 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addy",
+          "type": "address"
+        }
+      ],
+      "name": "isMigrated",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_maxAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_rate",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_duration",
+          "type": "uint256"
+        }
+      ],
+      "name": "issueTreasury",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "killContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "migrate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_destination",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "migrateFor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reciever",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "mint",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -854,11 +1517,16 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "_propNewTellorAddress",
+          "name": "_investor",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
         }
       ],
-      "name": "proposeFork",
+      "name": "payTreasury",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -866,19 +1534,92 @@
     {
       "inputs": [
         {
-          "internalType": "address payable",
-          "name": "_pendingOwner",
+          "internalType": "address",
+          "name": "_contract",
           "type": "address"
+        },
+        {
+          "internalType": "bytes4",
+          "name": "_function",
+          "type": "bytes4"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_data",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
         }
       ],
-      "name": "proposeOwnership",
+      "name": "proposeVote",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeValue",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
       "inputs": [],
+      "name": "reportingLock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "requestStakingWithdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_tokenHolder",
+          "type": "address"
+        }
+      ],
+      "name": "rescue51PercentAttack",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rescueBrokenDataReporting",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "rescueFailedUpdate",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -910,22 +1651,41 @@
     {
       "inputs": [
         {
-          "internalType": "string",
-          "name": "_nonce",
-          "type": "string"
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
         },
         {
-          "internalType": "uint256[5]",
-          "name": "_requestId",
-          "type": "uint256[5]"
-        },
-        {
-          "internalType": "uint256[5]",
-          "name": "_value",
-          "type": "uint256[5]"
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
         }
       ],
-      "name": "submitMiningSolution",
+      "name": "retrieveData",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "_func",
+          "type": "bytes4"
+        },
+        {
+          "internalType": "bool",
+          "name": "_val",
+          "type": "bool"
+        }
+      ],
+      "name": "setApprovedFunction",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -933,22 +1693,45 @@
     {
       "inputs": [
         {
-          "internalType": "string",
-          "name": "_nonce",
-          "type": "string"
+          "internalType": "address",
+          "name": "_reporter",
+          "type": "address"
         },
         {
-          "internalType": "uint256",
-          "name": "_requestId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_value",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "_disputer",
+          "type": "address"
         }
       ],
-      "name": "submitMiningSolution",
+      "name": "slashReporter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_value",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_nonce",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_queryData",
+          "type": "bytes"
+        }
+      ],
+      "name": "submitValue",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -975,6 +1758,29 @@
         }
       ],
       "name": "tallyVotes",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_queryId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_tip",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_queryData",
+          "type": "bytes"
+        }
+      ],
+      "name": "tipQuery",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1009,7 +1815,7 @@
       "outputs": [
         {
           "internalType": "bool",
-          "name": "",
+          "name": "success",
           "type": "bool"
         }
       ],
@@ -1038,7 +1844,7 @@
       "outputs": [
         {
           "internalType": "bool",
-          "name": "",
+          "name": "success",
           "type": "bool"
         }
       ],
@@ -1048,27 +1854,40 @@
     {
       "inputs": [
         {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "uints",
+      "outputs": [
+        {
           "internalType": "uint256",
-          "name": "_disputeId",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "unlockDisputeFee",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "updateMinDisputeFee",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
-      "inputs": [
+      "inputs": [],
+      "name": "verify",
+      "outputs": [
         {
           "internalType": "uint256",
-          "name": "_disputeId",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "updateTellor",
-      "outputs": [],
-      "stateMutability": "nonpayable",
+      "stateMutability": "pure",
       "type": "function"
     },
     {
@@ -1080,13 +1899,70 @@
         },
         {
           "internalType": "bool",
-          "name": "_supportsDispute",
+          "name": "_supports",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "_invalidQuery",
           "type": "bool"
         }
       ],
       "name": "vote",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "_addys",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_disputeId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "_supports",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "_invalidQuery",
+          "type": "bool"
+        }
+      ],
+      "name": "voteFor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_investor",
+          "type": "address"
+        }
+      ],
+      "name": "wasPaid",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
