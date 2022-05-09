@@ -428,14 +428,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 daoShares,
                 market.outputPools[_index].token
             );
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                _index,
-                referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
-                // affiliate may get 0.2%
-                affiliateShares,
-                market.outputPools[_index].token
-            );
+            address affiliate = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
+            if (affiliate != address(0)) {
+              _newCtx = _updateSubscriptionWithContext(
+                  _newCtx,
+                  _index,
+                  affiliate,
+                  // affiliate may get 0.2%
+                  affiliateShares,
+                  market.outputPools[_index].token
+              );
+            }
             // TODO: Update the fee taken by the DAO
         }
 
