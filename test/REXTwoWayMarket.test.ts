@@ -646,6 +646,58 @@ describe('REXTwoWayMarket', () => {
 
       });
 
+      it.only("#2.4 should correctly emergency drain", async () => {
+        // Fast forward an hour and distribute
+        await increaseTime(3600);
+
+        expect((await ricochetUSDCx.balanceOf({
+          account: twoWayMarket.address, providerOrSigner: provider
+        }))).to.not.equal('0');
+
+        await expect(
+          twoWayMarket.emergencyDrain(),
+        ).to.be.revertedWith('!zeroStreamers');
+        // Close both flows
+        // Delete Alices stream
+        await sf.cfaV1.deleteFlow({
+            receiver: twoWayMarket.address,
+            sender: aliceSigner.address,
+            superToken: ricochetUSDCx.address
+        }).exec(aliceSigner);
+        // Delete Bobs stream
+        await sf.cfaV1.deleteFlow({
+            receiver: twoWayMarket.address,
+            sender: bobSigner.address,
+            superToken: ricochetETHx.address
+        }).exec(bobSigner);
+
+        // Send the app some USDCx
+        await ricochetUSDCx
+            .transfer({
+                receiver: twoWayMarket.address,
+                amount: '1000',
+            }).exec(usdcxWhaleSigner);
+        await ricochetETHx
+            .transfer({
+                receiver: twoWayMarket.address,
+                amount: '1000',
+            }).exec(ethxWhaleSigner);
+
+        expect((await ricochetUSDCx.balanceOf({
+          account: twoWayMarket.address, providerOrSigner: provider
+        })).toString()).to.not.equal('0');
+
+        await twoWayMarket.emergencyDrain();
+
+        expect((await ricochetUSDCx.balanceOf({
+          account: twoWayMarket.address, providerOrSigner: provider
+        })).toString()).to.equal('0');
+
+        expect((await ricochetETHx.balanceOf({
+          account: twoWayMarket.address, providerOrSigner: provider
+        })).toString()).to.equal('0');
+      });
+
     });
 
 
