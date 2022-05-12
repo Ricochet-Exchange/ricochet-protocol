@@ -11,5 +11,5 @@ logs
 coverage
 coverage.json
 typechain
-
 .DS_Store
+typechain-types
