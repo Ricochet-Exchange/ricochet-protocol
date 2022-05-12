@@ -114,21 +114,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
     }
 
-    // Referral System Methods
-
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
-    function emergencyCloseStream(address streamer) external virtual {
+    function emergencyCloseStream(address streamer, ISuperToken token) external virtual {
         // Allows anyone to close any stream if the app is jailed
-        bool isJailed = host.isAppJailed(ISuperApp(address(this)));
-
-        require(isJailed, "!jailed");
+        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
 
         host.callAgreement(
             cfa,
             abi.encodeWithSelector(
                 cfa.deleteFlow.selector,
-                market.inputToken,
+                token,
                 streamer,
                 address(this),
                 new bytes(0) // placeholder
@@ -138,27 +134,20 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
-    function emergencyDrain() external virtual onlyOwner {
+    function emergencyDrain(ISuperToken token) external virtual onlyOwner {
         require(
-            cfa.getNetFlow(market.inputToken, address(this)) == 0,
+            cfa.getNetFlow(token, address(this)) == 0,
             "!zeroStreamers"
         );
+        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
 
-        market.inputToken.transfer(
+        token.transfer(
             owner(),
-            market.inputToken.balanceOf(address(this))
+            token.balanceOf(address(this))
         );
-
-        // Go through the other OutputPools and trigger distributions
-        for (uint32 index = 0; index < market.numOutputPools; index++) {
-            market.outputPools[index].token.transfer(
-                owner(),
-                market.outputPools[index].token.balanceOf(address(this))
-            );
-        }
     }
 
-    // Setters
+
 
     /// @dev Set rate tolerance
     /// @param _rate This is the new rate we need to set to
@@ -850,7 +839,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
         // Refund the unswapped amount back to the person who started the stream
-        try market.inputToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
             // Nothing to do, pass
