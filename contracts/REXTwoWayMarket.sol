@@ -20,7 +20,7 @@ contract REXTwoWayMarket is REXMarket {
   address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
   ISuperToken subsidyToken;
   uint256 ricRequestId = 77;
-  IUniswapV2Router02 router = IUniswapV2Router02(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
+  IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
   ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
 
@@ -168,7 +168,6 @@ contract REXTwoWayMarket is REXMarket {
      tokenBAmount = inputTokenB.balanceOf(address(this));
 
 
-
      if (tokenAAmount == 0 && tokenBAmount == 0) { return newCtx; }
 
      // Perform the distributions
@@ -297,13 +296,13 @@ contract REXTwoWayMarket is REXMarket {
       inputToken = address(input);
     } else {
       input.downgrade(amount);
+      // Scale it to 1e18 for calculations
+      amount = ERC20(inputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(inputToken).decimals()));
     }
+
     if(outputToken == address(0)) {
       outputToken = address(output);
     }
-
-   // Scale it to 1e18 for calculations
-   amount = ERC20(inputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(inputToken).decimals()));
 
    minOutput = amount * market.oracles[input].usdPrice / market.oracles[output].usdPrice;
    minOutput = minOutput * (1e6 - market.rateTolerance) / 1e6;
@@ -416,7 +415,6 @@ contract REXTwoWayMarket is REXMarket {
 
    // TODO: This section should be checked,
    //       since it only checks one IDA,
-
    (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
        .getIndex(
            market.outputPools[OUTPUTA_INDEX].token,
@@ -431,16 +429,7 @@ contract REXTwoWayMarket is REXMarket {
              OUTPUTB_INDEX
          );
      if (_totalUnitsApproved + _totalUnitsPending > 0) {
-
-       // Check balance and account for just 1 input token
-       uint256 _balance = ISuperToken(inputTokenA).balanceOf(
-           address(this)
-       ) /
-           (10 **
-               (18 -
-                   ERC20(inputTokenA.getUnderlyingToken()).decimals()));
-
-       return _balance > 0;
+       return true;
      }
    }
 

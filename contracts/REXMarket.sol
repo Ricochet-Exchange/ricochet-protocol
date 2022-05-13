@@ -73,7 +73,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellor internal oracle; // Address of deployed simple oracle for input//output token
+    ITellor public oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -198,24 +198,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         returns (OracleInfo memory)
     {
         return market.oracles[token];
-    }
-
-    /// @dev Get total input flow rate
-    /// @return input flow rate
-    function getTotalInflow() external view returns (int96) {
-        return cfa.getNetFlow(market.inputToken, address(this));
-    }
-
-    /// @dev Get last distribution timestamp
-    /// @return last distribution timestamp
-    function getLastDistributionAt() external view returns (uint256) {
-        return market.lastDistributionAt;
-    }
-
-    /// @dev Get Tellor Oracle address
-    /// @return Tellor Oracle address
-    function getTellorOracle() external view returns (address) {
-        return address(oracle);
     }
 
     // Emergency Admin Methods
@@ -768,6 +750,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
+
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
