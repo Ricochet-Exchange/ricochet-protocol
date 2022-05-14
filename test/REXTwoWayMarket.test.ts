@@ -669,7 +669,7 @@ describe('REXTwoWayMarket', () => {
 
       });
 
-      it.only("#2.3 two-sided distribution", async () => {
+      it("#2.3 two-sided distribution", async () => {
 
         // Check balance
         await takeMeasurements();
@@ -698,7 +698,7 @@ describe('REXTwoWayMarket', () => {
         expect(deltaCarl.ethx / (deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx)).to.within(0.00999, 0.01)
         expect(deltaOwner.ethx / (deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx)).to.within(0.00999, 0.01)
         // Expect Owner got his fee from Bob
-        expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02)
+        expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02001)
 
       });
 
@@ -925,7 +925,7 @@ describe('REXTwoWayMarket', () => {
         await resetMeasurements();
       });
 
-      it.only("#4.1 two-sided distribution", async () => {
+      it("#4.1 two-sided distribution", async () => {
 
         // First try swap of RIC to USDC
 
@@ -959,7 +959,7 @@ describe('REXTwoWayMarket', () => {
         expect(deltaCarl.ric / (deltaAlice.ric + deltaCarl.ric + deltaOwner.ric)).to.within(0.00999, 0.01001)
         expect(deltaOwner.ric / (deltaAlice.ric + deltaCarl.ric + deltaOwner.ric)).to.within(0.00999, 0.01001)
         // Expect Owner got his fee from Bob
-        expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02)
+        expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02001)
 
         // Update Alices stream
         await sf.cfaV1.updateFlow({
