@@ -200,7 +200,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return market.oracles[token];
     }
 
-    // Emergency Admin Methods
+    /// @dev Get last distribution timestamp
+    /// @return last distribution timestamp
+    function getLastDistributionAt() external view returns (uint256) {
+        return market.lastDistributionAt;
+    }
 
     /// @dev Is app jailed in SuperFluid protocol
     /// @return is app jailed in SuperFluid protocol

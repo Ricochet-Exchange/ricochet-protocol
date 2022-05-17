@@ -97,6 +97,8 @@ contract REXTwoWayMarket is REXMarket {
       2**256 - 1
     );
 
+    market.lastDistributionAt = block.timestamp;
+
   }
 
   function initializeSubsidies(
@@ -382,20 +384,23 @@ contract REXTwoWayMarket is REXMarket {
      );
      // Owner is not added to subsidy pool
 
-     _newCtx = _updateSubscriptionWithContext(
-         _newCtx,
-         outputIndex,
-         referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
-         affiliateShares,
-         market.outputPools[outputIndex].token
-     );
-     _newCtx = _updateSubscriptionWithContext(
-         _newCtx,
-         subsidyIndex,
-         referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
-         affiliateShares,
-         subsidyToken
-     );
+     address affiliate = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
+     if (affiliate != address(0)) {
+       _newCtx = _updateSubscriptionWithContext(
+           _newCtx,
+           outputIndex,
+           affiliate,
+           affiliateShares,
+           market.outputPools[outputIndex].token
+       );
+       _newCtx = _updateSubscriptionWithContext(
+           _newCtx,
+           subsidyIndex,
+           affiliate,
+           affiliateShares,
+           subsidyToken
+       );
+     }
  }
 
  function _isInputToken(ISuperToken _superToken)
