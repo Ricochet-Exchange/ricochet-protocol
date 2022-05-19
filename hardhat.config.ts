@@ -81,10 +81,14 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,
-      // accounts: [process.env.POLYGON_PRIVATE_KEY],
+      accounts: [process.env.POLYGON_PRIVATE_KEY],
       blockGasLimit: 20000000,
       gasPrice: 35000000000 // 35 Gwei
     },
+    localhost: {
+      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      url: 'http://127.0.0.1:8545/'
+    }
   },
   mocha: {
     timeout: 0,
