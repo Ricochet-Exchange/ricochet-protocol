@@ -832,7 +832,24 @@ describe('REXTwoWayMarket', () => {
 
       });
 
+      it.only("3.3 closeStream", async ()=> {
+        // Run down alices balance
+        // Starts with 1000 usdc and streams at rate
+        // 1000000000000000
+        await increaseTime(3600)
+        console.log("attempt 1")
+        await expect(
+          twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address),
+        ).to.be.revertedWith('!closable');
 
+        await takeMeasurements();
+        console.log(aliceBalances);
+
+        await increaseTime(3600);
+        console.log("attempt 2")
+        await twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address);
+
+      });
 
     });
 

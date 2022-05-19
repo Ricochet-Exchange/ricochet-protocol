@@ -133,6 +133,30 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
     }
 
+    /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
+    /// @param streamer is stream source (streamer) address
+    function closeStream(address streamer, ISuperToken token) public {
+      // Only closable iff their balance is less than 8 hours of streaming
+      (,int96 streamerFlowRate,,) = cfa.getFlow(token, streamer, address(this));
+      // int96 streamerFlowRate = getStreamRate(token, streamer);
+      require(int(token.balanceOf(streamer)) <= streamerFlowRate * 8 hours,
+                "!closable");
+
+      // Close the streamers stream
+      // Does this trigger before/afterAgreementTerminated
+      host.callAgreement(
+          cfa,
+          abi.encodeWithSelector(
+              cfa.deleteFlow.selector,
+              token,
+              streamer,
+              address(this),
+              new bytes(0) // placeholder
+          ),
+          "0x"
+      );
+    }
+
     /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
     function emergencyDrain(ISuperToken token) external virtual onlyOwner {
         require(
