@@ -6,13 +6,9 @@ import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
-
 import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
-const {
-  web3tx
-} = require('@decentral.ee/web3-helpers');
 
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
@@ -832,22 +828,31 @@ describe('REXTwoWayMarket', () => {
 
       });
 
-      it.only("3.3 closeStream", async ()=> {
-        // Run down alices balance
-        // Starts with 1000 usdc and streams at rate
-        // 1000000000000000
-        await increaseTime(3600)
-        console.log("attempt 1")
-        await expect(
-          twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address),
-        ).to.be.revertedWith('!closable');
+      it("3.3 closeStream", async ()=> {
 
-        await takeMeasurements();
-        console.log(aliceBalances);
-
-        await increaseTime(3600);
-        console.log("attempt 2")
-        await twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address);
+      let aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
+          account: aliceSigner.address, providerOrSigner: provider
+      });
+      aliceBalanceUsdcx = ethers.BigNumber.from(aliceBalanceUsdcx.toString())
+      // When user create stream, SF locks 4 hour deposit called initial deposit
+      const initialDeposit = aliceBalanceUsdcx.div(ethers.BigNumber.from('13')).mul(ethers.BigNumber.from('4'));
+      const inflowRate = aliceBalanceUsdcx.sub(initialDeposit).div(ethers.BigNumber.from(9 * 3600)).toString();
+      // Initialize a streamer with 9 hours of balance
+      await sf.cfaV1.updateFlow({
+          receiver: twoWayMarket.address,
+          superToken: ricochetUSDCx.address,
+          flowRate: inflowRate.toString(),
+      }).exec(aliceSigner);
+      // Verfiy closing attempts revert
+      await expect(twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address)).to.revertedWith('!closable');
+      // Advance time 2 hours
+      await increaseTime(2 * 3600);
+      // Verify closing the stream works
+      aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
+          account: aliceSigner.address, providerOrSigner: provider
+      });
+      await twoWayMarket.closeStream(aliceSigner.address, ricochetUSDCx.address);
+      expect(await twoWayMarket.getStreamRate(aliceSigner.address, ricochetUSDCx.address)).to.equal('0');
 
       });
 
