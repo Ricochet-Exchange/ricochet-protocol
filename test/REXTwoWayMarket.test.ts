@@ -551,9 +551,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -699,9 +699,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -891,9 +891,9 @@ describe('REXTwoWayMarket', () => {
         ]);
 
         // await increaseTime(3600);
-        await tp.submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
 
         // Deploy RIC-USDC Rex Market
@@ -984,9 +984,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -1024,9 +1024,9 @@ describe('REXTwoWayMarket', () => {
         // Fast forward an hour and distribute
         await increaseTime(3600);
 
-        await tp.submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
