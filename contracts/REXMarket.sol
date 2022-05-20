@@ -114,21 +114,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
     }
 
-    // Referral System Methods
-
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
-    function emergencyCloseStream(address streamer) external virtual {
+    function emergencyCloseStream(address streamer, ISuperToken token) external virtual {
         // Allows anyone to close any stream if the app is jailed
-        bool isJailed = host.isAppJailed(ISuperApp(address(this)));
-
-        require(isJailed, "!jailed");
+        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
 
         host.callAgreement(
             cfa,
             abi.encodeWithSelector(
                 cfa.deleteFlow.selector,
-                market.inputToken,
+                token,
                 streamer,
                 address(this),
                 new bytes(0) // placeholder
@@ -137,28 +133,45 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
     }
 
-    /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
-    function emergencyDrain() external virtual onlyOwner {
-        require(
-            cfa.getNetFlow(market.inputToken, address(this)) == 0,
-            "!zeroStreamers"
-        );
+    /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
+    /// @param streamer is stream source (streamer) address
+    function closeStream(address streamer, ISuperToken token) public {
+      // Only closable iff their balance is less than 8 hours of streaming
+      (,int96 streamerFlowRate,,) = cfa.getFlow(token, streamer, address(this));
+      // int96 streamerFlowRate = getStreamRate(token, streamer);
+      require(int(token.balanceOf(streamer)) <= streamerFlowRate * 8 hours,
+                "!closable");
 
-        market.inputToken.transfer(
-            owner(),
-            market.inputToken.balanceOf(address(this))
-        );
-
-        // Go through the other OutputPools and trigger distributions
-        for (uint32 index = 0; index < market.numOutputPools; index++) {
-            market.outputPools[index].token.transfer(
-                owner(),
-                market.outputPools[index].token.balanceOf(address(this))
-            );
-        }
+      // Close the streamers stream
+      // Does this trigger before/afterAgreementTerminated
+      host.callAgreement(
+          cfa,
+          abi.encodeWithSelector(
+              cfa.deleteFlow.selector,
+              token,
+              streamer,
+              address(this),
+              new bytes(0) // placeholder
+          ),
+          "0x"
+      );
     }
 
-    // Setters
+    /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
+    function emergencyDrain(ISuperToken token) external virtual onlyOwner {
+        require(
+            cfa.getNetFlow(token, address(this)) == 0,
+            "!zeroStreamers"
+        );
+        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
+
+        token.transfer(
+            owner(),
+            token.balanceOf(address(this))
+        );
+    }
+
+
 
     /// @dev Set rate tolerance
     /// @param _rate This is the new rate we need to set to
@@ -211,25 +224,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return market.oracles[token];
     }
 
-    /// @dev Get total input flow rate
-    /// @return input flow rate
-    function getTotalInflow() external view returns (int96) {
-        return cfa.getNetFlow(market.inputToken, address(this));
-    }
-
     /// @dev Get last distribution timestamp
     /// @return last distribution timestamp
     function getLastDistributionAt() external view returns (uint256) {
         return market.lastDistributionAt;
     }
-
-    /// @dev Get Tellor Oracle address
-    /// @return Tellor Oracle address
-    function getTellorOracle() external view returns (address) {
-        return address(oracle);
-    }
-
-    // Emergency Admin Methods
 
     /// @dev Is app jailed in SuperFluid protocol
     /// @return is app jailed in SuperFluid protocol
@@ -423,14 +422,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 daoShares,
                 market.outputPools[_index].token
             );
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                _index,
-                referrals.getAffiliateAddress(_shareholderUpdate.shareholder),
-                // affiliate may get 0.2%
-                affiliateShares,
-                market.outputPools[_index].token
-            );
+            address affiliate = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
+            if (affiliate != address(0)) {
+              _newCtx = _updateSubscriptionWithContext(
+                  _newCtx,
+                  _index,
+                  affiliate,
+                  // affiliate may get 0.2%
+                  affiliateShares,
+                  market.outputPools[_index].token
+              );
+            }
             // TODO: Update the fee taken by the DAO
         }
 
@@ -771,6 +773,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
+
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
@@ -842,7 +845,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
         // Refund the unswapped amount back to the person who started the stream
-        try market.inputToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
             // Nothing to do, pass
