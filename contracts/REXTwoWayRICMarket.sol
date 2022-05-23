@@ -21,7 +21,7 @@ contract REXTwoWayRICMarket is REXMarket {
   // Use ETHx as a subsidy, RIC is the token so another token needs to be set as subsidy
   ISuperToken subsidyToken = ISuperToken(0x27e1e4E6BC79D93032abef01025811B7E4727e85);
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-  ITellorMini tellor = ITellorMini(0xf8c1EB914EF4271edBC95C48ED067295C057F1a0);
+  ITellor tellor = ITellor(0xFd45Ae72E81Adaaf01cC61c8bCe016b7060DD537);
 
 
   // REX Two Way Market Contracts

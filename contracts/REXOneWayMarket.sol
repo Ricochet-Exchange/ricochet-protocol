@@ -29,7 +29,7 @@ contract REXOneWayMarket is REXMarket {
   }
 
   function initializeOneWayMarket(
-    ITellorMini _tellor,
+    ITellor _tellor,
     ISuperToken _inputToken,
     uint256 _rateTolerance,
     bytes32 _inputTokenQueryId,

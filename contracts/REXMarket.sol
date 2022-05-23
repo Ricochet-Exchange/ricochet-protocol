@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "./tellor/ITellorMini.sol";
+import "./tellor/ITellor.sol";
 import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
@@ -73,7 +73,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellorMini internal oracle; // Address of deployed simple oracle for input//output token
+    ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -269,7 +269,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function initializeMarket(
         ISuperToken _inputToken,
         uint256 _rateTolerance,
-        ITellorMini _tellor,
+        ITellor _tellor,
         bytes32 _inputTokenQueryId,
         uint128 _affiliateFee,
         uint128 _feeRate
@@ -349,9 +349,16 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256 _timestampRetrieved
         )
     {
-        uint256 _quantity;
-        (_value, _quantity) = oracle.getMedian(_queryId, block.timestamp, 660, 10);
-        if (_quantity > 0) return (true, _value/1e12, block.timestamp - 330);
+        uint256 _count = oracle.getNewValueCountbyQueryId(_queryId);
+        if (_count == 0) {
+            return (false, 0, 0);
+        }
+        _timestampRetrieved = oracle.getTimestampbyQueryIdandIndex(_queryId, _count - 1);
+        bytes memory _valueBytes = oracle.retrieveData(_queryId, _timestampRetrieved);
+        if (keccak256(_valueBytes) != keccak256(bytes(""))) {            
+            _value = abi.decode(_valueBytes, (uint256));
+            return (true, _value/1e12, _timestampRetrieved);
+        }
         return (false, 0, 0);
     }
 

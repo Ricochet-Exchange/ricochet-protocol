@@ -54,6 +54,9 @@ describe('REXTwoWayMarket', () => {
     let usdcxWhaleSigner: SignerWithAddress;
     let ethxWhaleSigner: SignerWithAddress;
     let karenSigner: SignerWithAddress;
+    let reporter1: SignerWithAddress;
+    let reporter2: SignerWithAddress;
+    let reporter3: SignerWithAddress;
 
     let oraclePrice: BigNumber;
     let ricOraclePrice: BigNumber;
@@ -280,7 +283,7 @@ describe('REXTwoWayMarket', () => {
         let tellorMultisig = await ethers.getSigner(TELLOR_MULTISIG_ADDRESS);
         const ERC20Factory = await ethers.getContractFactory("ERC20");
         let trb = ERC20Factory.attach(TRB_TOKEN_ADDRESS);
-        let [reporter1, reporter2, reporter3] = await ethers.getSigners()
+        [reporter1, reporter2, reporter3] = await ethers.getSigners();
 
         // Deposit oracle reporter stakes
         await trb.connect(tellorMultisig).transfer(reporter1.address, parseUnits("120"))
@@ -298,13 +301,13 @@ describe('REXTwoWayMarket', () => {
         // const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + Constants.COINGECKO_KEY + "&vs_currencies=usd";
         // let response = await httpService.get(url);
         // oraclePrice = parseInt(response.data[Constants.COINGECKO_KEY].usd) * ORACLE_PRECISION_DIGITS;
-        oraclePrice = 4110000000; // close price on block 22877930
+        oraclePrice = ORACLE_PRECISION_DIGITS.mul(4110); // close price on block 22877930
         console.log("oraclePrice: ", oraclePrice.toString());
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        ricOraclePrice = 1710000;
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        ricOraclePrice = ORACLE_PRECISION_DIGITS.mul(171).div(100);
         console.log("RIC oraclePrice: ", ricOraclePrice.toString());
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_RIC_QUERY_DATA);
         console.log("=========== Updated the oracles ============");
         // IMPORTANT --> the oracles must be updated before calling initializeTwoWayMarket
 
@@ -551,9 +554,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -699,9 +702,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -891,9 +894,9 @@ describe('REXTwoWayMarket', () => {
         ]);
 
         // await increaseTime(3600);
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ricOraclePrice]), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
 
         // Deploy RIC-USDC Rex Market
@@ -984,9 +987,9 @@ describe('REXTwoWayMarket', () => {
 
         // Fast forward an hour and distribute
         await increaseTime(3600);
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ricOraclePrice]), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 
@@ -1024,9 +1027,9 @@ describe('REXTwoWayMarket', () => {
         // Fast forward an hour and distribute
         await increaseTime(3600);
 
-        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
-        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
-        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, hexlify(ricOraclePrice), 0, TELLOR_RIC_QUERY_DATA);
+        await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, abiCoder.encode(['uint256'], [oraclePrice]), 0, TELLOR_ETH_QUERY_DATA);
+        await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, abiCoder.encode(['uint256'], [ORACLE_PRECISION_DIGITS]), 0, TELLOR_USDC_QUERY_DATA);
+        await tp.connect(reporter3).submitValue(Constants.TELLOR_RIC_QUERY_ID, abiCoder.encode(['uint256'], [ricOraclePrice]), 0, TELLOR_RIC_QUERY_DATA);
         await twoWayMarket.updateTokenPrices();
         await twoWayMarket.distribute("0x");
 

@@ -24,7 +24,7 @@ contract REXTwoWayMaticMarket is REXMarket {
   address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
   ISuperToken subsidyToken = ISuperToken(0x263026E7e53DBFDce5ae55Ade22493f828922965);
   IUniswapV2Router02 router = IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-  ITellorMini tellor = ITellorMini(0xf8c1EB914EF4271edBC95C48ED067295C057F1a0);
+  ITellor tellor = ITellor(0xFd45Ae72E81Adaaf01cC61c8bCe016b7060DD537);
 
 
   // REX Two Way Market Contracts
