@@ -1,5 +1,3 @@
-import { Constants } from "../misc/Constants";
-
 async function main() {
 
   function sleep(ms) {
@@ -13,14 +11,14 @@ async function main() {
 
   // Polygon Mainnet
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
-  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
-  const TELLOR_ORACLE_ADDRESS = Constants.TELLOR_ORACLE_ADDRESS;
+  const CFA_ADDRESS = "0x6EeE6060f715257b970700bc2656De21dEdF074C";
+  const IDA_ADDRESS = "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1";
+  const TELLOR_ORACLE_ADDRESS = "0xACC2d27400029904919ea54fFc0b18Bf07C57875";
 
   DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
   TELLOR_USDC_REQUEST_ID = 78;
-  RIC_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
+  RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
   TELLOR_RIC_REQUEST_ID = 77;
 
   console.log("Deploying contracts with the account:", deployer.address);
