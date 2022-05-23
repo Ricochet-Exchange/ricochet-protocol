@@ -11,6 +11,9 @@ import {
   increaseTime,
   impersonateAccounts,
 } from "./../misc/helpers";
+import { hexlify, parseUnits } from "ethers/lib/utils";
+import { Contract } from "ethers";
+import { Constants } from "../misc/Constants";
 const { loadFixture } = waffle;
 const {
   web3tx,
@@ -91,7 +94,7 @@ describe('REXOneWayMarket', () => {
   let eth;
   let weth;
   let app;
-  let tp; // Tellor playground
+  let tp: Contract; // Tellor playground
   let usingTellor;
   let sr; // Mock Sushi Router
   const ricAddress = '0x263026e7e53dbfdce5ae55ade22493f828922965';
@@ -106,7 +109,14 @@ describe('REXOneWayMarket', () => {
   const SF_RESOLVER = '0xE0cc76334405EE8b39213E620587d815967af39C';
   const RIC_TOKEN_ADDRESS = '0x263026E7e53DBFDce5ae55Ade22493f828922965';
   const SUSHISWAP_ROUTER_ADDRESS = '0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506';
-  const TELLOR_ORACLE_ADDRESS = '0xACC2d27400029904919ea54fFc0b18Bf07C57875';
+  const ORACLE_PRECISION_DIGITS = parseUnits("1");    // An eighteen-digit precision is required by the Tellor oracle
+  let abiCoder = new ethers.utils.AbiCoder
+  const TELLOR_ETH_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["eth", "usd"])])
+  const TELLOR_USDC_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["usdc", "usd"])])
+  const TELLOR_RIC_QUERY_DATA = abiCoder.encode(["string", "bytes"], ["SpotPrice", abiCoder.encode(["string", "string"], ["ric", "usd"])])
+  const TELLOR_ORACLE_ADDRESS = '0xFd45Ae72E81Adaaf01cC61c8bCe016b7060DD537';
+  const TELLOR_MULTISIG_ADDRESS = '0x3F0C1eB3FA7fCe2b0932d6d4D9E03b5481F3f0A7';
+  const TRB_TOKEN_ADDRESS = '0xE3322702BEdaaEd36CdDAb233360B939775ae5f1';
   const TELLOR_ETH_REQUEST_ID = 77;
   const TELLOR_USDC_REQUEST_ID = 78;
   const COINGECKO_KEY = 'richochet';
@@ -252,8 +262,24 @@ describe('REXOneWayMarket', () => {
     // Deploy Tellor Oracle contracts
 
     const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
-    tp = await TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
+    tp = TellorPlayground.attach(TELLOR_ORACLE_ADDRESS);
     tp = tp.connect(owner);
+    await impersonateAndSetBalance(TELLOR_MULTISIG_ADDRESS);
+    let tellorMultisig = await ethers.getSigner(TELLOR_MULTISIG_ADDRESS);
+    const ERC20Factory = await ethers.getContractFactory("ERC20");
+    let trb = ERC20Factory.attach(TRB_TOKEN_ADDRESS);
+    let [reporter1, reporter2, reporter3] = await ethers.getSigners() 
+
+    // Deposit oracle reporter stakes
+    await trb.connect(tellorMultisig).transfer(reporter1.address, parseUnits("120"))
+    await trb.connect(tellorMultisig).transfer(reporter2.address, parseUnits("120"))
+    await trb.connect(tellorMultisig).transfer(reporter3.address, parseUnits("120"))
+    await trb.connect(reporter1).approve(tp.address, parseUnits("120"))
+    await trb.connect(reporter2).approve(tp.address, parseUnits("120"))
+    await trb.connect(reporter3).approve(tp.address, parseUnits("120"))
+    await tp.connect(reporter1).depositStake(parseUnits("120"))
+    await tp.connect(reporter2).depositStake(parseUnits("120"))
+    await tp.connect(reporter3).depositStake(parseUnits("120"))
 
     // ==============
     // Setup tokens
@@ -276,10 +302,10 @@ describe('REXOneWayMarket', () => {
 
     // Get actual price, set oracle
     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1.01 * 1000000).toString();
+    oraclePrice = parseInt(response.data[COINGECKO_KEY].usd * 1.01 * ORACLE_PRECISION_DIGITS).toString();
     console.log('oraclePrice', oraclePrice);
-    await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-    await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+    await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+    await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
 
     // Deploy REXReferral
     RexReferral = await ethers.getContractFactory("REXReferral", {
@@ -480,8 +506,8 @@ describe('REXOneWayMarket', () => {
       // Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
@@ -510,8 +536,8 @@ describe('REXOneWayMarket', () => {
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
@@ -543,8 +569,8 @@ describe('REXOneWayMarket', () => {
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
@@ -576,8 +602,8 @@ describe('REXOneWayMarket', () => {
       // 3. Advance time 1 hour
       await takeMeasurements();
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Trigger a distribution
@@ -636,8 +662,8 @@ describe('REXOneWayMarket', () => {
 
       // 3. Increase time by 1 hour
       await traveler.advanceTimeAndBlock(3600);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
 
@@ -680,8 +706,8 @@ describe('REXOneWayMarket', () => {
       await u.alice.flow({ flowRate: "77160493827160", recipient: u.app });
       // 3. Increase time by 1 hour
       await traveler.advanceTimeAndBlock(60*60);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(outputx.address);
       // 4. Stop the flow
@@ -792,15 +818,15 @@ describe('REXOneWayMarket', () => {
       expect(await app.getStreamRate(u.admin.address)).to.equal(inflowRate1);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares1},0`);
       await traveler.advanceTimeAndBlock(60 * 60 * 12);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(ethx.address);
       await app.distribute();
       console.log('Distribution.');
       await traveler.advanceTimeAndBlock(60 * 60 * 1);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(ethx.address);
 
@@ -811,8 +837,8 @@ describe('REXOneWayMarket', () => {
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares2},0`);
       expect((await app.getIDAShares(0, u.admin.address)).toString()).to.equal(`true,true,${inflowRateIDAShares2},0`);
       await traveler.advanceTimeAndBlock(60 * 60 * 2);
-      await tp.submitValue(TELLOR_ETH_REQUEST_ID, oraclePrice);
-      await tp.submitValue(TELLOR_USDC_REQUEST_ID, 1000000);
+      await tp.connect(reporter1).submitValue(Constants.TELLOR_ETH_QUERY_ID, hexlify(oraclePrice), 0, TELLOR_ETH_QUERY_DATA);
+      await tp.connect(reporter2).submitValue(Constants.TELLOR_USDC_QUERY_ID, hexlify(ORACLE_PRECISION_DIGITS), 0, TELLOR_USDC_QUERY_DATA);
       await app.updateTokenPrice(usdcx.address);
       await app.updateTokenPrice(ethx.address);
       await app.distribute();
@@ -821,3 +847,4 @@ describe('REXOneWayMarket', () => {
     });
   });
 });
+

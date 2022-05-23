@@ -45,7 +45,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     struct OracleInfo {
-        uint256 requestId;
+        bytes32 queryId;
         uint256 usdPrice;
         uint256 lastUpdatedAt;
     }
@@ -73,7 +73,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellor public oracle; // Address of deployed simple oracle for input//output token
+    ITellor internal oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -270,7 +270,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken _inputToken,
         uint256 _rateTolerance,
         ITellor _tellor,
-        uint256 _inputTokenRequestId,
+        bytes32 _inputTokenQueryId,
         uint128 _affiliateFee,
         uint128 _feeRate
     ) public virtual onlyOwner {
@@ -283,7 +283,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.affiliateFee = _affiliateFee;
         market. feeRate = _feeRate;
         oracle = _tellor;
-        OracleInfo memory _newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
+        OracleInfo memory _newOracle = OracleInfo(_inputTokenQueryId, 0, 0);
         market.oracles[market.inputToken] = _newOracle;
         updateTokenPrice(_inputToken);
     }
@@ -292,12 +292,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
+        bytes32 _queryId,
         uint128 _shareScaler
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
-        require(_requestId != 0, "!validReqId");
-        require(market.oracles[_token].requestId == 0, "!unique");
+        require(_queryId != bytes32(0), "!validReqId");
+        require(market.oracles[_token].queryId == bytes32(0), "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
 
         OutputPool memory _newPool = OutputPool(
@@ -310,7 +310,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
+        OracleInfo memory _newOracle = OracleInfo(_queryId, 0, 0);
         market.oracles[_token] = _newOracle;
         updateTokenPrice(_token);
     }
@@ -331,7 +331,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             bool _ifRetrieve,
             uint256 _value,
             uint256 _timestampRetrieved
-        ) = getCurrentValue(market.oracles[_token].requestId);
+        ) = getCurrentValue(market.oracles[_token].queryId);
 
         require(_ifRetrieve, "!getCurrentValue");
         require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
@@ -340,7 +340,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
     }
 
-    function getCurrentValue(uint256 _requestId)
+    function getCurrentValue(bytes32 _queryId)
         public
         view
         returns (
@@ -349,15 +349,17 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             uint256 _timestampRetrieved
         )
     {
-        uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
-        _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
-            _requestId,
-            _count - 1
-        );
-        _value = oracle.retrieveData(_requestId, _timestampRetrieved);
-
-        if (_value > 0) return (true, _value, _timestampRetrieved);
-        return (false, 0, _timestampRetrieved);
+        uint256 _count = oracle.getNewValueCountbyQueryId(_queryId);
+        if (_count == 0) {
+            return (false, 0, 0);
+        }
+        _timestampRetrieved = oracle.getTimestampbyQueryIdandIndex(_queryId, _count - 1);
+        bytes memory _valueBytes = oracle.retrieveData(_queryId, _timestampRetrieved);
+        if (keccak256(_valueBytes) != keccak256(bytes(""))) {            
+            _value = abi.decode(_valueBytes, (uint256));
+            return (true, _value/1e12, _timestampRetrieved);
+        }
+        return (false, 0, 0);
     }
 
     /// @dev Get flow rate for `_streamer`
