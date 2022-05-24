@@ -17,7 +17,6 @@ const SF_RESOLVER = Constants.SF_RESOLVER;
 
 
 async function main() {
-  console.log("checking var - ", CFA_ADDRESS);
   const sf = new SuperfluidSDK.Framework({
     web3,
     resolverAddress: SF_RESOLVER,
