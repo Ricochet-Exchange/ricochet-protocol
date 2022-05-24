@@ -1,3 +1,6 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { web3, ethers } from "hardhat";
+
 const {
   web3tx,
 } = require('@decentral.ee/web3-helpers');
@@ -62,14 +65,14 @@ async function main() {
 
 }
 
-async function approveSubscriptions(index, deployer) {
+async function approveSubscriptions(index: number, deployer: SignerWithAddress) {
 
 
 }
 
 main()
-.then(() => process.exit(0))
-.catch(error => {
+  .then(() => process.exit(0))
+  .catch(error => {
     console.error(error);
     process.exit(1);
-});
+  });

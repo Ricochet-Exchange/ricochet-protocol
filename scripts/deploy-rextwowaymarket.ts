@@ -1,6 +1,8 @@
+import { ethers } from "hardhat";
+
 async function main() {
 
-  function sleep(ms) {
+  function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
@@ -32,17 +34,19 @@ async function main() {
   // const rexTwoWayMarket = await REXTwoWayMarket.attach("0x6d346Dc10529232505f2A7195d4AA01257b37167");
 
   console.log("Deploying REXTwoWayMarket")
+  const REG_KEY = process.env.SF_REG_KEY !== undefined ? process.env.SF_REG_KEY : "";
+
   const rexTwoWayMarket = await REXTwoWayMarket.deploy(deployer.address,
-                                                      HOST_ADDRESS,
-                                                      CFA_ADDRESS,
-                                                      IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY,
-                                                      REX_REFERRAL_ADDRESS
-                                                     );
+    HOST_ADDRESS,
+    CFA_ADDRESS,
+    IDA_ADDRESS,
+    REG_KEY,
+    REX_REFERRAL_ADDRESS
+  );
 
 
-   await rexTwoWayMarket.deployed();
-   console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
+  await rexTwoWayMarket.deployed();
+  console.log("Deployed REXTwoWayMarket at address:", rexTwoWayMarket.address);
 
   await rexTwoWayMarket.initializeTwoWayMarket(
     USDCX_ADDRESS,
@@ -53,12 +57,13 @@ async function main() {
     1e9,
     20000,
     20000,
-    {gasLimit: 2000000}
+    { gasLimit: 2000000 }
   );
   console.log("Initialized twoway market.")
 
   await sleep(5000);
 
+  // let ricAdress = 
   await rexTwoWayMarket.initializeSubsidies(0, RIC_ADDRESS); // 1e15/second
   console.log("Initialized subsidy.")
 
@@ -80,8 +85,8 @@ async function main() {
 }
 
 main()
-.then(() => process.exit(0))
-.catch(error => {
+  .then(() => process.exit(0))
+  .catch(error => {
     console.error(error);
     process.exit(1);
-});
+  });

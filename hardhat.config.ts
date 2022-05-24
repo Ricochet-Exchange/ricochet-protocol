@@ -66,8 +66,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.POLYGON_NODE_URL,
-        accounts: [process.env.POLYGON_PRIVATE_KEY],
+        url: process.env.POLYGON_NODE_URL || "",
+        accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
         blockNumber: 22877930     // Essential for mainnet forking !!
       },
@@ -81,12 +81,12 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,
-      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
       gasPrice: 35000000000 // 35 Gwei
     },
     localhost: {
-      accounts: [process.env.POLYGON_PRIVATE_KEY],
+      accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       url: 'http://127.0.0.1:8545/'
     }
   },

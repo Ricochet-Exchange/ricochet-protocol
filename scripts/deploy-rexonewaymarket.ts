@@ -1,3 +1,6 @@
+import { ethers } from "hardhat";
+import { REX_REFERRAL_ADDRESS } from "../misc/setup";
+
 async function main() {
 
   const [deployer] = await ethers.getSigners();
@@ -11,10 +14,10 @@ async function main() {
   const RIC_CONTRACT_ADDRESS = "0x263026e7e53dbfdce5ae55ade22493f828922965";
   const ROUTER_ADDRESS = "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506";
 
-  USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  TELLOR_USDC_REQUEST_ID = 78;
-  RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
-  TELLOR_RIC_REQUEST_ID = 77;
+  const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
+  const TELLOR_USDC_REQUEST_ID = 78;
+  const RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  const TELLOR_RIC_REQUEST_ID = 77;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -22,12 +25,12 @@ async function main() {
   const REXOneWayMarket = await ethers.getContractFactory("REXOneWayMarket");
   console.log("Deploying REXOneWayMarket")
   const rexOneWayMarket = await REXOneWayMarket.deploy(deployer.address,
-                                                      HOST_ADDRESS,
-                                                      CFA_ADDRESS,
-                                                      IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY,
-                                                      process.env.REX_REFERRAL_ADDRESS
-                                                     );
+    HOST_ADDRESS,
+    CFA_ADDRESS,
+    IDA_ADDRESS,
+    process.env.SF_REG_KEY || "",
+    REX_REFERRAL_ADDRESS
+  );
   await rexOneWayMarket.deployed();
   console.log("Deployed rexOneWayMarket at address:", rexOneWayMarket.address);
 
@@ -36,7 +39,7 @@ async function main() {
     TELLOR_ORACLE_ADDRESS,
     USDCX_ADDRESS,
     20000,
-    TELLOR_USDC_REQUEST_ID,
+    TELLOR_USDC_REQUEST_ID.toString(),
     RIC_ADDRESS,
     20000,
     TELLOR_RIC_REQUEST_ID
@@ -45,7 +48,7 @@ async function main() {
   // Register the market with REXReferral
   console.log("Registering with RexReferral system...")
   const RexReferral = await ethers.getContractFactory("RexReferral");
-  const referral = await RexReferral.attach(process.env.REX_REFERRAL_ADDRESS);
+  const referral = await RexReferral.attach(REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexOneWayMarket.address);
   console.log("Registered:", rexOneWayMarket.address);
 
@@ -58,8 +61,8 @@ async function main() {
 }
 
 main()
-.then(() => process.exit(0))
-.catch(error => {
+  .then(() => process.exit(0))
+  .catch(error => {
     console.error(error);
     process.exit(1);
-});
+  });

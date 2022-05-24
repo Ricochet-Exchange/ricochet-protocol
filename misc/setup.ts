@@ -3,6 +3,7 @@ import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Constants } from "./Constants";
+import * as dotenv from "dotenv";
 
 const { provider, loadFixture } = waffle;
 
@@ -16,6 +17,8 @@ import { ERC20 } from "../typechain";
 // NOTE: It is essential to pass in a Deployer into the contracts for initialization
 // This is because when we are testing the emit, the passed in contract expects a
 // provider and will throw an error if this doesn't exist.
+
+dotenv.config();
 
 const ETHX_ADDRESS = "";
 const USDCX_ADDRESS = "";
@@ -38,6 +41,8 @@ export interface IUser {
   options?: any;
   alias?: string;
 }
+
+export const REX_REFERRAL_ADDRESS = process.env.REX_REFERRAL_ADDRESS !== undefined ? process.env.REX_REFERRAL_ADDRESS : "";
 
 // export interface TypesOfTokens {
 //   ric: Promise<ERC20>;
