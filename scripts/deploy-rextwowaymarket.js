@@ -1,4 +1,4 @@
-import { Constants } from '../misc/Constants';
+const C = require('../misc/Constants.ts');
 
 async function main() {
 
@@ -13,9 +13,9 @@ async function main() {
 
   // Polygon Mainnet
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
-  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
-  const TELLOR_ORACLE_ADDRESS = Constants.TELLOR_ORACLE_ADDRESS;
+  const CFA_ADDRESS = C.Constants.CFA_SUPERFLUID_ADDRESS;
+  const IDA_ADDRESS = C.Constants.IDA_SUPERFLUID_ADDRESS;
+  const TELLOR_ORACLE_ADDRESS = C.Constants.TELLOR_ORACLE_ADDRESS;
 
   const DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
@@ -25,7 +25,7 @@ async function main() {
   const WBTCX_ADDRESS = "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92";
   const TELLOR_WBTC_REQUEST_ID = 60;
   const REX_REFERRAL_ADDRESS = '0xA0eC9E1542485700110688b3e6FbebBDf23cd901';
-  const RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  const RIC_ADDRESS = C.Constants.RIC_TOKEN_ADDRESS;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
