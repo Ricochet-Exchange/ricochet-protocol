@@ -1,8 +1,10 @@
-const C = require('../misc/Constants.ts');
+import { ethers } from "hardhat";
+import { REX_REFERRAL_ADDRESS } from "../misc/setup";
+import { Constants } from "../misc/Constants"
 
 async function main() {
 
-  function sleep(ms) {
+  function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
@@ -13,16 +15,15 @@ async function main() {
 
   // Polygon Mainnet
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = C.Constants.CFA_SUPERFLUID_ADDRESS;
-  const IDA_ADDRESS = C.Constants.IDA_SUPERFLUID_ADDRESS;
-  const TELLOR_ORACLE_ADDRESS = C.Constants.TELLOR_ORACLE_ADDRESS;
+  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
+  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
+  const TELLOR_ORACLE_ADDRESS = Constants.TELLOR_ORACLE_ADDRESS;
 
-  DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
-  USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  TELLOR_USDC_REQUEST_ID = 78;
-  MATICX_ADDRESS = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3";
-  TELLOR_MATIC_REQUEST_ID = 6;
-
+  const DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
+  const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
+  const TELLOR_USDC_REQUEST_ID = 78;
+  const MATICX_ADDRESS = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3";
+  const TELLOR_MATIC_REQUEST_ID = 6;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -32,16 +33,16 @@ async function main() {
 
   console.log("Deploying REXTwoWayMaticMarket")
   const rexTwoWayMarket = await REXTwoWayMaticMarket.deploy(deployer.address,
-                                                      HOST_ADDRESS,
-                                                      CFA_ADDRESS,
-                                                      IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY,
-                                                      process.env.REX_REFERRAL_ADDRESS
-                                                     );
+    HOST_ADDRESS,
+    CFA_ADDRESS,
+    IDA_ADDRESS,
+    process.env.SF_REG_KEY,
+    process.env.REX_REFERRAL_ADDRESS
+  );
 
 
-   await rexTwoWayMarket.deployed();
-   console.log("Deployed REXTwoWayMaticMarket at address:", rexTwoWayMarket.address);
+  await rexTwoWayMarket.deployed();
+  console.log("Deployed REXTwoWayMaticMarket at address:", rexTwoWayMarket.address);
 
   await rexTwoWayMarket.initializeTwoWayMarket(
     USDCX_ADDRESS,
@@ -52,7 +53,7 @@ async function main() {
     1e9,
     20000,
     20000,
-    {gasLimit: 2000000}
+    { gasLimit: 2000000 }
   );
   console.log("Initialized twoway market.")
 
@@ -63,7 +64,7 @@ async function main() {
 
   console.log("Registering with RexReferral system...")
   const REXReferral = await ethers.getContractFactory("REXReferral");
-  const referral = await REXReferral.attach(process.env.REX_REFERRAL_ADDRESS);
+  const referral = await REXReferral.attach(REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexTwoWayMarket.address);
   console.log("Registered:", rexTwoWayMarket.address);
   //
@@ -79,8 +80,8 @@ async function main() {
 }
 
 main()
-.then(() => process.exit(0))
-.catch(error => {
+  .then(() => process.exit(0))
+  .catch(error => {
     console.error(error);
     process.exit(1);
-});
+  });
