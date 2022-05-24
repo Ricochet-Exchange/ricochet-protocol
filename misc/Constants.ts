@@ -9,7 +9,7 @@ export const Constants = {
     TELLOR_USDC_REQUEST_ID: 78,
     TELLOR_RIC_REQUEST_ID: 77,
     TELLOR_MATIC_REQUEST_ID: 6,
-    TELLOR_REQUEST_ID: 60,
+    TELLOR_WBTC_REQUEST_ID: 60,
 
     COINGECKO_KEY: "ethereum",
 
