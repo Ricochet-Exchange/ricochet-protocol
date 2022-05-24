@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { Constants } from "../misc/Constants"
 
 async function main() {
 
@@ -6,13 +7,13 @@ async function main() {
 
   // Polygon Mainnet
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = "0x6EeE6060f715257b970700bc2656De21dEdF074C";
-  const IDA_ADDRESS = "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1";
+  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
+  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
   const RIC_TREASURY_ADDRESS = "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89";
   const OUTPUT_RATE = "32000000000000000"; // ~1M RIC/year
   const FEE_RATE = "100000";  // 1
   const INPUT_TOKEN_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  const OUTPUT_TOKEN_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; //RIC
+  const OUTPUT_TOKEN_ADDRESS = Constants.RIC_TOKEN_ADDRESS; //RIC
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
