@@ -21,9 +21,9 @@ async function main() {
 
   const DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  const TELLOR_USDC_REQUEST_ID = 78;
+  const TELLOR_USDC_REQUEST_ID = Constants.TELLOR_USDC_REQUEST_ID;
   const RIC_ADDRESS = Constants.RIC_TOKEN_ADDRESS;;
-  const TELLOR_RIC_REQUEST_ID = 77;
+  const TELLOR_RIC_REQUEST_ID = Constants.TELLOR_RIC_REQUEST_ID;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
