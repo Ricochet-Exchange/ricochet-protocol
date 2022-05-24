@@ -36,8 +36,8 @@ describe('REXTwoWayMarket', () => {
 
     let rexReferral: REXReferral__factory;
     let REXMarketFactory: any;
-    let referral;
-    let snapshot;
+    let referral: any;
+    let snapshot: any;
 
     let adminSigner: SignerWithAddress;
     let aliceSigner: SignerWithAddress;
@@ -384,7 +384,7 @@ describe('REXTwoWayMarket', () => {
             expect(await twoWayMarket.getFeeRate(0)).to.equal(1000);
             await twoWayMarket.setEmissionRate(0, 1000);
             expect(await twoWayMarket.getEmissionRate(0)).to.equal(1000);
-            expect((await twoWayMarket.getOutputPool(0)).toString()).to.equal(`${ricochetUSDCx.address},1000,1000,${1e7}`);
+            expect((await twoWayMarket.getOuputPool(0)).toString()).to.equal(`${ricochetUSDCx.address},1000,1000,${1e7}`);
             expect(parseInt(await twoWayMarket.getLastDistributionAt())).to.be.above(0)
 
 
