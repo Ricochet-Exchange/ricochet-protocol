@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { REX_REFERRAL_ADDRESS } from "../misc/setup";
 
 async function main() {
 
@@ -62,7 +63,7 @@ async function main() {
 
   console.log("Registering with RexReferral system...")
   const REXReferral = await ethers.getContractFactory("REXReferral");
-  const referral = await REXReferral.attach(process.env.REX_REFERRAL_ADDRESS);
+  const referral = await REXReferral.attach(REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexTwoWayMarket.address);
   console.log("Registered:", rexTwoWayMarket.address);
   //

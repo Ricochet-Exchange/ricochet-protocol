@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { REX_REFERRAL_ADDRESS } from "../misc/setup";
 
 async function main() {
 
@@ -24,12 +25,12 @@ async function main() {
   const REXOneWayMarket = await ethers.getContractFactory("REXOneWayMarket");
   console.log("Deploying REXOneWayMarket")
   const rexOneWayMarket = await REXOneWayMarket.deploy(deployer.address,
-                                                      HOST_ADDRESS,
-                                                      CFA_ADDRESS,
-                                                      IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY,
-                                                      process.env.REX_REFERRAL_ADDRESS
-                                                     );
+    HOST_ADDRESS,
+    CFA_ADDRESS,
+    IDA_ADDRESS,
+    process.env.SF_REG_KEY || "",
+    REX_REFERRAL_ADDRESS
+  );
   await rexOneWayMarket.deployed();
   console.log("Deployed rexOneWayMarket at address:", rexOneWayMarket.address);
 
@@ -47,7 +48,7 @@ async function main() {
   // Register the market with REXReferral
   console.log("Registering with RexReferral system...")
   const RexReferral = await ethers.getContractFactory("RexReferral");
-  const referral = await RexReferral.attach(process.env.REX_REFERRAL_ADDRESS);
+  const referral = await RexReferral.attach(REX_REFERRAL_ADDRESS);
   await referral.registerApp(rexOneWayMarket.address);
   console.log("Registered:", rexOneWayMarket.address);
 
@@ -60,8 +61,8 @@ async function main() {
 }
 
 main()
-.then(() => process.exit(0))
-.catch(error => {
+  .then(() => process.exit(0))
+  .catch(error => {
     console.error(error);
     process.exit(1);
-});
+  });

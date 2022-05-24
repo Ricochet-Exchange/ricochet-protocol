@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 import * as dotenv from "dotenv";
+import { REX_REFERRAL_ADDRESS } from "../misc/setup";
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ async function main() {
   // Register the market with REXReferral
   console.log("Registering with RexReferral system...")
   const REXReferral = await ethers.getContractFactory("REXReferral");
-  const referral = await REXReferral.attach(process.env.REX_REFERRAL_ADDRESS);
+  const referral = await REXReferral.attach(REX_REFERRAL_ADDRESS);
   // await referral.registerApp(rexTwoWayMarket.address);
   // console.log("Registered:", rexTwoWayMarket.address);
 
