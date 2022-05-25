@@ -385,7 +385,7 @@ describe('REXTwoWayMarket', () => {
             await twoWayMarket.setEmissionRate(0, 1000);
             expect(await twoWayMarket.getEmissionRate(0)).to.equal(1000);
             expect((await twoWayMarket.getOutputPool(0)).toString()).to.equal(`${ricochetUSDCx.address},1000,1000,${1e7}`);
-            expect(parseInt(await twoWayMarket.getLastDistributionAt())).to.be.above(0)
+            expect((await twoWayMarket.getLastDistributionAt()).toNumber()).to.be.above(0)
 
 
         });
