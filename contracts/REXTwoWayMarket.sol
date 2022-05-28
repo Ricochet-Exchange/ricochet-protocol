@@ -5,6 +5,7 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
+import './ISETHCustom.sol';
 
 contract REXTwoWayMarket is REXMarket {
     using SafeERC20 for ERC20;
@@ -17,9 +18,8 @@ contract REXTwoWayMarket is REXMarket {
     uint32 constant SUBSIDYB_INDEX = 3;
     uint256 lastDistributionTokenAAt;
     uint256 lastDistributionTokenBAt;
-    address public constant ric = 0x263026E7e53DBFDce5ae55Ade22493f828922965;
+    address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
     ISuperToken subsidyToken;
-    uint256 ricRequestId = 77;
     IUniswapV2Router02 router =
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
@@ -422,24 +422,35 @@ contract REXTwoWayMarket is REXMarket {
         path = new address[](2);
         path[0] = inputToken;
         path[1] = outputToken;
-        router.swapExactTokensForTokens(
-            amount,
-            minOutput, // Accept any amount but fail if we're too far from the oracle price
-            path,
-            address(this),
-            deadline
-        );
+
+        if (address(output) == MATICX) {
+          router.swapExactTokensForETH(
+             amount,
+             0,
+             path,
+             address(this),
+             block.timestamp + 3600
+          );
+          ISETHCustom(address(output)).upgradeByETH{value: address(this).balance}();
+        } else {
+          router.swapExactTokensForTokens(
+             amount,
+             minOutput,
+             path,
+             address(this),
+             block.timestamp + 3600
+          );
+          if (address(output) != outputToken) {
+              output.upgrade(
+                  ERC20(outputToken).balanceOf(address(this)) *
+                      (10**(18 - ERC20(outputToken).decimals()))
+              );
+          }
+        }
+
         // Assumes `amount` was outputToken.balanceOf(address(this))
         outputAmount = ERC20(outputToken).balanceOf(address(this));
-        // require(outputAmount >= minOutput, "BAD_EXCHANGE_RATE: Try again later");
 
-        // Convert the outputToken back to its supertoken version if needed
-        if (address(output) != outputToken) {
-            output.upgrade(
-                ERC20(outputToken).balanceOf(address(this)) *
-                    (10**(18 - ERC20(outputToken).decimals()))
-            );
-        }
         return outputAmount;
     }
 
@@ -582,4 +593,7 @@ contract REXTwoWayMarket is REXMarket {
             );
         }
     }
+
+    receive() external payable {}
+
 }

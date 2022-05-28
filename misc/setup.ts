@@ -65,6 +65,7 @@ export const setup = async () => {
     "RIC_TOKEN_ADDRESS": Constants.RIC_TOKEN_ADDRESS,
     "SF_RESOLVER": Constants.SF_RESOLVER,
     "USDCX_SOURCE_ADDRESS": Constants.USDCX_SOURCE_ADDRESS,
+    "MATICX_SOURCE_ADDRESS": Constants.MATICX_SOURCE_ADDRESS,
     "TELLOR_ORACLE_ADDRESS": Constants.TELLOR_ORACLE_ADDRESS,
     "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
     "TELLOR_ETH_REQUEST_ID": Constants.TELLOR_ETH_REQUEST_ID.toString(),
@@ -81,11 +82,12 @@ export const setup = async () => {
     Constants.KAREN_ADDRESS,
     Constants.USDCX_SOURCE_ADDRESS,
     Constants.ETHX_SOURCE_ADDRESS,
+    Constants.MATICX_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "usdcxspender", "ethxspender"];
+  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -98,6 +100,9 @@ export const setup = async () => {
 
   // Declare supertokens as ERC 20 contracts
   const superTokens: ISuperToken = {
+    maticx: await superfluid.loadSuperToken(
+      "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3"
+    ),
     ethx: await superfluid.loadSuperToken(
       "0x27e1e4E6BC79D93032abef01025811B7E4727e85"
     ),
@@ -140,6 +145,10 @@ export const setup = async () => {
     "ERC20",
     await superTokens.usdcx.underlyingToken.address
   );
+  tokens.maticx = await ethers.getContractAt(
+    "ERC20",
+    await superTokens.maticx.underlyingToken.address
+  );
   // let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
 
@@ -163,4 +172,3 @@ export const setup = async () => {
 
   // const accounts : SignerWithAddress[] = await impersonateAccounts(accountAddrs);
   // const names = ["admin", "alice", "bob", "carl", "spender"];
-
