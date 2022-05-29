@@ -35,7 +35,7 @@ let ricochetPrice = "/coins/{ polygon-pos}/contract/{ 0x263026e7e53dbfdce5ae55ad
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.4",
+    version: "0.8.13",
     settings: {
       optimizer: {
         enabled: true,

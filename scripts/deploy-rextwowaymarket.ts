@@ -26,7 +26,11 @@ async function main() {
   const WBTCX_ADDRESS = "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92";
   const TELLOR_WBTC_REQUEST_ID = Constants.TELLOR_WBTC_REQUEST_ID;
   const REX_REFERRAL_ADDRESS = '0xA0eC9E1542485700110688b3e6FbebBDf23cd901';
+  const RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
+  const MATICX_ADDRESS = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3";
+  const TELLOR_MATIC_REQUEST_ID = 6;
   const RIC_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
+
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -52,9 +56,9 @@ async function main() {
   await rexTwoWayMarket.initializeTwoWayMarket(
     USDCX_ADDRESS,
     TELLOR_USDC_REQUEST_ID,
-    1e7,
-    ETHX_ADDRESS,
-    TELLOR_ETH_REQUEST_ID,
+    1e9,
+    MATICX_ADDRESS,
+    TELLOR_MATIC_REQUEST_ID,
     1e9,
     20000,
     20000,
