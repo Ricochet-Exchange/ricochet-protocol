@@ -8,7 +8,6 @@ import * as dotenv from "dotenv";
 const { provider, loadFixture } = waffle;
 
 import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
-// import { ERC20 } from "../typechain";
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
