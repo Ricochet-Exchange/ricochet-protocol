@@ -33,6 +33,7 @@ export interface ISuperToken {
   wbtcx: SuperToken;
   daix: SuperToken;
   ric: SuperToken;
+  maticx: SuperToken;
 }
 
 export interface IUser {
