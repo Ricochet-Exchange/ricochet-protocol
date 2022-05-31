@@ -31,6 +31,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./RicochetLaunchpadStorage.sol";
 import "./RicochetLaunchpadHelper.sol";
 
+import "./referral/IREXReferral.sol";
 
 contract RicochetLaunchpad is Ownable, SuperAppBase {
 
@@ -39,6 +40,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
     using RicochetLaunchpadHelper for RicochetLaunchpadStorage.RicochetLaunchpad;
     using RicochetLaunchpadStorage for RicochetLaunchpadStorage.RicochetLaunchpad;
     RicochetLaunchpadStorage.RicochetLaunchpad internal _launchpad;
+    IREXReferral internal referrals;
 
     event UpdatedStream(address from, int96 newRate, int96 totalInflow);
 
@@ -46,7 +48,9 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
         ISuperfluid host,
         IConstantFlowAgreementV1 cfa,
         IInstantDistributionAgreementV1  ida,
-        string memory registrationKey) {
+        string memory registrationKey,
+        IREXReferral _rexReferral
+        ) {
         require(address(host) != address(0), "host");
         require(address(cfa) != address(0), "cfa");
         require(address(ida) != address(0), "ida");
@@ -55,6 +59,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
         _launchpad.host = host;
         _launchpad.cfa = cfa;
         _launchpad.ida = ida;
+        referrals = _rexReferral;
 
         uint256 configWord =
             SuperAppDefinitions.APP_LEVEL_FINAL |
@@ -97,6 +102,19 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
         _launchpad.lastDistributionAt = block.timestamp;
     }
 
+    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
+      require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
+      ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
+      string memory affiliateId;
+      if (decompiledContext.userData.length > 0) {
+        (affiliateId) = abi.decode(decompiledContext.userData, (string));
+      } else {
+        affiliateId = "";
+      }
+
+      referrals.safeRegisterCustomer(_shareholder, affiliateId);
+    }
+
     /**************************************************************************
      * Stream Exchange Logic
      *************************************************************************/
@@ -130,8 +148,16 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
     require(int(_launchpad.inputToken.balanceOf(requester)) >= requesterFlowRate * 8 hours, "!enoughTokens");
 
     require(requesterFlowRate >= 0, "!negativeRates");
+    
     newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, requester, uint128(uint(int(requesterFlowRate))), _launchpad.outputToken);
 
+    address affiliate = referrals.getAffiliateAddress(requester);
+    // What should the affiliate flow rate be?
+    (, int96 affiliateFlowRate, , ) = _launchpad.cfa.getFlow(_launchpad.inputToken, affiliate, address(this));
+    if (affiliate != address(0)) {
+      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, affiliate, uint128(uint(int(affiliateFlowRate))), _launchpad.outputToken);
+    }
+    
     emit UpdatedStream(requester, requesterFlowRate, appFlowRate);
 
   }
@@ -243,6 +269,10 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
       returns (bytes memory newCtx)
   {
       if (!_launchpad._isInputToken(_superToken) || !_launchpad._isCFAv1(_agreementClass)) return _ctx;
+
+      (address requester) = abi.decode(_agreementData, (address));
+      // should the first argument be ctx or newCtx here?
+      _registerReferral(_ctx, requester);
       return _updateOutflow(_ctx, _agreementData, true);
   }
 
