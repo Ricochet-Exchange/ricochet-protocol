@@ -23,7 +23,7 @@ export interface superTokenAndItsIDAIndex {
     IDAIndex: number;
 }
 
-describe('REXTwoWayMarket', () => {
+describe('REXLaunchpad', () => {
     const errorHandler = (err: any) => {
         if (err) throw err;
     };
