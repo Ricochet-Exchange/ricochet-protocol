@@ -31,7 +31,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./RicochetLaunchpadStorage.sol";
 import "./RicochetLaunchpadHelper.sol";
 
-import "./referral/IREXReferral.sol";
+import "../referral/IREXReferral.sol";
 
 contract RicochetLaunchpad is Ownable, SuperAppBase {
 
@@ -104,7 +104,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
 
     function _registerReferral(bytes memory _ctx, address _shareholder) internal {
       require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
-      ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
+      ISuperfluid.Context memory decompiledContext = _launchpad.host.decodeCtx(_ctx);
       string memory affiliateId;
       if (decompiledContext.userData.length > 0) {
         (affiliateId) = abi.decode(decompiledContext.userData, (string));
@@ -157,7 +157,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
     if (affiliate != address(0)) {
       newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, affiliate, uint128(uint(int(affiliateFlowRate))), _launchpad.outputToken);
     }
-    
+
     emit UpdatedStream(requester, requesterFlowRate, appFlowRate);
 
   }
