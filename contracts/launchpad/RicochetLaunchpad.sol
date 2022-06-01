@@ -148,14 +148,18 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
     require(int(_launchpad.inputToken.balanceOf(requester)) >= requesterFlowRate * 8 hours, "!enoughTokens");
 
     require(requesterFlowRate >= 0, "!negativeRates");
-    
-    newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, requester, uint128(uint(int(requesterFlowRate))), _launchpad.outputToken);
 
     address affiliate = referrals.getAffiliateAddress(requester);
-    // What should the affiliate flow rate be?
-    (, int96 affiliateFlowRate, , ) = _launchpad.cfa.getFlow(_launchpad.inputToken, affiliate, address(this));
-    if (affiliate != address(0)) {
-      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, affiliate, uint128(uint(int(affiliateFlowRate))), _launchpad.outputToken);
+
+    if(affiliate != address(0)){
+      // affiliate and admin share 50/50 2% of requesterFlowRate.
+      int96 affiliateShares = requesterFlowRate / 100 * 2;
+      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, affiliate, uint128(uint(int(affiliateShares / 2))), _launchpad.outputToken);
+      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, owner(), uint128(uint(int(affiliateShares / 2))), _launchpad.outputToken);
+      // take 2% off of requesterFlowRate if they have an affiliate
+      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, requester, uint128(uint(int(requesterFlowRate - affiliateShares))), _launchpad.outputToken);
+    } else {
+      newCtx = _launchpad._updateSubscriptionWithContext(newCtx, _launchpad.outputIndexId, requester, uint128(uint(int(requesterFlowRate))), _launchpad.outputToken);
     }
 
     emit UpdatedStream(requester, requesterFlowRate, appFlowRate);
@@ -271,7 +275,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
       if (!_launchpad._isInputToken(_superToken) || !_launchpad._isCFAv1(_agreementClass)) return _ctx;
 
       (address requester) = abi.decode(_agreementData, (address));
-      // should the first argument be ctx or newCtx here?
+  
       _registerReferral(_ctx, requester);
       return _updateOutflow(_ctx, _agreementData, true);
   }
