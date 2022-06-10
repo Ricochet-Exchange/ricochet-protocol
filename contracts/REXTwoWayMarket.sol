@@ -1,14 +1,65 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
+import {IInstantDistributionAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol";
+import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "./tellor/ITellor.sol";
+import "./referral/IREXReferral.sol";
+import "hardhat/console.sol";
 
-import "./REXMarket.sol";
-import './ISETHCustom.sol';
+import "./ISETHCustom.sol";
 
-contract REXTwoWayMarket is REXMarket {
+contract REXTwoWayMarket is Ownable, SuperAppBase, Initializable {
     using SafeERC20 for ERC20;
+
+    struct ShareholderUpdate {
+      address shareholder;
+      int96 previousFlowRate;
+      int96 currentFlowRate;
+      ISuperToken token;
+    }
+
+    struct OracleInfo {
+        uint256 requestId;
+        uint256 usdPrice;
+        uint256 lastUpdatedAt;
+    }
+
+    struct OutputPool {
+        ISuperToken token;
+        uint128 feeRate; // Fee taken by the DAO on each output distribution
+        uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
+        uint128 shareScaler;  // The amount to scale back IDA shares of this output pool
+    }
+
+    struct Market {
+        ISuperToken inputToken;
+        uint256 lastDistributionAt; // The last time a distribution was made
+        uint256 rateTolerance; // The percentage to deviate from the oracle scaled to 1e6
+        uint128 feeRate;
+        uint128 affiliateFee;
+        address owner; // The owner of the market (reciever of fees)
+        mapping(ISuperToken => OracleInfo) oracles; // Maps tokens to their oracle info
+        mapping(uint32 => OutputPool) outputPools; // Maps IDA indexes to their distributed Supertokens
+        mapping(ISuperToken => uint32) outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
+        uint8 numOutputPools; // Indexes outputPools and outputPoolFees
+    }
+
+    ISuperfluid internal host; // Superfluid host contract
+    IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
+    IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
+    ITellor public oracle; // Address of deployed simple oracle for input//output token
+    Market internal market;
+    uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
+    uint8 internal constant MAX_OUTPUT_POOLS = 5;
+    IREXReferral internal referrals;
 
     ISuperToken inputTokenA;
     ISuperToken inputTokenB;
@@ -24,6 +75,17 @@ contract REXTwoWayMarket is REXMarket {
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
+    // TODO: Emit these events where appropriate
+    /// @dev Distribution event. Emitted on each token distribution operation.
+    /// @param totalAmount is total distributed amount
+    /// @param feeCollected is fee amount collected during distribution
+    /// @param token is distributed token address
+    event Distribution(
+        uint256 totalAmount,
+        uint256 feeCollected,
+        address token
+    );
+
     // REX Two Way Market Contracts
     // - Swaps the accumulated input tokens for output tokens
 
@@ -34,7 +96,23 @@ contract REXTwoWayMarket is REXMarket {
         IInstantDistributionAgreementV1 _ida,
         string memory _registrationKey,
         IREXReferral _rexReferral
-    ) REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {}
+    )
+    {
+        host = _host;
+        cfa = _cfa;
+        ida = _ida;
+        referrals = _rexReferral;
+
+        transferOwnership(_owner);
+
+        uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
+
+        if (bytes(_registrationKey).length > 0) {
+            host.registerAppWithKey(_configWord, _registrationKey);
+        } else {
+            host.registerApp(_configWord);
+        }
+    }
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
@@ -152,7 +230,7 @@ contract REXTwoWayMarket is REXMarket {
         uint256 _emissionRate,
         uint256 _requestId,
         uint128 _shareScaler
-    ) public override onlyOwner {
+    ) public onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
         // where there can't be two output pools of the same token
         require(market.numOutputPools < 4, "too many pools");
@@ -174,7 +252,6 @@ contract REXTwoWayMarket is REXMarket {
 
     function distribute(bytes memory ctx)
         public
-        override
         returns (bytes memory newCtx)
     {
         newCtx = ctx;
@@ -457,7 +534,7 @@ contract REXTwoWayMarket is REXMarket {
     function _updateShareholder(
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
-    ) internal override returns (bytes memory _newCtx) {
+    ) internal returns (bytes memory _newCtx) {
         // Check the input supertoken used and figure out the output Index
         // inputTokenA maps the OUTPUTB_INDEX
         // maybe a better way to do this
@@ -531,7 +608,6 @@ contract REXTwoWayMarket is REXMarket {
     function _isInputToken(ISuperToken _superToken)
         internal
         view
-        override
         returns (bool)
     {
         return
@@ -550,7 +626,7 @@ contract REXTwoWayMarket is REXMarket {
                 : lastDistributionTokenAAt;
     }
 
-    function _shouldDistribute() internal override returns (bool) {
+    function _shouldDistribute() internal returns (bool) {
         // TODO: This section should be checked,
         //       since it only checks one IDA,
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
@@ -575,7 +651,6 @@ contract REXTwoWayMarket is REXMarket {
 
     function _onlyScalable(ISuperToken _superToken, int96 _flowRate)
         internal
-        override
     {
         if (market.outputPoolIndicies[_superToken] == OUTPUTA_INDEX) {
             require(
@@ -596,4 +671,257 @@ contract REXTwoWayMarket is REXMarket {
 
     receive() external payable {}
 
+//================================================================================================
+    function _createIndex(uint256 index, ISuperToken distToken) internal {
+        host.callAgreement(
+            ida,
+            abi.encodeWithSelector(
+                ida.createIndex.selector,
+                distToken,
+                index,
+                new bytes(0) // placeholder ctx
+            ),
+            new bytes(0) // user data
+        );
+    }
+
+    function updateTokenPrices() public {
+      updateTokenPrice(market.inputToken);
+      for (uint32 index = 0; index < market.numOutputPools; index++) {
+          updateTokenPrice(market.outputPools[index].token);
+      }
+    }
+
+    function updateTokenPrice(ISuperToken _token) public {
+        (
+            bool _ifRetrieve,
+            uint256 _value,
+            uint256 _timestampRetrieved
+        ) = getCurrentValue(market.oracles[_token].requestId);
+
+        require(_ifRetrieve, "!getCurrentValue");
+        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
+
+        market.oracles[_token].usdPrice = _value;
+        market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
+    }
+
+    function getCurrentValue(uint256 _requestId)
+        public
+        view
+        returns (
+            bool _ifRetrieve,
+            uint256 _value,
+            uint256 _timestampRetrieved
+        )
+    {
+        uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
+        _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
+            _requestId,
+            _count - 1
+        );
+        _value = oracle.retrieveData(_requestId, _timestampRetrieved);
+
+        if (_value > 0) return (true, _value, _timestampRetrieved);
+        return (false, 0, _timestampRetrieved);
+    }
+
+    /// @dev Distributes `_distAmount` amount of `_distToken` token among all IDA index subscribers
+    /// @param _index IDA index ID
+    /// @param _distAmount amount to distribute
+    /// @param _distToken distribute token address
+    /// @param _ctx SuperFluid context data
+    /// @return _newCtx updated SuperFluid context data
+    function _idaDistribute(
+        uint32 _index,
+        uint128 _distAmount,
+        ISuperToken _distToken,
+        bytes memory _ctx
+    ) internal returns (bytes memory _newCtx) {
+        _newCtx = _ctx;
+        if (_newCtx.length == 0) {
+            // No context provided
+            host.callAgreement(
+                ida,
+                abi.encodeWithSelector(
+                    ida.distribute.selector,
+                    _distToken,
+                    _index,
+                    _distAmount,
+                    new bytes(0) // placeholder ctx
+                ),
+                new bytes(0) // user data
+            );
+        } else {
+            (_newCtx, ) = host.callAgreementWithContext(
+                ida,
+                abi.encodeWithSelector(
+                    ida.distribute.selector,
+                    _distToken,
+                    _index,
+                    _distAmount,
+                    new bytes(0) // placeholder ctx
+                ),
+                new bytes(0), // user data
+                _newCtx
+            );
+        }
+    }
+
+    function _isOutputToken(ISuperToken _superToken)
+        internal
+        view
+        returns (bool)
+    {
+        return market.outputPools[market.outputPoolIndicies[_superToken]].token == _superToken;
+    }
+
+    function _isCFAv1(address _agreementClass) internal view returns (bool) {
+        return
+            ISuperAgreement(_agreementClass).agreementType() ==
+            keccak256(
+                "org.superfluid-finance.agreements.ConstantFlowAgreement.v1"
+            );
+    }
+
+    function _isIDAv1(address _agreementClass) internal view returns (bool) {
+        return
+            ISuperAgreement(_agreementClass).agreementType() ==
+            keccak256(
+                "org.superfluid-finance.agreements.InstantDistributionAgreement.v1"
+            );
+    }
+
+    /// @dev Restricts calls to only from SuperFluid host
+    function _onlyHost() internal view {
+        require(msg.sender == address(host), "!host");
+    }
+
+    /// @dev Get `_streamer` IDA subscription info for token with index `_index`
+    /// @param _index is token index in IDA
+    /// @param _streamer is streamer address
+    /// @return _exist Does the subscription exist?
+    /// @return _approved Is the subscription approved?
+    /// @return _units Units of the suscription.
+    /// @return _pendingDistribution Pending amount of tokens to be distributed for unapproved subscription.
+    function getIDAShares(uint32 _index, address _streamer)
+        public
+        view
+        returns (
+            bool _exist,
+            bool _approved,
+            uint128 _units,
+            uint256 _pendingDistribution
+        )
+    {
+        (_exist, _approved, _units, _pendingDistribution) = ida.getSubscription(
+            market.outputPools[_index].token,
+            address(this),
+            _index,
+            _streamer
+        );
+    }
+
+    function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
+     internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
+    {
+      (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
+      daoShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+
+      address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
+      if (address(0) != affiliateAddress) {
+        (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], affiliateAddress);
+        affiliateShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      }
+
+      // Compute the change in flow rate, will be negative is slowing the flow rate
+      int96 changeInFlowRate = _shareholderUpdate.currentFlowRate - _shareholderUpdate.previousFlowRate;
+      uint128 feeShares;
+      // if the change is positive value then DAO has some new shares,
+      // which would be 2% of the increase in shares
+      if(changeInFlowRate > 0) {
+        // Add new shares to the DAO
+        feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        if (address(0) != affiliateAddress) {
+          affiliateShares += feeShares * market.affiliateFee / 1e6;
+          feeShares -= feeShares * market.affiliateFee / 1e6;
+        }
+        daoShares += feeShares;
+      } else {
+        // Make the rate positive
+        changeInFlowRate = -1 * changeInFlowRate;
+        feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
+        if (address(0) != affiliateAddress) {
+          affiliateShares -= (feeShares * market.affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * market.affiliateFee / 1e6;
+          feeShares -= feeShares * market.affiliateFee / 1e6;
+        }
+        daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
+      }
+      userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
+
+      // Scale back shares
+      affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      daoShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      userShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+
+    }
+
+    /// @dev Same as _updateSubscription but uses provided SuperFluid context data
+    /// @param ctx SuperFluid context data
+    /// @param index IDA index ID
+    /// @param subscriber is subscriber address
+    /// @param shares is distribution shares count
+    /// @param distToken is distribution token address
+    /// @return newCtx updated SuperFluid context data
+    function _updateSubscriptionWithContext(
+        bytes memory ctx,
+        uint256 index,
+        address subscriber,
+        uint128 shares,
+        ISuperToken distToken
+    ) internal returns (bytes memory newCtx) {
+        newCtx = ctx;
+        (newCtx, ) = host.callAgreementWithContext(
+            ida,
+            abi.encodeWithSelector(
+                ida.updateSubscription.selector,
+                distToken,
+                index,
+                subscriber,
+                shares,
+                new bytes(0)
+            ),
+            new bytes(0), // user data
+            newCtx
+        );
+    }
+
+    // internal helper function to get the amount that needs to be returned back to the user
+    function _calcUserUninvested(
+        uint256 _prevUpdateTimestamp,
+        uint256 _flowRate,
+        uint256 _lastDistributedAt
+    ) internal view returns (uint256 _uninvestedAmount) {
+        _uninvestedAmount =
+            _flowRate *
+            (block.timestamp -
+                (
+                    (_prevUpdateTimestamp > _lastDistributedAt)
+                        ? _prevUpdateTimestamp
+                        : _lastDistributedAt
+                ));
+    }
+
+    function _getShareholderInfo(bytes calldata _agreementData, ISuperToken _superToken)
+        internal
+        view
+        returns (address _shareholder, int96 _flowRate, uint256 _timestamp)
+    {
+        (_shareholder, ) = abi.decode(_agreementData, (address, address));
+        (_timestamp, _flowRate, , ) = cfa.getFlow(
+            _superToken,
+            _shareholder,
+            address(this)
+        );
+    }
 }
