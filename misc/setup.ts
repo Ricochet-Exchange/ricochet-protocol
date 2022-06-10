@@ -8,7 +8,6 @@ import * as dotenv from "dotenv";
 const { provider, loadFixture } = waffle;
 
 import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
-import { ERC20 } from "../typechain";
 
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
@@ -33,6 +32,7 @@ export interface ISuperToken {
   wbtcx: SuperToken;
   daix: SuperToken;
   ric: SuperToken;
+  maticx: SuperToken;
 }
 
 export interface IUser {
@@ -43,13 +43,6 @@ export interface IUser {
 }
 
 export const REX_REFERRAL_ADDRESS = process.env.REX_REFERRAL_ADDRESS !== undefined ? process.env.REX_REFERRAL_ADDRESS : "";
-
-// export interface TypesOfTokens {
-//   ric: Promise<ERC20>;
-//   weth: Promise<ERC20>;
-//   wbtc: Promise<ERC20>;
-//   usdc: Promise<ERC20>;
-// }
 
 export const setup = async () => {
   const users: { [key: string]: IUser } = {};
@@ -169,6 +162,3 @@ export const setup = async () => {
   };
 };
 
-
-  // const accounts : SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  // const names = ["admin", "alice", "bob", "carl", "spender"];
