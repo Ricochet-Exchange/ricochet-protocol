@@ -426,7 +426,7 @@ contract REXTwoWayMarket is REXMarket {
         if (address(output) == MATICX) {
           router.swapExactTokensForETH(
              amount,
-             0,
+             minOutput,
              path,
              address(this),
              block.timestamp + 3600
