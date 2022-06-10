@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 import { REX_REFERRAL_ADDRESS } from "../misc/setup";
+import { Constants } from "../misc/Constants"
 
 async function main() {
 
@@ -8,16 +9,16 @@ async function main() {
 
   // Polygon Mainnet
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = "0x6EeE6060f715257b970700bc2656De21dEdF074C";
-  const IDA_ADDRESS = "0xB0aABBA4B2783A72C52956CDEF62d438ecA2d7a1";
-  const TELLOR_ORACLE_ADDRESS = "0xACC2d27400029904919ea54fFc0b18Bf07C57875";
-  const RIC_CONTRACT_ADDRESS = "0x263026e7e53dbfdce5ae55ade22493f828922965";
-  const ROUTER_ADDRESS = "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506";
+  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
+  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
+  const TELLOR_ORACLE_ADDRESS = Constants.TELLOR_ORACLE_ADDRESS;
+  const RIC_CONTRACT_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
+  const ROUTER_ADDRESS = Constants.SUSHISWAP_ROUTER_ADDRESS;
 
   const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  const TELLOR_USDC_REQUEST_ID = 78;
-  const RIC_ADDRESS = "0x263026E7e53DBFDce5ae55Ade22493f828922965";
-  const TELLOR_RIC_REQUEST_ID = 77;
+  const TELLOR_USDC_REQUEST_ID = Constants.TELLOR_USDC_REQUEST_ID;
+  const RIC_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
+  const TELLOR_RIC_REQUEST_ID = Constants.TELLOR_RIC_REQUEST_ID;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
