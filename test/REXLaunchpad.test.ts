@@ -28,7 +28,7 @@ describe('REXLaunchpad', () => {
         if (err) throw err;
     };
 
-    const inflowRateUsdc = "1000000000000000";
+    const inflowRateUsdc = "1000000000000";
     const inflowRateUsdcDeposit = "4000000000000000"
     const inflowRateUsdc10x = "10000000000000000";
     const inflowRateEth = "10000000000000";
@@ -410,7 +410,7 @@ describe('REXLaunchpad', () => {
         });
 
 
-        it("#1.2 before/afterAgreementCreated callbacks", async () => {
+        it("#1.1 Check referral shares are correct", async () => {
 
             // Alice opens a USDC stream to launchoad
             await sf.cfaV1.createFlow({
@@ -421,17 +421,44 @@ describe('REXLaunchpad', () => {
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["bob"]),
             }).exec(aliceSigner);
 
-            // Alice gets 98% because of refferal fee
+            // Alice gets 98% because of referral fee
             expect(
                 (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
-            ).to.equal(`true,false,980000,0`);
-            // Admin and Carl split 2% of the shares bc of the 50% referral fee
+            ).to.equal(`true,false,980,0`);
+            // Admin and Bob split 2% of the shares bc of the 50% referral fee
             expect(
                 (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-            ).to.equal(`true,false,10000,0`);
+            ).to.equal(`true,false,10,0`);
             expect(
                 (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
-            ).to.equal(`true,false,10000,0`);
+            ).to.equal(`true,false,10,0`);
+
+            await sf.cfaV1.deleteFlow({
+                receiver: launchpad.address,
+                sender: aliceSigner.address,
+                superToken: ricochetUSDCx.address
+            }).exec(aliceSigner);
+
+            expect(
+                (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
+            ).to.equal(`true,false,0,0`);
+
+        });
+
+        it("#1.2 DAO gets all shares if there is no affiliate", async () => {
+            // Alice opens a USDC stream to launchoad
+            await sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: launchpad.address,
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRateUsdc,
+                // userData: ethers.utils.defaultAbiCoder.encode(["string"], ["bob"]),
+            }).exec(aliceSigner);
+
+            // Alice gets 100% as there are no affiliates
+            expect(
+                (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
+            ).to.equal(`true,false,1000,0`);  
 
         });
 
