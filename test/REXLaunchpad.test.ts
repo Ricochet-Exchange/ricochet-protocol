@@ -452,7 +452,6 @@ describe('REXLaunchpad', () => {
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
-                // userData: ethers.utils.defaultAbiCoder.encode(["string"], ["bob"]),
             }).exec(aliceSigner);
 
             // Alice gets 100% as there are no affiliates
@@ -460,6 +459,78 @@ describe('REXLaunchpad', () => {
                 (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
             ).to.equal(`true,false,1000,0`);  
 
+        });
+
+    });
+
+    context("#2 - rex launchpad open / close stream", async () => {
+
+        beforeEach(async () => {
+            // Revert to the point REXMarket was just deployed
+            const success = await provider.send('evm_revert', [
+                snapshot
+            ]);
+            // Take another snapshot to be able to revert again next time
+            snapshot = await provider.send('evm_snapshot', []);
+            expect(success).to.equal(true);
+        });
+
+        afterEach(async () => {
+            // Check the app isn't jailed
+            expect(await launchpad.isAppJailed()).to.equal(false);
+            await resetMeasurements();
+        });
+
+        it("#2.1 getters/setters", async () => {
+            // Alice opens a USDC stream to launchoad
+            await sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: launchpad.address,
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRateUsdc,
+            }).exec(aliceSigner);
+
+            const feeRate = 1000;
+            await launchpad.setFeeRate(feeRate);
+            expect(await launchpad.getFeeRate()).to.equal(feeRate);
+
+            const sharePrice = await launchpad.getSharePrice();
+            console.log('get share price - ', sharePrice);
+            // at 0 what should it be?
+
+            const inputToken = await launchpad.getInputToken();
+            expect(inputToken).to.equal("0xCAa7349CEA390F89641fe306D93591f87595dc1F");
+
+            const outputToken = await launchpad.getOutputToken();
+            expect(outputToken).to.equal("0x263026E7e53DBFDce5ae55Ade22493f828922965");
+
+            const outputIndexId = await launchpad.getOutputIndexId();
+            console.log('output index id - ', outputIndexId);
+            // at 0 what should it be?
+
+            const outputRate = await launchpad.getOutputRate();
+            expect(outputRate).to.equal(1000);
+
+            const getInflow = await launchpad.getTotalInflow();
+            expect(getInflow).to.equal(1000000000000);
+
+            const getLastDistributionAt = await launchpad.getLastDistributionAt();
+            expect((getLastDistributionAt.toNumber())).to.be.above(0);
+
+            const getOwner = await launchpad.getOwner();
+            expect(getOwner).to.equal("0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA");
+
+            const getStreamRate = await launchpad.getStreamRate(aliceSigner.address);
+            expect(getStreamRate).to.equal(1000000000000);
+
+        });
+
+        it("#2.2 transfers ownership", async () => {
+            // transfer ownership and check owner
+        });
+
+        it("#2.3 test stream", async () => {
+            // open and close stream and check share amount is correct
         });
 
     });
