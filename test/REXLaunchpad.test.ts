@@ -497,6 +497,7 @@ describe('REXLaunchpad', () => {
             const sharePrice = await launchpad.getSharePrice();
             console.log('get share price - ', sharePrice);
             // at 0 what should it be?
+            expect(sharePrice).to.equal(0);
 
             const inputToken = await launchpad.getInputToken();
             expect(inputToken).to.equal("0xCAa7349CEA390F89641fe306D93591f87595dc1F");
@@ -507,6 +508,7 @@ describe('REXLaunchpad', () => {
             const outputIndexId = await launchpad.getOutputIndexId();
             console.log('output index id - ', outputIndexId);
             // at 0 what should it be?
+            expect(outputIndexId).to.equal(0);
 
             const outputRate = await launchpad.getOutputRate();
             expect(outputRate).to.equal(1000);
@@ -527,6 +529,9 @@ describe('REXLaunchpad', () => {
 
         it("#2.2 transfers ownership", async () => {
             // transfer ownership and check owner
+            await launchpad.transferOwnership(aliceSigner.address);
+            const getOwner = await launchpad.getOwner();
+            expect(getOwner).to.equal(aliceSigner.address);
         });
 
         it("#2.3 test stream", async () => {
