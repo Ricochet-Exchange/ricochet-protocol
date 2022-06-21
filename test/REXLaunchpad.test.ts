@@ -577,4 +577,62 @@ describe('REXLaunchpad', () => {
         });
     });
 
+    context("#4 - rex launchpad is jailed", async () => {
+        before(async () => {
+            const success = await provider.send('evm_revert', [
+                snapshot
+            ]);
+
+            await takeMeasurements();
+ 
+           await sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: launchpad.address,
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRateUsdc,
+            }).exec(aliceSigner);
+            
+
+            await increaseTime(3600);
+
+            // Jail the app
+            await impersonateAndSetBalance(Constants.CFA_SUPERFLUID_ADDRESS);
+            let cfaSigner = await ethers.getSigner(Constants.CFA_SUPERFLUID_ADDRESS)
+            await sf.host.hostContract.connect(cfaSigner).jailApp('0x', launchpad.address, 0) //.exec(cfaSigner);
+
+
+            // Take a snapshot
+            snapshot = await provider.send('evm_snapshot', []);
+
+        });
+
+        beforeEach(async () => {
+            // Revert to the point REXMarket was just deployed
+            const success = await provider.send('evm_revert', [
+                snapshot
+            ]);
+            // Take another snapshot to be able to revert again next time
+            snapshot = await provider.send('evm_snapshot', []);
+            expect(success).to.equal(true);
+        });
+
+        afterEach(async () => {
+            // Check the app isn't jailed
+            // expect(await launchpad.isAppJailed()).to.equal(false);
+            // await resetMeasurements();
+        });
+
+        it("#4.1 app is jailed", async () => {
+            expect(await launchpad.isAppJailed()).to.equal(true);   
+        });
+
+        it("#4.2 emergencyCloseStream", async () => {
+            await launchpad.emergencyCloseStream(aliceSigner.address);
+            
+            expect(
+                await launchpad.getStreamRate(aliceSigner.address)
+            ).to.equal(0);
+        });
+    });
+
 });
