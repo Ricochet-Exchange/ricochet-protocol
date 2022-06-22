@@ -633,6 +633,67 @@ describe('REXLaunchpad', () => {
                 await launchpad.getStreamRate(aliceSigner.address)
             ).to.equal(0);
         });
+
+        it("#4.3 should correctly emergency drain", async () => {
+
+            await expect(
+                launchpad.emergencyDrain(),
+            ).to.be.revertedWith('!zeroStreamers');
+
+            // Delete Alices stream
+            await sf.cfaV1.deleteFlow({
+                receiver: launchpad.address,
+                sender: aliceSigner.address,
+                superToken: ricochetUSDCx.address
+            }).exec(aliceSigner);
+
+            await launchpad.emergencyDrain();
+
+            expect((await ricochetUSDCx.balanceOf({
+                account: launchpad.address, providerOrSigner: provider
+            })).toString()).to.equal('0');
+
+            await takeMeasurements();
+
+            // Check the owner recovers the funds sent in afterwards
+            let appDelta = await delta(launchpad, appBalances);
+            let ownerDelta = await delta(adminSigner, ownerBalances);
+            let aliceDelta = await delta(aliceSigner, aliceBalances);
+    
+            // Expect the owner can recover the locked funds
+            expect(ownerDelta.usdcx).to.be.within(-1 * aliceDelta.usdcx * 0.99999, -1 * aliceDelta.usdcx * 1.00001);
+            // Recover the RIC subsidies
+            expect(ownerDelta.ric).to.be.within(-1 * appDelta.ric * 0.99999, -1 * appDelta.ric * 1.00001);
+
+        });
+
+        it("4.4 closeStream", async () => {
+
+            let aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
+                account: aliceSigner.address, providerOrSigner: provider
+            });
+            aliceBalanceUsdcx = ethers.BigNumber.from(aliceBalanceUsdcx.toString())
+            // When user create stream, SF locks 4 hour deposit called initial deposit
+            const initialDeposit = aliceBalanceUsdcx.div(ethers.BigNumber.from('13')).mul(ethers.BigNumber.from('4'));
+            const inflowRate = aliceBalanceUsdcx.sub(initialDeposit).div(ethers.BigNumber.from(9 * 3600)).toString();
+            // Initialize a streamer with 9 hours of balance
+            await sf.cfaV1.updateFlow({
+                receiver: launchpad.address,
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRate.toString(),
+            }).exec(aliceSigner);
+            // Verfiy closing attempts revert
+            await expect(launchpad.closeStream(aliceSigner.address)).to.revertedWith('!closable');
+            // Advance time 2 hours
+            await increaseTime(2 * 3600);
+            // Verify closing the stream works
+            aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
+                account: aliceSigner.address, providerOrSigner: provider
+            });
+            await launchpad.closeStream(aliceSigner.address);
+            expect(await launchpad.getStreamRate(aliceSigner.address)).to.equal('0');
+
+        });
     });
 
 });
