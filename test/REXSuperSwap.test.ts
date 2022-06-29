@@ -150,12 +150,13 @@ describe('REXSuperSwap', () => {
 
     // Deploy REXSuperSwap
     console.log("Deploying REXSuperSwap...");
-    rexSuperSwap = await ethers.getContractFactory("REXSuperSwap", {
+    rexSuperSwap = await ethers.getContractFactory("RexSuperSwap", {
         signer: adminSigner,
     });
     superSwap = await rexSuperSwap.deploy("0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45");
     await superSwap.deployed();
     console.log("=========== Deployed REXSuperSwap ============");
+    console.log("RexSuperSwap deployed to:", superSwap.address);
 
     // // send the contract some RIC
     // try {
@@ -211,5 +212,14 @@ describe('REXSuperSwap', () => {
     snapshot = await provider.send('evm_snapshot', []);
 
 });
+
+
+context("#1 Test swap functionality", async () => {
+
+  it("#1.1 User can swap token", async () => {
+      // Test swap functionality here
+
+    });
+  });
 
 })

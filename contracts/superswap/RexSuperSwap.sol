@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-import "@uniswap/swap-router-contracts/contracts/interfaces/ISwapRouter02.sol";
+import "./TransferHelper.sol";
+import "./interfaces/ISwapRouter02.sol";
 
 contract RexSuperSwap {
   ISwapRouter02 public immutable swapRouter;
