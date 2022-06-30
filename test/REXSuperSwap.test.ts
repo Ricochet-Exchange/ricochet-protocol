@@ -16,7 +16,6 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -160,10 +159,10 @@ describe('REXSuperSwap', () => {
 
     // // send the contract some RIC
     // try {
-    //     await ricochetRIC.transfer({
-    //         receiver: twoWayMarket.address,
-    //         amount: "1000000000000000000"
-    //     }).exec(adminSigner);
+        // await ricochetRIC.transfer({
+        //     receiver: twoWayMarket.address,
+        //     amount: "1000000000000000000"
+        // }).exec(adminSigner);
     // } catch (err: any) {
     //     console.log("Ricochet - ERROR transferring RICs to the contract: ", err);
     // }
@@ -184,7 +183,7 @@ describe('REXSuperSwap', () => {
     console.log("====== Transferred to alice =======");
     await ricochetETHx
         .transfer({
-            receiver: bobSigner.address,
+            receiver: aliceSigner.address,
             amount: ethers.utils.parseUnits("0.5", 18).toString(),
         }).exec(ethxWhaleSigner);
         console.log("ETH")
@@ -214,12 +213,39 @@ describe('REXSuperSwap', () => {
 });
 
 
-context("#1 Test swap functionality", async () => {
+  context("#1 Test swap functionality", async () => {
 
-  it("#1.1 User can swap token", async () => {
-      // Test swap functionality here
+    it("#1.1 User can swap token", async () => {
+        const from =  ricochetETHx.address
+        const to = ricochetUSDCx.address
+        const amountIn = 1
+        const amountOutMin = 0
+        // Assume a direct path to swap input/output
+        const ethxAddress = superT.ethx.underlyingToken.address
+        const usdcx = superT.usdcx.underlyingToken.address
+        const path = [ethxAddress, usdcx]
+        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
 
+        // approve token to be transferred to superSwap
+        await ricochetETHx
+        .approve({
+            receiver: superSwap.address,
+            amount: "1000000000000000000"
+        }).exec(aliceSigner);
+
+        // call swap function
+        await superSwap.connect(aliceSigner).swap(
+          from,
+          to,
+          amountIn,
+          amountOutMin,
+          path,
+          poolFees
+        )
+
+        // listen for event swapComplete
     });
+
   });
 
 })
