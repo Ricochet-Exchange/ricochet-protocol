@@ -3,6 +3,7 @@ import { setup, IUser, ISuperToken } from "../misc/setup";
 import { common } from "../misc/common";
 import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
+import axios from "axios";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
@@ -16,6 +17,7 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
+const COINGECKO_KEY = 'ethereum';
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -71,6 +73,53 @@ describe('REXSuperSwap', () => {
     let ricAndItsIDAIndex: superTokenAndItsIDAIndex;
     let wbtcxAndItsIDAIndex: superTokenAndItsIDAIndex;
     let maticxAndItsIDAIndex: superTokenAndItsIDAIndex;
+
+    let appBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+    let ownerBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+    let aliceBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+    let bobBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+    let carlBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+    let karenBalances = { ethx: [], usdcx: [], ric: [], maticx: [] };
+
+    async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
+        appBalances.ethx.push((await superT.ethx.balanceOf({ account: superSwap.address, providerOrSigner: provider })).toString());
+        ownerBalances.ethx.push((await superT.ethx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
+        aliceBalances.ethx.push((await superT.ethx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
+        carlBalances.ethx.push((await superT.ethx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
+        // karenBalances.ethx.push((await superT.ethx.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
+        bobBalances.ethx.push((await superT.ethx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
+
+        appBalances.usdcx.push((await superT.usdcx.balanceOf({ account: superSwap.address, providerOrSigner: provider })).toString());
+        ownerBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
+        aliceBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
+        carlBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
+        // karenBalances.usdcx.push((await superT.usdcx.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
+        bobBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
+
+        appBalances.ric.push((await superT.ric.balanceOf({ account: superSwap.address, providerOrSigner: provider })).toString());
+        ownerBalances.ric.push((await superT.ric.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
+        aliceBalances.ric.push((await superT.ric.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
+        carlBalances.ric.push((await superT.ric.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
+        // karenBalances.ric.push((await superT.ric.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
+        bobBalances.ric.push((await superT.ric.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
+
+        appBalances.maticx.push((await superT.maticx.balanceOf({ account: superSwap.address, providerOrSigner: provider })).toString());
+        ownerBalances.maticx.push((await superT.maticx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
+        aliceBalances.maticx.push((await superT.maticx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
+        carlBalances.maticx.push((await superT.maticx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
+        // karenBalances.ric.push((await superT.ric.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
+        bobBalances.maticx.push((await superT.maticx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
+    }
+
+    async function delta(account: SignerWithAddress, balances: any) {
+        const len = balances.ethx.length;
+        return {
+            ethx: balances.ethx[len - 1] - balances.ethx[len - 2],
+            usdcx: balances.usdcx[len - 1] - balances.usdcx[len - 2],
+            ric: balances.ric[len - 1] - balances.ric[len - 2],
+            maticx: balances.maticx[len - 1] - balances.maticx[len - 2]
+        }
+    }
 
   before(async () => {
     const {
@@ -152,7 +201,9 @@ describe('REXSuperSwap', () => {
     rexSuperSwap = await ethers.getContractFactory("RexSuperSwap", {
         signer: adminSigner,
     });
-    superSwap = await rexSuperSwap.deploy("0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45");
+    // const swapRouterAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+    const swapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+    superSwap = await rexSuperSwap.deploy(swapRouterAddress);
     await superSwap.deployed();
     console.log("=========== Deployed REXSuperSwap ============");
     console.log("RexSuperSwap deployed to:", superSwap.address);
@@ -218,23 +269,31 @@ describe('REXSuperSwap', () => {
     it("#1.1 User can swap token", async () => {
         const from =  ricochetETHx.address
         const to = ricochetUSDCx.address
-        const amountIn = 1
-        const amountOutMin = 0
-        // Assume a direct path to swap input/output
+        const amountIn = ethers.utils.parseEther("0.5");
+
+        // we should use coingecko to check the minimum amount
+        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+        const exchangeRate = response.data[COINGECKO_KEY].usd;
+        const minimum = Math.round(exchangeRate - exchangeRate / 100 * 3) / 2;
+        const amountOutMin = Math.round(minimum);
+        
+        // // Assume a direct path to swap input/output
         const ethxAddress = superT.ethx.underlyingToken.address
         const usdcx = superT.usdcx.underlyingToken.address
         const path = [ethxAddress, usdcx]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+        await takeMeasurements();
+        console.log("aliceBalances 1 - ", aliceBalances);
 
         // approve token to be transferred to superSwap
         await ricochetETHx
         .approve({
             receiver: superSwap.address,
-            amount: "1000000000000000000"
+            amount: "500000000000000000"
         }).exec(aliceSigner);
 
         // call swap function
-        await superSwap.connect(aliceSigner).swap(
+        const swapTx = await superSwap.connect(aliceSigner).swap(
           from,
           to,
           amountIn,
@@ -243,7 +302,24 @@ describe('REXSuperSwap', () => {
           poolFees
         )
 
-        // listen for event swapComplete
+        const receipt = await swapTx.wait()
+        let eventEmitted;
+        let swapEvent;
+        for (const event of receipt.events) {
+            if(event.event === "SuperSwapComplete"){
+                eventEmitted  = event.args;
+            }
+            if(event.event === "SwapJustMade"){
+                swapEvent = event.args;
+            }
+        }
+
+        await takeMeasurements();
+        
+        console.log("SwapJustMade - ", swapEvent)
+        console.log("SuperSwapComplete - ", eventEmitted)
+        console.log("SwapJustMade - ", swapEvent)
+        
     });
 
   });

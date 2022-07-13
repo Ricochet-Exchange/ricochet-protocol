@@ -5,11 +5,15 @@ pragma abicoder v2;
 import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import "./TransferHelper.sol";
 import "./interfaces/ISwapRouter02.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract RexSuperSwap {
+  using SafeERC20 for ERC20;
   ISwapRouter02 public immutable swapRouter;
 
   event SuperSwapComplete(uint256 amountOut);
+  event SwapJustMade(uint256 amountIn);
 
   constructor(ISwapRouter02 _swapRouter) {
     swapRouter = _swapRouter;
@@ -39,7 +43,6 @@ contract RexSuperSwap {
 
     require(path[0] == fromBase, "Invalid 'from' base token");
     require(path[path.length - 1] == toBase, "Invalid 'to' base token");
-
     // Step 2: Transfer SuperTokens from sender
     TransferHelper.safeTransferFrom(
       address(_from),
@@ -50,8 +53,6 @@ contract RexSuperSwap {
 
     // Step 3: Downgrade
     _from.downgrade(amountIn);
-
-    // Step 4: Approve and Swap
 
     // Encode the path for swap
     bytes memory encodedPath;
@@ -76,6 +77,7 @@ contract RexSuperSwap {
 
     // Execute the swap
     amountOut = swapRouter.exactInput(params);
+    emit SwapJustMade(amountOut);
 
     // Step 5: Upgrade and send tokens back
     TransferHelper.safeApprove(address(toBase), address(_to), amountOut);
