@@ -17,7 +17,7 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const COINGECKO_KEY = 'ethereum';
+const COINGECKO_KEY = 'matic-network';
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -232,21 +232,21 @@ describe('REXSuperSwap', () => {
             amount: initialAmount,
         }).exec(usdcxWhaleSigner);
     console.log("====== Transferred to alice =======");
-    await ricochetETHx
-        .transfer({
-            receiver: aliceSigner.address,
-            amount: ethers.utils.parseUnits("0.5", 18).toString(),
-        }).exec(ethxWhaleSigner);
-        console.log("ETH")
+    // await ricochetETHx
+    //     .transfer({
+    //         receiver: aliceSigner.address,
+    //         amount: ethers.utils.parseUnits("0.5", 18).toString(),
+    //     }).exec(ethxWhaleSigner);
+    //     console.log("ETH")
     await ricochetRIC
         .transfer({
-            receiver: bobSigner.address,
+            receiver: aliceSigner.address,
             amount: '1000000000000000000000',
         }).exec(adminSigner);
         console.log("RIC")
     await ricochetMATICx
         .transfer({
-            receiver: bobSigner.address,
+            receiver: aliceSigner.address,
             amount: '1754897259852523432',
         }).exec(maticxWhaleSigner);
         console.log("MATIC")
@@ -267,29 +267,36 @@ describe('REXSuperSwap', () => {
   context("#1 Test swap functionality", async () => {
 
     it("#1.1 User can swap token", async () => {
-        const from =  ricochetETHx.address
+        const from =  ricochetMATICx.address
         const to = ricochetUSDCx.address
-        const amountIn = ethers.utils.parseEther("0.5");
-
+        // const amountIn = ethers.utils.parseEther("0.5");
+        const amountIn = ethers.utils.parseUnits("79", 18)
+        
         // we should use coingecko to check the minimum amount
         const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
         const exchangeRate = response.data[COINGECKO_KEY].usd;
-        const minimum = Math.round(exchangeRate - exchangeRate / 100 * 3) / 2;
-        const amountOutMin = Math.round(minimum);
+        // const minimum = Math.round(exchangeRate - exchangeRate / 100 * 3);
+        // const amountOutMin = Math.round(minimum * 1e6);
+        const amountToSwap = 79 * exchangeRate;
+        const percentage = amountToSwap / 100 * 3;
+        const amount = amountToSwap - percentage;
+        const amountOutMin = Math.round(amount)
+
         
         // // Assume a direct path to swap input/output
-        const ethxAddress = superT.ethx.underlyingToken.address
+        // const ethxAddress = superT.ethx.underlyingToken.address
+        const maticxAddress = superT.maticx.underlyingToken.address;
         const usdcx = superT.usdcx.underlyingToken.address
-        const path = [ethxAddress, usdcx]
+        const path = [maticxAddress, usdcx]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
         await takeMeasurements();
         console.log("aliceBalances 1 - ", aliceBalances);
 
         // approve token to be transferred to superSwap
-        await ricochetETHx
+        await ricochetMATICx
         .approve({
             receiver: superSwap.address,
-            amount: "500000000000000000"
+            amount: '79000000000000000000'
         }).exec(aliceSigner);
 
         // call swap function
@@ -315,10 +322,11 @@ describe('REXSuperSwap', () => {
         }
 
         await takeMeasurements();
+        console.log("aliceBalances after swap - ", aliceBalances);
         
-        console.log("SwapJustMade - ", swapEvent)
-        console.log("SuperSwapComplete - ", eventEmitted)
-        console.log("SwapJustMade - ", swapEvent)
+        const amountSwapped = eventEmitted[0] / 1e6;
+
+        expect(amountSwapped).to.be.greaterThan(amountOutMin)
         
     });
 
