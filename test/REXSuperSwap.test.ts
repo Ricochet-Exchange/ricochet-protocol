@@ -326,7 +326,12 @@ describe('REXSuperSwap', () => {
         
         const amountSwapped = eventEmitted[0] / 1e6;
 
-        expect(amountSwapped).to.be.greaterThan(amountOutMin)
+        console.log("Swap just made and function returned following amount in usdcx - ", swapEvent);
+
+        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+
+        await takeMeasurements();
+        console.log("aliceBalances after swap 2 - ", aliceBalances);
         
     });
 

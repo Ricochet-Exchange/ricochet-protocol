@@ -8,6 +8,8 @@ import "./interfaces/ISwapRouter02.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "hardhat/console.sol";
+
 contract RexSuperSwap {
   using SafeERC20 for ERC20;
   ISwapRouter02 public immutable swapRouter;
@@ -51,6 +53,8 @@ contract RexSuperSwap {
       amountIn
     );
 
+    console.log("starting balance of Maticx - ", _from.balanceOf(address(this)));
+
     // Step 3: Downgrade
     _from.downgrade(amountIn);
 
@@ -67,6 +71,8 @@ contract RexSuperSwap {
     // Approve the router to spend token supplied (fromBase).
     TransferHelper.safeApprove(fromBase, address(swapRouter), amountIn);
 
+    console.log("balance of Maticx before swap - ", _from.balanceOf(address(this)));
+
     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
       .ExactInputParams({
         path: encodedPath,
@@ -74,22 +80,29 @@ contract RexSuperSwap {
         amountIn: amountIn,
         amountOutMinimum: amountOutMin
       });
-
+    
     // Execute the swap
     amountOut = swapRouter.exactInput(params);
+
+    console.log("balance of Maticx after swap - ", _from.balanceOf(address(this)));
+
     emit SwapJustMade(amountOut);
 
     // Step 5: Upgrade and send tokens back
     TransferHelper.safeApprove(address(toBase), address(_to), amountOut);
     _to.upgrade(amountOut);
     TransferHelper.safeApprove(address(_to), msg.sender, amountOut);
-    TransferHelper.safeTransferFrom(
-      address(_to),
-      address(this),
-      msg.sender,
-      amountOut
-    );
+    // TransferHelper.safeTransfer(
+    //   address(_to),
+    //   msg.sender,
+    //   amountOut
+    // );
+    // _to.transfer(msg.sender, amountOut);
 
+    console.log("balance of usdcx after swap - ", _to.balanceOf(address(this)));
+   
+    // transfer swapped token back to user
+    _to.transfer(msg.sender, _to.balanceOf(address(this)));
     emit SuperSwapComplete(amountOut);
   }
 }
