@@ -7,6 +7,7 @@ import "./TransferHelper.sol";
 import "./interfaces/ISwapRouter02.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../ISETHCustom.sol";
 
 import "hardhat/console.sol";
 
@@ -14,8 +15,9 @@ contract RexSuperSwap {
   using SafeERC20 for ERC20;
   ISwapRouter02 public immutable swapRouter;
 
+  address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
+
   event SuperSwapComplete(uint256 amountOut);
-  event SwapJustMade(uint256 amountIn);
 
   constructor(ISwapRouter02 _swapRouter) {
     swapRouter = _swapRouter;
@@ -43,8 +45,17 @@ contract RexSuperSwap {
     address fromBase = _from.getUnderlyingToken();
     address toBase = _to.getUnderlyingToken();
 
+    // Handle case input or output is native supertoken
+    if (fromBase == address(0)) {
+      fromBase = address(_from);
+    } 
+    if (toBase == address(0)) {
+      toBase = address(_to);
+    }
+
     require(path[0] == fromBase, "Invalid 'from' base token");
     require(path[path.length - 1] == toBase, "Invalid 'to' base token");
+
     // Step 2: Transfer SuperTokens from sender
     TransferHelper.safeTransferFrom(
       address(_from),
@@ -55,8 +66,10 @@ contract RexSuperSwap {
 
     console.log("starting balance of Maticx - ", _from.balanceOf(address(this)));
 
-    // Step 3: Downgrade
-    _from.downgrade(amountIn);
+    // Step 3: Downgrade if it's not a native SuperToken
+    if(fromBase != address(0)){
+      _from.downgrade(amountIn);
+    }
 
     // Encode the path for swap
     bytes memory encodedPath;
@@ -71,7 +84,7 @@ contract RexSuperSwap {
     // Approve the router to spend token supplied (fromBase).
     TransferHelper.safeApprove(fromBase, address(swapRouter), amountIn);
 
-    console.log("balance of Maticx before swap - ", _from.balanceOf(address(this)));
+    console.log("balance of Maticx before swap - ", address(this).balance);
 
     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
       .ExactInputParams({
@@ -84,25 +97,27 @@ contract RexSuperSwap {
     // Execute the swap
     amountOut = swapRouter.exactInput(params);
 
-    console.log("balance of Maticx after swap - ", _from.balanceOf(address(this)));
-
-    emit SwapJustMade(amountOut);
+    console.log("balance of wrapped usdcx after swap - ", ERC20(toBase).balanceOf(address(this)));
+    console.log("balance of usdcx after swap - ", address(this).balance);
 
     // Step 5: Upgrade and send tokens back
     TransferHelper.safeApprove(address(toBase), address(_to), amountOut);
-    _to.upgrade(amountOut);
-    TransferHelper.safeApprove(address(_to), msg.sender, amountOut);
-    // TransferHelper.safeTransfer(
-    //   address(_to),
-    //   msg.sender,
-    //   amountOut
-    // );
-    // _to.transfer(msg.sender, amountOut);
 
-    console.log("balance of usdcx after swap - ", _to.balanceOf(address(this)));
-   
+    // Upgrade if it's not a native SuperToken
+    if (address(_to) != toBase) {
+      if (address(_to) == MATICX) {
+        // if MATICX then use different method to upgrade
+        ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
+      } else {
+        _to.upgrade(amountOut);
+      }
+    }
+
+    TransferHelper.safeApprove(address(_to), msg.sender, amountOut);
+    console.log("balance of usdcx after upgrade - ", ERC20(toBase).balanceOf(address(this)));
+    
     // transfer swapped token back to user
-    _to.transfer(msg.sender, _to.balanceOf(address(this)));
+    _to.transfer(msg.sender, amountOut);
     emit SuperSwapComplete(amountOut);
   }
 }

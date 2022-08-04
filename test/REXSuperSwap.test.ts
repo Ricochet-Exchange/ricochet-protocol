@@ -266,7 +266,7 @@ describe('REXSuperSwap', () => {
 
   context("#1 Test swap functionality", async () => {
 
-    it("#1.1 User can swap token", async () => {
+    it("#1.1 User can swap token maticx -> usdcx", async () => {
         const from =  ricochetMATICx.address
         const to = ricochetUSDCx.address
         // const amountIn = ethers.utils.parseEther("0.5");
@@ -275,16 +275,12 @@ describe('REXSuperSwap', () => {
         // we should use coingecko to check the minimum amount
         const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
         const exchangeRate = response.data[COINGECKO_KEY].usd;
-        // const minimum = Math.round(exchangeRate - exchangeRate / 100 * 3);
-        // const amountOutMin = Math.round(minimum * 1e6);
+      
         const amountToSwap = 79 * exchangeRate;
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
 
-        
-        // // Assume a direct path to swap input/output
-        // const ethxAddress = superT.ethx.underlyingToken.address
         const maticxAddress = superT.maticx.underlyingToken.address;
         const usdcx = superT.usdcx.underlyingToken.address
         const path = [maticxAddress, usdcx]
@@ -310,28 +306,24 @@ describe('REXSuperSwap', () => {
         )
 
         const receipt = await swapTx.wait()
-        let eventEmitted;
-        let swapEvent;
+        let swapComplete;
+
         for (const event of receipt.events) {
             if(event.event === "SuperSwapComplete"){
-                eventEmitted  = event.args;
-            }
-            if(event.event === "SwapJustMade"){
-                swapEvent = event.args;
+                swapComplete  = event.args;
             }
         }
 
+        
+        console.log("swap function returns amount swapped as - ", swapComplete[0]);
         await takeMeasurements();
         console.log("aliceBalances after swap - ", aliceBalances);
         
-        const amountSwapped = eventEmitted[0] / 1e6;
-
-        console.log("Swap just made and function returned following amount in usdcx - ", swapEvent);
-
+        const amountSwapped = swapComplete[0] / 1e6;
         expect(amountSwapped).to.be.greaterThan(amountOutMin);
 
         await takeMeasurements();
-        console.log("aliceBalances after swap 2 - ", aliceBalances);
+        console.log("aliceBalances after swap2 - ", aliceBalances);
         
     });
 
