@@ -15,33 +15,12 @@ import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
 
-// solhint-disable not-rely-on-time
 abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
-    // REX Market Base Contract
-    //
-    // Responsibilities:
-    // - Reusable superfluid functionality
-    // - Oracle management functionality
-    // - IDA pool share management functionality
-    //
-    // Deployment Sequence:
-    // - Construct the contract with the Superfluid and owner info
-    // - Initialize the input token and props (initializeMarket)
-    // - Add first output pool which is the main output token sent (addOutputPool)
-    // - Add second output pool which is the subsidy token send (addOutputPool)
-    //
-    // Extending REX Markets:
-    // - Contract should be extended and the extending contract should override:
-    //   - distribute() - must take accumulated input tokens, convert to
-    //                    output tokens and distribute to output pool
-    //   - harvest() - (optional) must harvest yield, aggregate it such so that
-    //                 the distrute method can distribute it
-
     struct ShareholderUpdate {
-      address shareholder;
-      int96 previousFlowRate;
-      int96 currentFlowRate;
-      ISuperToken token;
+        address shareholder;
+        int96 previousFlowRate;
+        int96 currentFlowRate;
+        ISuperToken token;
     }
 
     struct OracleInfo {
@@ -116,6 +95,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
+    /// @param token the token used in the stream to close
     function emergencyCloseStream(address streamer, ISuperToken token) external virtual {
         // Allows anyone to close any stream if the app is jailed
         require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
@@ -403,45 +383,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function _updateShareholder(
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
-    ) internal virtual returns (bytes memory _newCtx) {
-        // We need to go through all the output tokens and update their IDA shares
-        _newCtx = _ctx;
-
-        (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
-
-        // updateOutputPools
-        for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                _index,
-                _shareholderUpdate.shareholder,
-                // shareholder gets 98% of the units, DAO takes 0.02%
-                userShares,
-                market.outputPools[_index].token
-            );
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                _index,
-                owner(),
-                // shareholder gets 98% of the units, DAO takes 2%
-                daoShares,
-                market.outputPools[_index].token
-            );
-            address affiliate = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
-            if (affiliate != address(0)) {
-              _newCtx = _updateSubscriptionWithContext(
-                  _newCtx,
-                  _index,
-                  affiliate,
-                  // affiliate may get 0.2%
-                  affiliateShares,
-                  market.outputPools[_index].token
-              );
-            }
-            // TODO: Update the fee taken by the DAO
-        }
-
-    }
+    ) internal virtual returns (bytes memory _newCtx) { }
 
     function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
      internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
