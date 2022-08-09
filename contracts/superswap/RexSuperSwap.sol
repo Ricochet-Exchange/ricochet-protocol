@@ -64,7 +64,7 @@ contract RexSuperSwap {
       amountIn
     );
 
-    console.log("starting balance of Maticx - ", _from.balanceOf(address(this)));
+    console.log("starting balance of from token - ", _from.balanceOf(address(this)));
 
     // Step 3: Downgrade if it's not a native SuperToken
     if(fromBase != address(0)){
@@ -84,7 +84,7 @@ contract RexSuperSwap {
     // Approve the router to spend token supplied (fromBase).
     TransferHelper.safeApprove(fromBase, address(swapRouter), amountIn);
 
-    console.log("balance of Maticx before swap - ", address(this).balance);
+    console.log("balance of from token before swap - ", address(this).balance);
 
     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
       .ExactInputParams({
@@ -97,27 +97,28 @@ contract RexSuperSwap {
     // Execute the swap
     amountOut = swapRouter.exactInput(params);
 
-    console.log("balance of wrapped usdcx after swap - ", ERC20(toBase).balanceOf(address(this)));
-    console.log("balance of usdcx after swap - ", address(this).balance);
-
+    console.log("balance of to token after swap - ", ERC20(toBase).balanceOf(address(this)));
+  
     // Step 5: Upgrade and send tokens back
     TransferHelper.safeApprove(address(toBase), address(_to), amountOut);
 
     // Upgrade if it's not a native SuperToken
     if (address(_to) != toBase) {
       if (address(_to) == MATICX) {
+        console.log("upgrade MATICX");
         // if MATICX then use different method to upgrade
         ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
       } else {
-        _to.upgrade(amountOut);
+        console.log("reaching case to upgrade");
+        _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
       }
     }
 
     TransferHelper.safeApprove(address(_to), msg.sender, amountOut);
-    console.log("balance of usdcx after upgrade - ", ERC20(toBase).balanceOf(address(this)));
-    
+    console.log("balance of usdc downgraded token after upgrade should be 0 - ", ERC20(toBase).balanceOf(address(this)));
+    console.log("balance of swapped super token - ", _to.balanceOf(address(this)));
     // transfer swapped token back to user
-    _to.transfer(msg.sender, amountOut);
+    _to.transfer(msg.sender, _to.balanceOf(address(this)));
     emit SuperSwapComplete(amountOut);
   }
 }
