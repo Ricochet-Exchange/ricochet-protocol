@@ -6,9 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
 import './ISETHCustom.sol';
+import './alluo/IbAlluo.sol';
 
 contract REXTwoWayAlluoMarket is REXMarket {
     using SafeERC20 for ERC20;
+
+    address constant inputTokenAUnderlying = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address constant inputTokenBUnderlying = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
 
     ISuperToken inputTokenA;
     ISuperToken inputTokenB;
@@ -18,14 +22,15 @@ contract REXTwoWayAlluoMarket is REXMarket {
     uint32 constant SUBSIDYB_INDEX = 3;
     uint256 lastDistributionTokenAAt;
     uint256 lastDistributionTokenBAt;
-    address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
     ISuperToken subsidyToken;
+    // Quickswap
     IUniswapV2Router02 router =
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
-    // REX Two Way Market Contracts
-    // - Swaps the accumulated input tokens for output tokens
+    // REX Two Way Alluo Market
+    // - Accepts ibAlluoXXX and convert it to ibAlluoYYY (both directions)
+    // - Sources liquidity using UniswapV2 liquidity pools
 
     constructor(
         address _owner,
@@ -74,35 +79,18 @@ contract REXTwoWayAlluoMarket is REXMarket {
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
-        // Approvals for sushiswap and upgrading tokens
-        address inputTokenAUnderlying = address(
-            inputTokenA.getUnderlyingToken()
-        );
-        address inputTokenBUnderlying = address(
-            inputTokenB.getUnderlyingToken()
+        // Approve ibAlluoA to deposit inputTokenA
+        ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
+            address(inputTokenA),
+            2**256 - 1
         );
 
-        if (inputTokenAUnderlying == address(0)) {
-            // inputTokenA is supertoken, approve swap router for it
-            inputTokenAUnderlying = address(inputTokenA);
-        } else {
-            // otherwise approve underlying for upgrade
-            ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
-                address(inputTokenA),
-                2**256 - 1
-            );
-        }
+        // otherwise approve underlying for upgrade
+        ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
+            address(inputTokenB),
+            2**256 - 1
+        );
 
-        if (inputTokenBUnderlying == address(0)) {
-            // inputTokenB is supertoken, approve swap router for it
-            inputTokenBUnderlying = address(inputTokenB);
-        } else {
-            // otherwise approve underlying for upgrade
-            ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
-                address(inputTokenB),
-                2**256 - 1
-            );
-        }
 
         ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
             address(router),
@@ -193,8 +181,9 @@ contract REXTwoWayAlluoMarket is REXMarket {
         );
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
-        uint256 tokenAAmount = inputTokenA.balanceOf(address(this));
-        uint256 tokenBAmount = inputTokenB.balanceOf(address(this));
+        // TODO, need to get tokenAAmount into native units, ibAlluoXXX isnt 1:1 with XXX
+        uint256 tokenAAmount = inputTokenA.balanceOf(address(this)) * IbAlluo(address(inputTokenA)).growingRatio() / 1e18;
+        uint256 tokenBAmount = inputTokenB.balanceOf(address(this)) * IbAlluo(address(inputTokenB)).growingRatio() / 1e18;
 
         // Check how much inputTokenA we have already from tokenB
         uint256 tokenHave = (tokenBAmount *
@@ -202,15 +191,49 @@ contract REXTwoWayAlluoMarket is REXMarket {
             market.oracles[inputTokenA].usdPrice;
         // If we have more tokenA than we need, swap the surplus to inputTokenB
         if (tokenHave < tokenAAmount) {
+            // tokenHave becomes tokenANeed
             tokenHave = tokenAAmount - tokenHave;
-            _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
-            // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
+            // Convert token have A to ibAlluoA amount
+            tokenHave = tokenHave * 1e18 / IbAlluo(address(inputTokenA)).growingRatio();
+            // TODO: Withdraw tokenHave from inputTokenA to swap, convert to assetValue
+            IbAlluo(address(inputTokenA)).withdraw(
+              inputTokenAUnderlying,
+              tokenHave
+            );
+
+            _swap(
+              inputTokenAUnderlying,
+              inputTokenBUnderlying,
+              ERC20(inputTokenAUnderlying).balanceOf(address(this)),
+              block.timestamp + 3600
+            );
+
+            // TODO: Deposit inputTokenBUnderlying to inputTokenB
+            IbAlluo(address(inputTokenB)).deposit(inputTokenBUnderlying, ERC20(inputTokenBUnderlying).balanceOf(address(this)));
+
+        // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
             tokenHave =
                 (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
                 market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
-            _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
+
+            // Convert token have A to ibAlluoA amount
+            tokenHave = tokenHave * 1e18 / IbAlluo(address(inputTokenB)).growingRatio();
+            // TODO: Withdraw tokenHave from inputTokenA to swap, convert to assetValue
+            IbAlluo(address(inputTokenB)).withdraw(
+              inputTokenBUnderlying,
+              tokenHave
+            );
+            _swap(
+              inputTokenBUnderlying,
+              inputTokenAUnderlying,
+              ERC20(inputTokenBUnderlying).balanceOf(address(this)),
+              block.timestamp + 3600
+            );
+            // Deposit inputTokenAUnderlying
+            IbAlluo(address(inputTokenA)).deposit(inputTokenAUnderlying, ERC20(inputTokenAUnderlying).balanceOf(address(this)));
+
         }
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
@@ -378,80 +401,31 @@ contract REXTwoWayAlluoMarket is REXMarket {
     }
 
     function _swap(
-        ISuperToken input,
-        ISuperToken output,
+        address input,
+        address output,
         uint256 amount,
         uint256 deadline
     ) internal returns (uint256) {
-        address inputToken; // The underlying input token address
-        address outputToken; // The underlying output token address
         address[] memory path; // The path to take
         uint256 minOutput; // The minimum amount of output tokens based on Tellor
-        uint256 outputAmount; // The balance before the swap
-
-        inputToken = input.getUnderlyingToken();
-        outputToken = output.getUnderlyingToken();
-
-        // Downgrade and scale the input amount
-        // Handle case input or output is native supertoken
-        if (inputToken == address(0)) {
-            inputToken = address(input);
-        } else {
-            input.downgrade(amount);
-            // Scale it to 1e18 for calculations
-            amount =
-                ERC20(inputToken).balanceOf(address(this)) *
-                (10**(18 - ERC20(inputToken).decimals()));
-        }
-
-        if (outputToken == address(0)) {
-            outputToken = address(output);
-        }
 
         minOutput =
-            (amount * market.oracles[input].usdPrice) /
-            market.oracles[output].usdPrice;
+            (amount * market.oracles[ISuperToken(input)].usdPrice) /
+            market.oracles[ISuperToken(output)].usdPrice;
         minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
-
-        // Scale back from 1e18 to outputToken decimals
-        minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
-        // Scale it back to inputToken decimals
-        amount = amount / (10**(18 - ERC20(inputToken).decimals()));
 
         // Assumes a direct path to swap input/output
         path = new address[](2);
-        path[0] = inputToken;
-        path[1] = outputToken;
+        path[0] = input;
+        path[1] = output;
 
-        if (address(output) == MATICX) {
-          router.swapExactTokensForETH(
-             amount,
-             0,
-             path,
-             address(this),
-             block.timestamp + 3600
-          );
-          ISETHCustom(address(output)).upgradeByETH{value: address(this).balance}();
-        } else {
-          router.swapExactTokensForTokens(
-             amount,
-             minOutput,
-             path,
-             address(this),
-             block.timestamp + 3600
-          );
-          if (address(output) != outputToken) {
-              output.upgrade(
-                  ERC20(outputToken).balanceOf(address(this)) *
-                      (10**(18 - ERC20(outputToken).decimals()))
-              );
-          }
-        }
-
-        // Assumes `amount` was outputToken.balanceOf(address(this))
-        outputAmount = ERC20(outputToken).balanceOf(address(this));
-
-        return outputAmount;
+        router.swapExactTokensForTokens(
+           amount,
+           minOutput,
+           path,
+           address(this),
+           block.timestamp + 3600
+        );
     }
 
     function _updateShareholder(
