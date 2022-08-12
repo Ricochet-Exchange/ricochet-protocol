@@ -232,12 +232,12 @@ describe('REXSuperSwap', () => {
             amount: initialAmount,
         }).exec(usdcxWhaleSigner);
     console.log("====== Transferred to alice =======");
-    // await ricochetETHx
-    //     .transfer({
-    //         receiver: aliceSigner.address,
-    //         amount: ethers.utils.parseUnits("0.5", 18).toString(),
-    //     }).exec(ethxWhaleSigner);
-    //     console.log("ETH")
+    await ricochetETHx
+        .transfer({
+            receiver: aliceSigner.address,
+            amount: ethers.utils.parseUnits("0.1", 18).toString(),
+        }).exec(ethxWhaleSigner);
+        console.log("ETH")
     await ricochetRIC
         .transfer({
             receiver: aliceSigner.address,
@@ -329,6 +329,68 @@ describe('REXSuperSwap', () => {
         
     });
 
+    it("#1.2 User can swap token ethx -> usdcx", async () => {
+        const from =  ricochetETHx.address
+        const to = ricochetUSDCx.address
+        // const amountIn = ethers.utils.parseEther("0.5");
+        const amountIn = ethers.utils.parseUnits("0.1", 18)
+        
+        // we should use coingecko to check the minimum amount
+        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ethereum'+'&vs_currencies=usd');
+        const exchangeRate = response.data['ethereum'].usd;
+      
+        const amountToSwap = 0.1 * exchangeRate;
+        const percentage = amountToSwap / 100 * 3;
+        const amount = amountToSwap - percentage;
+        const amountOutMin = Math.round(amount)
+
+        const ethxAddress = superT.ethx.underlyingToken.address;
+        const usdcx = superT.usdcx.underlyingToken.address
+        const path = [ethxAddress, usdcx]
+        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+        await takeMeasurements();
+        console.log("aliceBalances 1 - ", aliceBalances);
+
+        // approve token to be transferred to superSwap
+        await ricochetETHx
+        .approve({
+            receiver: superSwap.address,
+            amount: '100000000000000000'
+        }).exec(aliceSigner);
+
+        // call swap function
+        const swapTx = await superSwap.connect(aliceSigner).swap(
+          from,
+          to,
+          amountIn,
+          amountOutMin,
+          path,
+          poolFees,
+          true,
+          true 
+        )
+
+        const receipt = await swapTx.wait()
+        let swapComplete;
+
+        for (const event of receipt.events) {
+            if(event.event === "SuperSwapComplete"){
+                swapComplete  = event.args;
+            }
+        }
+        
+        console.log("swap function returns amount swapped as - ", swapComplete[0]);
+        await takeMeasurements();
+        console.log("aliceBalances after swap - ", aliceBalances);
+        
+        const amountSwapped = swapComplete[0] / 1e6;
+        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+
+        await takeMeasurements();
+        console.log("aliceBalances after swap2 - ", aliceBalances);
+        
+    });
+
     it("#1.1 User can swap token RIC -> usdcx", async () => {
         const from = ricochetRIC.address
         const to  =  ricochetUSDCx.address
@@ -345,7 +407,8 @@ describe('REXSuperSwap', () => {
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
 
-        const ricAddress =   Constants.RIC_TOKEN_ADDRESS;
+        // const ricAddress =   Constants.RIC_TOKEN_ADDRESS;
+        const ricAddress =   superT.ric.address
         const usdcx = superT.usdcx.underlyingToken.address
         const path = [ricAddress, usdcx]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
