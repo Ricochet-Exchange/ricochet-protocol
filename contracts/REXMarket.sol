@@ -849,10 +849,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+        console.log("Refunding uninvested amount of", _uninvestAmount);
         // Refund the unswapped amount back to the person who started the stream
         try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
+          console.log("refund failed");
             // Nothing to do, pass
         }
     }

@@ -151,43 +151,6 @@ export async function initSuperfluid(): Promise<Framework> {
     return sf;
 }
 
-export async function createSFRegistrationKey(sf: Framework, deployer: SignerWithAddress): Promise<string> {
-    const registrationKey = `testKey-${Date.now()}`;
-    console.log("_________ Inside createSFRegistrationKey ___________");
-    // const encodedKey = ethers.utils.keccak256(
-    //     ethers.utils.defaultAbiCoder.encode(
-    //         ["string", "address", "string"],
-
-    // const appKey = ethers.utils.solidityKeccak256(
-    //     ethers.utils.defaultAbiCoder.encode(
-    //         ['string', 'address', 'string'],
-    //         [
-    //             'org.superfluid-finance.superfluid.appWhiteListing.registrationKey',
-    //             // deployer.address,
-    //             Constants.OWNER_ADDRESS,   // temp.
-    //             registrationKey,
-    //         ],
-    //     )
-    // );
-
-    const governance = await sf.host.hostContract.getGovernance();
-    console.log(`SF Governance: ${governance}`);
-
-    const sfGovernanceRO = await ethers
-        .getContractAt(SuperfluidGovernanceBase.abi, governance);
-
-    const govOwner = await sfGovernanceRO.owner();
-    await impersonateAndSetBalance(govOwner);
-
-    const sfGovernance = await ethers
-        .getContractAt(SuperfluidGovernanceBase.abi, governance, await ethers.getSigner(govOwner));
-
-    // await sfGovernance.whiteListNewApp(sf.host.address, appKey);
-    await sfGovernance.whiteListNewApp(sf.host.hostContract.address, registrationKey);  // appKey);
-
-    return registrationKey;
-}
-
 // export async function approveSubscriptions(
 //     // users = [u.alice.address, u.bob.address, u.carl.address, u.karen.address, u.admin.address],
 //     framework: Framework, users: SignerWithAddress[], tokens: ISuperToken[]
