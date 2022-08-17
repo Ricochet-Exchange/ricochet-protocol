@@ -220,8 +220,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
               tokenHave
             );
 
-            // console.log("balance of underlying after withdraw", ERC20(inputTokenAUnderlying).balanceOf(address(this)));
-
             _swap(
               inputTokenAUnderlying,
               inputTokenBUnderlying,
@@ -243,14 +241,13 @@ contract REXTwoWayAlluoMarket is REXMarket {
             // Convert token have A to ibAlluoA amount
             tokenHave = tokenHave * 1e18 / ibTokenB.growingRatio();
             // TODO: Withdraw tokenHave from inputTokenA to swap, convert to assetValue
-            // console.log("Withdraw inputHaveB", tokenHave);
-
-            ibTokenB.withdraw(
+            inputTokenB.downgrade(tokenHave);
+            ibTokenB.withdrawTo(
+              address(this),
               inputTokenBUnderlying,
-              tokenHave
+              ibTokenB.balanceOf(address(this))
             );
 
-            // console.log("balance of underlying after withdraw", ERC20(inputTokenBUnderlying).balanceOf(address(this)));
 
             _swap(
               inputTokenBUnderlying,
@@ -262,6 +259,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
             // Deposit inputTokenAUnderlying
             ibTokenA.deposit(inputTokenAUnderlying, ERC20(inputTokenAUnderlying).balanceOf(address(this)));
             inputTokenA.upgrade(ibTokenA.balanceOf(address(this)));
+
 
         }
 
@@ -516,6 +514,8 @@ contract REXTwoWayAlluoMarket is REXMarket {
                 affiliateShares,
                 market.outputPools[outputIndex].token
             );
+            // console.log("2", uint(affiliateShares));
+
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 subsidyIndex,
