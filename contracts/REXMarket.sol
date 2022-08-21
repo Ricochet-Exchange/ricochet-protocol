@@ -406,9 +406,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ) internal virtual returns (bytes memory _newCtx) {
         // We need to go through all the output tokens and update their IDA shares
         _newCtx = _ctx;
-
         (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
-
         // updateOutputPools
         for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
             _newCtx = _updateSubscriptionWithContext(
@@ -596,6 +594,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint128 shares,
         ISuperToken distToken
     ) internal returns (bytes memory newCtx) {
+        // console.log("s", subscriber);
+        // console.log("i", index);
+        // console.log("d", address(distToken));
+        // console.log("s", uint(shares));
+        // console.log("s", subscriber);
         newCtx = ctx;
         (newCtx, ) = host.callAgreementWithContext(
             ida,
@@ -745,7 +748,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
           _shareholder, 0, _flowRate, _superToken
         );
-
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
     }
@@ -778,7 +780,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
-
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
@@ -803,6 +804,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
         // TODO: Udpate shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
     }
 
     // We need before agreement to get the uninvested amount using the flowRate before update
@@ -849,13 +851,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-        console.log("Refunding uninvested amount of", _uninvestAmount);
         // Refund the unswapped amount back to the person who started the stream
         try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
-          console.log("refund failed");
-            // Nothing to do, pass
         }
     }
 }

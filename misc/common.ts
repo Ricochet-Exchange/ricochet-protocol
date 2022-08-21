@@ -216,7 +216,7 @@ export const common = async () => {
         console.log("address", deployerAddr);
         const host = await ethers.getContractAt(
             hostABI,
-            sf.host.hostContract.address
+            sf.settings.config.hostAddress
         );
         const registrationKey = `testKey-${Date.now()}`;
         console.log("resigration ?? key", registrationKey);
@@ -248,7 +248,7 @@ export const common = async () => {
 
         //console.log("sf governance", sfGovernance.whiteListNewApp);
         await sfGovernance.setConfig(
-            sf.host.hostContract.address,
+            sf.settings.config.hostAddress,
             ZERO_ADDRESS,
             encodedKey,
             expirationTs

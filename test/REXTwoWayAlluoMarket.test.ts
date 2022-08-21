@@ -28,10 +28,12 @@ describe('REXTwoWayAlluoMarket', () => {
         if (err) throw err;
     };
 
+    const overrides = { gasLimit: 6000000 }; // Using this to manually limit gas to avoid giga-errors.
     const inflowRateUsdc = "1000000000000000";
     const inflowRateUsdcDeposit = "4000000000000000"
     const inflowRateUsdc10x = "10000000000000000";
     const inflowRateEth = "1000000000000";
+    const inflowRateEthHalf = "500000000000";
     const subsidyRate = "10000000000000";
 
     let rexReferral: REXReferral__factory;
@@ -82,6 +84,7 @@ describe('REXTwoWayAlluoMarket', () => {
     let usdcxAndItsIDAIndex: superTokenAndItsIDAIndex;
     let ethxAndItsIDAIndex: superTokenAndItsIDAIndex;
     let ricAndItsIDAIndex: superTokenAndItsIDAIndex;
+    let ricAndItsOtherIDAIndex: superTokenAndItsIDAIndex;
 
     // ***************************************************************************************
 
@@ -218,6 +221,10 @@ describe('REXTwoWayAlluoMarket', () => {
             token: ricochetRIC,
             IDAIndex: RIC_SUBSCRIPTION_INDEX,
         }
+        ricAndItsOtherIDAIndex = {
+            token: ricochetRIC,
+            IDAIndex: 3,
+        }
 
         console.log("======******** List of addresses =======");
         for (let i = 0; i < accountss.length; i++) {
@@ -254,7 +261,7 @@ describe('REXTwoWayAlluoMarket', () => {
         console.log("admin signer address:", adminSigner.address);
         twoWayMarket = await REXMarketFactory.deploy(
             adminSigner.address,
-            sf.host.hostContract.address,
+            sf.settings.config.hostAddress,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
@@ -320,18 +327,13 @@ describe('REXTwoWayAlluoMarket', () => {
 
         // Do all the approvals
         // TODO: Redo how indexes are setup
-        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
+        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex, ricAndItsOtherIDAIndex],
             [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
 
         // Give Alice, Bob, Karen some tokens
         console.log(ethxWhaleSigner.address)
-        let initialAmount = ethers.utils.parseUnits("1", 18).toString();
-        await ricochetETHx.downgrade({
-                amount: initialAmount,
-            }).exec(ethxWhaleSigner);
-        await weth.connect(ethxWhaleSigner).transfer("0x57Ea02C5147b3A79b5Cc27Fd30C0D9501505bE0B", initialAmount);
 
-        initialAmount = ethers.utils.parseUnits("1000", 18).toString();
+        let initialAmount = ethers.utils.parseUnits("1000", 18).toString();
 
         await ibAlluoUSD
             .transfer({
@@ -567,26 +569,56 @@ describe('REXTwoWayAlluoMarket', () => {
 
     context.only("#2 - existing market with streamers on both sides", async () => {
 
+
         before(async () => {
             const success = await provider.send('evm_revert', [
                 snapshot
             ]);
 
-            // Alice opens a USDC stream to REXMarket
-            await sf.cfaV1.createFlow({
-                sender: aliceSigner.address,
-                receiver: twoWayMarket.address,
-                superToken: ibAlluoUSD.address,
-                flowRate: inflowRateUsdc,
-                userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
-            }).exec(aliceSigner);
+            console.log("make bob flow")
             // Bob opens a ETH stream to REXMarket
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: twoWayMarket.address,
                 superToken: ibAlluoETH.address,
                 flowRate: inflowRateEth,
+                // userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                overrides
             }).exec(bobSigner);
+
+
+            console.log("make alice flow")
+            // Alice opens a USDC stream to REXMarket
+            await sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: twoWayMarket.address,
+                superToken: ibAlluoUSD.address,
+                flowRate: inflowRateUsdc10x,
+                userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                overrides
+            }).exec(aliceSigner);
+
+
+
+            // TODO: Call the update here, see if it works?
+            console.log("updating bob flow", overrides);
+            await sf.cfaV1.updateFlow({
+                superToken: ibAlluoETH.address,
+                flowRate: inflowRateEthHalf,
+                receiver: twoWayMarket.address,
+                overrides,
+            }).exec(bobSigner);
+
+
+            // // TODO: Call the update here, see if it works?
+            // console.log("updating alice flow", overrides);
+            // await sf.cfaV1.updateFlow({
+            //     superToken: ibAlluoUSD.address,
+            //     flowRate: inflowRateUsdc,
+            //     receiver: twoWayMarket.address,
+            //     overrides,
+            // }).exec(aliceSigner);
+
 
             // Take a snapshot
             snapshot = await provider.send('evm_snapshot', []);
@@ -614,21 +646,23 @@ describe('REXTwoWayAlluoMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: aliceSigner.address,
-                superToken: ibAlluoUSD.address
+                superToken: ibAlluoUSD.address,
+                overrides,
             }).exec(aliceSigner);
 
             // Delete Bobs stream
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: bobSigner.address,
-                superToken: ibAlluoETH.address
+                superToken: ibAlluoETH.address,
+                overrides,
             }).exec(bobSigner);
 
             snapshot = await provider.send('evm_snapshot', []);
 
         });
 
-        it.only("#2.1 before/afterAgreementCreated callbacks", async () => {
+        it("#2.1 before/afterAgreementCreated callbacks", async () => {
 
             // Karen opens a USDC stream to REXMarket
             // Triggers distribution for Alice and Bob
@@ -660,14 +694,20 @@ describe('REXTwoWayAlluoMarket', () => {
 
         });
 
-        it("#2.2 before/afterAgreementUpdated callbacks", async () => {
+        it.only("#2.2 before/afterAgreementUpdated callbacks", async () => {
 
-            // Update Alices stream
-            await sf.cfaV1.updateFlow({
-                receiver: twoWayMarket.address,
-                flowRate: inflowRateUsdc10x,
-                superToken: ibAlluoUSD.address
-            }).exec(aliceSigner);
+
+
+            // await sf.cfaV1.createFlow({
+            //     sender: karenSigner.address,
+            //     superToken: ibAlluoUSD.address,
+            //     flowRate: inflowRateUsdc10x,
+            //     receiver: twoWayMarket.address,
+            //     userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+            //     overrides,
+            // }).exec(karenSigner);
+            // //
+            // console.log("karen flow started")
 
             // Expect share allocations were done correctly
             expect(

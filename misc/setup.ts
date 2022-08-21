@@ -94,7 +94,8 @@ export const setup = async () => {
     resolverAddress: Constants.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
-    protocolReleaseVersion: "v1"
+    protocolReleaseVersion: "v1",
+    chainId: 31337
   });
 
   // Declare supertokens as ERC 20 contracts
@@ -131,6 +132,7 @@ export const setup = async () => {
     )
   };
 
+
   // Declare all users for transactions (usdcx)
   for (let i = 0; i < names.length; i += 1) {
     users[names[i]] = {
@@ -140,14 +142,15 @@ export const setup = async () => {
     };
   }
 
+  // console.log(superTokens.ethx)
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
     "ERC20", Constants.RIC_TOKEN_ADDRESS
   );
-  tokens.weth = await ethers.getContractAt(
-    "ERC20",
-    await superTokens.ethx.underlyingToken.address
-  );
+  // tokens.weth = await ethers.getContractAt(
+  //   "ERC20",
+  //   await superTokens.ethx.underlyingToken.address
+  // );
   tokens.wbtc = await ethers.getContractAt(
     "ERC20",
     await superTokens.wbtcx.underlyingToken.address

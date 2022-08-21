@@ -506,6 +506,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
         address affiliate = referrals.getAffiliateAddress(
             _shareholderUpdate.shareholder
         );
+        console.log("g1 = ", gasleft());
         if (affiliate != address(0)) {
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
@@ -514,7 +515,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
                 affiliateShares,
                 market.outputPools[outputIndex].token
             );
-            // console.log("2", uint(affiliateShares));
+            console.log("g2 = ", gasleft());
 
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
