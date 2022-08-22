@@ -210,8 +210,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
             tokenHave = tokenAAmount - tokenHave;
             // Convert token have A to ibAlluoA amount
             tokenHave = tokenHave * 1e18 / ibTokenA.growingRatio();
-            // console.log("Withdraw inputHaveA", tokenHave);
-            // TODO: Withdraw tokenHave from inputTokenA to swap, convert to assetValue
 
             inputTokenA.downgrade(tokenHave);
 
@@ -501,29 +499,16 @@ contract REXTwoWayAlluoMarket is REXMarket {
             daoShares,
             market.outputPools[outputIndex].token
         );
-        // Owner is not added to subsidy pool
 
-        address affiliate = referrals.getAffiliateAddress(
-            _shareholderUpdate.shareholder
-        );
-        console.log("g1 = ", gasleft());
-        if (affiliate != address(0)) {
+        if (_shareholderUpdate.affiliate != address(0)) {
             _newCtx = _updateSubscriptionWithContext(
                 _newCtx,
                 outputIndex,
-                affiliate,
+                _shareholderUpdate.affiliate,
                 affiliateShares,
                 market.outputPools[outputIndex].token
             );
-            console.log("g2 = ", gasleft());
 
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                subsidyIndex,
-                affiliate,
-                affiliateShares,
-                subsidyToken
-            );
         }
     }
 
