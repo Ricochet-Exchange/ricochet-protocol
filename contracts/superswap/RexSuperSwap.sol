@@ -20,6 +20,8 @@ contract RexSuperSwap {
   address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
 
   event SuperSwapComplete(uint256 amountOut);
+  event ErrorOnSwap(string reason);
+  event ReturnDataEvent(bytes returnData);
 
   constructor(ISwapRouter02 _swapRouter) {
     swapRouter = _swapRouter;
@@ -93,8 +95,8 @@ contract RexSuperSwap {
 
     // Approve the router to spend token supplied (fromBase).
     approve(IERC20(fromBase), address(swapRouter));
-
-    console.log("balance of from token before swap - ", address(this).balance);
+   
+    console.log("balance of from token before swap - ", ERC20(fromBase).balanceOf(address(this)));
 
     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
       .ExactInputParams({
@@ -103,9 +105,19 @@ contract RexSuperSwap {
         amountIn: ERC20(fromBase).balanceOf(address(this)),
         amountOutMinimum: amountOutMin
       });
-    
+ 
     // Execute the swap
-    amountOut = swapRouter.exactInput(params);
+    try swapRouter.exactInput(params) returns (uint256 swappedAmount) {
+      console.log("swapRouter returns - ", swappedAmount);
+      amountOut = swappedAmount;
+    } catch Error(string memory reason) {
+      emit ErrorOnSwap(reason);
+      console.log("reason for swap failure - ", reason);
+    } catch (bytes memory returnData) {
+      console.log("reaching catch block for low level data");
+      emit ReturnDataEvent(returnData);
+    }
+  
 
     console.log("balance of to token after swap - ", ERC20(toBase).balanceOf(address(this)));
   

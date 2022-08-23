@@ -235,7 +235,7 @@ describe('REXSuperSwap', () => {
     await ricochetETHx
         .transfer({
             receiver: aliceSigner.address,
-            amount: ethers.utils.parseUnits("0.1", 18).toString(),
+            amount: ethers.utils.parseUnits("0.07", 18).toString(),
         }).exec(ethxWhaleSigner);
         console.log("ETH")
     await ricochetRIC
@@ -317,7 +317,7 @@ describe('REXSuperSwap', () => {
         }
 
         
-        console.log("swap function returns amount swapped as - ", swapComplete[0]);
+        console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap - ", aliceBalances);
         
@@ -333,13 +333,13 @@ describe('REXSuperSwap', () => {
         const from =  ricochetETHx.address
         const to = ricochetUSDCx.address
         // const amountIn = ethers.utils.parseEther("0.5");
-        const amountIn = ethers.utils.parseUnits("0.1", 18)
+        const amountIn = ethers.utils.parseUnits("0.07", 18)
         
         // we should use coingecko to check the minimum amount
         const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ethereum'+'&vs_currencies=usd');
         const exchangeRate = response.data['ethereum'].usd;
       
-        const amountToSwap = 0.1 * exchangeRate;
+        const amountToSwap = 0.07 * exchangeRate;
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
@@ -355,7 +355,7 @@ describe('REXSuperSwap', () => {
         await ricochetETHx
         .approve({
             receiver: superSwap.address,
-            amount: '100000000000000000'
+            amount: '70000000000000000'
         }).exec(aliceSigner);
 
         // call swap function
@@ -379,7 +379,7 @@ describe('REXSuperSwap', () => {
             }
         }
         
-        console.log("swap function returns amount swapped as - ", swapComplete[0]);
+        console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap - ", aliceBalances);
         
@@ -391,25 +391,28 @@ describe('REXSuperSwap', () => {
         
     });
 
-    it("#1.1 User can swap token RIC -> usdcx", async () => {
+    it("#1.3 User can swap native token RIC -> usdcx", async () => {
         const from = ricochetRIC.address
         const to  =  ricochetUSDCx.address
+        // const to =  ricochetMATICx.address
 
-        const amountIn = ethers.utils.parseUnits("79", 18)
+        const amountIn = ethers.utils.parseUnits("1700", 18)
         
         // we should use coingecko to check the minimum amount
         // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ricochet'+'&vs_currencies=usd');
         // console.log("response from coingecko - ", response.data['ricochet'])
         // const exchangeRate = response.data['ricochet'].usd;
       
-        const amountToSwap = 79 * 0.0131;
+        const amountToSwap = 1700 * 0.006615;
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
 
         // const ricAddress =   Constants.RIC_TOKEN_ADDRESS;
         const ricAddress =   superT.ric.address
+        console.log("ric address check - ", ricAddress)
         const usdcx = superT.usdcx.underlyingToken.address
+        // const maticxAddress = superT.maticx.underlyingToken.address;
         const path = [ricAddress, usdcx]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
         await takeMeasurements();
@@ -419,7 +422,7 @@ describe('REXSuperSwap', () => {
         await ricochetRIC
         .approve({
             receiver: superSwap.address,
-            amount: '79000000000000000000'
+            amount: '1700000000000000000000'
         }).exec(aliceSigner);
 
         // call swap function
@@ -427,7 +430,7 @@ describe('REXSuperSwap', () => {
           from,
           to,
           amountIn,
-          amountOutMin,
+          0,
           path,
           poolFees,
           false,
@@ -436,17 +439,26 @@ describe('REXSuperSwap', () => {
 
         const receipt = await swapTx.wait()
         let swapComplete;
+        let errorOnSwap = "Event wasn't emitted";
+        let returnDataEvent = "Event wasn't emitted";
 
         for (const event of receipt.events) {
             if(event.event === "SuperSwapComplete"){
-                swapComplete  = event.args;
+                swapComplete = event.args;
+            } if(event.event === "ErrorOnSwap"){
+                errorOnSwap = event.args;
+            } if(event.event === "ReturnDataEvent"){
+                returnDataEvent = event.args;
             }
         }
 
         
-        console.log("swap function returns amount swapped as - ", swapComplete[0]);
+        console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap ric - usdcx - ", aliceBalances);
+
+        console.log("Reason for error on swap - ", errorOnSwap);
+        console.log("Low level data for swap error - ", returnDataEvent);
         
         const amountSwapped = swapComplete[0] / 1e6;
         expect(amountSwapped).to.be.greaterThan(amountOutMin);
