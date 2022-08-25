@@ -160,10 +160,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
     function emergencyDrain(ISuperToken token) external virtual onlyOwner {
-        require(
-            cfa.getNetFlow(token, address(this)) == 0,
-            "!zeroStreamers"
-        );
         require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
 
         token.transfer(
@@ -758,7 +754,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _agreementData,
         bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
-      console.log("bau = ", gasleft());
       _onlyHost();
       if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
           return _ctx;
