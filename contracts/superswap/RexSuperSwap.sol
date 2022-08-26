@@ -16,18 +16,18 @@ import "hardhat/console.sol";
 contract RexSuperSwap {
   using SafeERC20 for ERC20;
   ISwapRouter02 public immutable swapRouter;
-
-  address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
+  address public maticAddress;
 
   event SuperSwapComplete(uint256 amountOut);
   event ErrorOnSwap(string reason);
   event ReturnDataEvent(bytes returnData);
 
-  constructor(ISwapRouter02 _swapRouter) {
+  constructor(ISwapRouter02 _swapRouter, address _maticAddress) {
     swapRouter = _swapRouter;
+    maticAddress = _maticAddress;
   }
 
-  // Having unlimited approvals rather then dealing with decimal converisons.
+  // Having unlimited approvals rather then dealing with decimal conversions.
     // Not a problem as contract is not storing any tokens.
     function approve(IERC20 _token, address _spender) internal {
         if (_token.allowance(_spender, msg.sender) == 0) {
@@ -108,17 +108,13 @@ contract RexSuperSwap {
  
     // Execute the swap
     try swapRouter.exactInput(params) returns (uint256 swappedAmount) {
-      console.log("swapRouter returns - ", swappedAmount);
       amountOut = swappedAmount;
     } catch Error(string memory reason) {
       emit ErrorOnSwap(reason);
-      console.log("reason for swap failure - ", reason);
     } catch (bytes memory returnData) {
-      console.log("reaching catch block for low level data");
       emit ReturnDataEvent(returnData);
     }
   
-
     console.log("balance of to token after swap - ", ERC20(toBase).balanceOf(address(this)));
   
     // Step 5: Upgrade and send tokens back
@@ -126,7 +122,7 @@ contract RexSuperSwap {
 
     // Upgrade if it's not a native SuperToken
     if (_hasUnderlyingTo) {
-      if (address(_to) == MATICX) {
+      if (address(_to) == maticAddress) {
         console.log("upgrade MATICX");
         // if MATICX then use different method to upgrade
         ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
