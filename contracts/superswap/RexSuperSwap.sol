@@ -12,19 +12,18 @@ import "../ISETHCustom.sol";
 
 import "hardhat/console.sol";
 
-
 contract RexSuperSwap {
   using SafeERC20 for ERC20;
   ISwapRouter02 public immutable swapRouter;
-  address public maticAddress;
+  address public superNativeToken;
 
   event SuperSwapComplete(uint256 amountOut);
   event ErrorOnSwap(string reason);
   event ReturnDataEvent(bytes returnData);
 
-  constructor(ISwapRouter02 _swapRouter, address _maticAddress) {
+  constructor(ISwapRouter02 _swapRouter, address _superNativeToken) {
     swapRouter = _swapRouter;
-    maticAddress = _maticAddress;
+    superNativeToken = _superNativeToken;
   }
 
   // Having unlimited approvals rather then dealing with decimal conversions.
@@ -122,7 +121,7 @@ contract RexSuperSwap {
 
     // Upgrade if it's not a native SuperToken
     if (_hasUnderlyingTo) {
-      if (address(_to) == maticAddress) {
+      if (address(_to) == superNativeToken) {
         console.log("upgrade MATICX");
         // if MATICX then use different method to upgrade
         ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
