@@ -2,14 +2,12 @@ import { waffle, ethers } from "hardhat";
 import { setup, IUser, ISuperToken } from "../misc/setup";
 import { common } from "../misc/common";
 import { expect } from "chai";
-import { HttpService } from "./../misc/HttpService";
 import axios from "axios";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
-import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
+import { TellorPlayground } from "../typechain";
 import { Constants } from "../misc/Constants";
-import { AbiCoder, parseUnits } from "ethers/lib/utils";
+
 
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
@@ -30,13 +28,10 @@ describe('REXSuperSwap', () => {
         if (err) throw err;
     };
 
-    
     const subsidyRate = "10000000000000";
 
     let rexSuperSwap: any;
-    let REXMarketFactory: any;
     let superSwap: any;
-    let snapshot: any;
 
     let adminSigner: SignerWithAddress;
     let aliceSigner: SignerWithAddress;
@@ -45,11 +40,6 @@ describe('REXSuperSwap', () => {
     let usdcxWhaleSigner: SignerWithAddress;
     let ethxWhaleSigner: SignerWithAddress;
     let maticxWhaleSigner: SignerWithAddress;
-    let karenSigner: SignerWithAddress;
-
-    let oraclePrice: number;
-    let ricOraclePrice: number;
-    let maticOraclePrice: number;
 
     let sf: Framework,
         superT: ISuperToken,
@@ -213,18 +203,6 @@ describe('REXSuperSwap', () => {
     console.log("=========== Deployed REXSuperSwap ============");
     console.log("RexSuperSwap deployed to:", superSwap.address);
 
-    // // send the contract some RIC
-    // try {
-        // await ricochetRIC.transfer({
-        //     receiver: twoWayMarket.address,
-        //     amount: "1000000000000000000"
-        // }).exec(adminSigner);
-    // } catch (err: any) {
-    //     console.log("Ricochet - ERROR transferring RICs to the contract: ", err);
-    // }
-    // console.log("============ RICs have been sent to the contract =============");
-    // await checkBalance(adminSigner, "the contract");
-
     console.log("=======================================================================");
     console.log("================ End of \"before\" block ==============================");
     console.log("=======================================================================");
@@ -274,7 +252,6 @@ describe('REXSuperSwap', () => {
     it("#1.1 User can swap token maticx -> usdcx", async () => {
         const from =  ricochetMATICx.address
         const to = ricochetUSDCx.address
-        // const amountIn = ethers.utils.parseEther("0.5");
         const amountIn = ethers.utils.parseUnits("35", 18)
         
         // we should use coingecko to check the minimum amount
@@ -320,8 +297,7 @@ describe('REXSuperSwap', () => {
                 swapComplete  = event.args;
             }
         }
-
-        
+   
         console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap - ", aliceBalances);
@@ -337,7 +313,6 @@ describe('REXSuperSwap', () => {
     it("#1.2 User can swap token ethx -> usdcx", async () => {
         const from =  ricochetETHx.address
         const to = ricochetUSDCx.address
-        // const amountIn = ethers.utils.parseEther("0.5");
         const amountIn = ethers.utils.parseUnits("0.05", 18)
         
         // we should use coingecko to check the minimum amount
@@ -399,26 +374,16 @@ describe('REXSuperSwap', () => {
     it("#1.3 User can swap native token RIC -> daix", async () => {
         const from = ricochetRIC.address
         const to  =  ricochetDAIX.address
-
         const amountIn = ethers.utils.parseUnits("170", 18)
-        
-        // we should use coingecko to check the minimum amount
-        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ricochet'+'&vs_currencies=usd');
-        // console.log("response from coingecko - ", response.data['ricochet'])
-        // const exchangeRate = response.data['ricochet'].usd;
-      
+              
         // hardcoding for now
         const amountToSwap = 170 * 0.0000053; // how to get current exchange rate?
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
 
-        // const ricAddress =   Constants.RIC_TOKEN_ADDRESS;
         const ricAddress =   superT.ric.address
-        console.log("ric address check - ", ricAddress)
-        // const usdcx = superT.usdcx.underlyingToken.address
         const daix = superT.daix.underlyingToken.address
-        // const maticxAddress = superT.maticx.underlyingToken.address;
         const path = [ricAddress, daix]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
         await takeMeasurements();
@@ -457,12 +422,10 @@ describe('REXSuperSwap', () => {
                 returnDataEvent = event.args;
             }
         }
-
-        
+    
         console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap ric - usdcx - ", aliceBalances);
-
         console.log("Reason for error on swap - ", errorOnSwap);
         console.log("Low level data for swap error - ", returnDataEvent);
         
@@ -478,12 +441,7 @@ describe('REXSuperSwap', () => {
         const from =  ricochetMATICx.address
         const to  =  ricochetWBTCx.address
         const amountIn = ethers.utils.parseUnits("35", 18)
-        
-        // we should use coingecko to check the minimum amount
-        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ricochet'+'&vs_currencies=usd');
-        // console.log("response from coingecko - ", response.data['ricochet'])
-        // const exchangeRate = response.data['ricochet'].usd;
-      
+          
         // hardcoding for now
         const amountToSwap = 35 * 0.0000382;
         const percentage = amountToSwap / 100 * 3;
@@ -555,11 +513,6 @@ describe('REXSuperSwap', () => {
 
         const amountIn = ethers.utils.parseUnits("170", 18)
         
-        // we should use coingecko to check the minimum amount
-        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ricochet'+'&vs_currencies=usd');
-        // console.log("response from coingecko - ", response.data['ricochet'])
-        // const exchangeRate = response.data['ricochet'].usd;
-      
         // hardcoding for now
         const amountToSwap = 170 * 0.012783; // how to get current exchange rate?
         const percentage = amountToSwap / 100 * 3;
@@ -607,8 +560,7 @@ describe('REXSuperSwap', () => {
                 returnDataEvent = event.args;
             }
         }
-
-        
+   
         console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap ric - usdcx - ", aliceBalances);
