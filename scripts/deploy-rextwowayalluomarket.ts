@@ -30,14 +30,14 @@ async function main() {
   await rexTwoWayAlluoMarket.deployed();
   console.log("Deployed REXTwoWayAlluoMarket at address:", rexTwoWayAlluoMarket.address);
 
-  await rexTwoWayMarket.initializeTwoWayMarket(
+  await rexTwoWayAlluoMarket.initializeTwoWayMarket(
     Constants.IBALLUOUSD_ADDRESS,
     Constants.TELLOR_USDC_REQUEST_ID,
     1e7,
     Constants.IBALLUOETH_ADDRESS,
     Constants.TELLOR_ETH_REQUEST_ID,
     1e9,
-    20000,
+    5000,
     20000,
     { gasLimit: 2000000 }
   );

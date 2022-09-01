@@ -287,7 +287,7 @@ describe('REXTwoWayAlluoMarket', () => {
             ibAlluoETH.address,
             Constants.TELLOR_ETH_REQUEST_ID,
             1e9,
-            20000,
+            5000,
             20000
         );
         console.log("=========== Initialized TwoWayMarket ============");
@@ -411,14 +411,14 @@ describe('REXTwoWayAlluoMarket', () => {
             ).to.equal(inflowRateUsdc);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
-            ).to.equal(`true,true,980000,0`);
+            ).to.equal(`true,true,995000,0`);
             // Admin and Carl split 2% of the shares bc of the 50% referral fee
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-            ).to.equal(`true,true,10000,0`);
+            ).to.equal(`true,true,2500,0`);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
-            ).to.equal(`true,true,10000,0`);
+            ).to.equal(`true,true,2500,0`);
 
             // Bob opens a ETH stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -434,11 +434,11 @@ describe('REXTwoWayAlluoMarket', () => {
             ).to.equal(inflowRateEth);
             expect(
                 (await twoWayMarket.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
-            ).to.equal(`true,true,98000,0`);
+            ).to.equal(`true,true,99500,0`);
             // Admin gets all of the 2% bc bob was an organic referral
             expect(
                 (await twoWayMarket.getIDAShares(USDCX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-            ).to.equal(`true,true,2000,0`);
+            ).to.equal(`true,true,500,0`);
             expect(
                 (await twoWayMarket.getIDAShares(USDCX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
             ).to.equal(`true,true,0,0`);
@@ -557,8 +557,8 @@ describe('REXTwoWayAlluoMarket', () => {
             expect(deltaAlice.ibAlluoETH).to.be.above(deltaAlice.ibAlluoUSD / oraclePrice * 1e6 * -1 * 0.97)
 
             // Expect Owner and Carl got their fee from Alice
-            expect(deltaCarl.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.00999, 0.01)
-            expect(deltaOwner.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.00999, 0.01)
+            expect(deltaCarl.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.0025, 0.00251)
+            expect(deltaOwner.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.0025, 0.00251)
         });
 
     });
@@ -648,16 +648,16 @@ describe('REXTwoWayAlluoMarket', () => {
             ).to.equal(inflowRateUsdc);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
-            ).to.equal(`true,true,980000,0`);
+            ).to.equal(`true,true,995000,0`);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, karenSigner.address)).toString()
-            ).to.equal(`true,true,980000,0`);
+            ).to.equal(`true,true,995000,0`);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-            ).to.equal(`true,true,30000,0`);
+            ).to.equal(`true,true,7500,0`);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
-            ).to.equal(`true,true,10000,0`);
+            ).to.equal(`true,true,2500,0`);
 
         });
 
@@ -676,14 +676,14 @@ describe('REXTwoWayAlluoMarket', () => {
             ).to.equal(inflowRateUsdc10x);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
-            ).to.equal(`true,true,9800000,0`);
+            ).to.equal(`true,true,9950000,0`);
             // Admin and Carl split 2% of the shares bc of the 50% referral fee
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, adminSigner.address)).toString()
-            ).to.equal(`true,true,100000,0`);
+            ).to.equal(`true,true,25000,0`);
             expect(
                 (await twoWayMarket.getIDAShares(ETHX_SUBSCRIPTION_INDEX, carlSigner.address)).toString()
-            ).to.equal(`true,true,100000,0`);
+            ).to.equal(`true,true,25000,0`);
 
         });
 
@@ -714,10 +714,10 @@ describe('REXTwoWayAlluoMarket', () => {
             expect(deltaBob.ibAlluoUSD).to.be.above(deltaBob.ibAlluoETH * oraclePrice / 1e6 * -1 * 0.95)
             expect(deltaAlice.ibAlluoETH).to.be.above(deltaAlice.ibAlluoUSD / oraclePrice * 1e6 * -1 * 0.95)
             // Expect Owner and Carl got their fee from Alice
-            expect(deltaCarl.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.00999, 0.01)
-            expect(deltaOwner.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.00999, 0.01)
+            expect(deltaCarl.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.0025, 0.00251)
+            expect(deltaOwner.ibAlluoETH / (deltaAlice.ibAlluoETH + deltaCarl.ibAlluoETH + deltaOwner.ibAlluoETH)).to.within(0.0025, 0.00251)
             // Expect Owner got his fee from Bob
-            expect(deltaOwner.ibAlluoUSD / (deltaBob.ibAlluoUSD + deltaOwner.ibAlluoUSD)).to.within(0.01999, 0.02001)
+            expect(deltaOwner.ibAlluoUSD / (deltaBob.ibAlluoUSD + deltaOwner.ibAlluoUSD)).to.within(0.005, 0.0051)
 
         });
 
