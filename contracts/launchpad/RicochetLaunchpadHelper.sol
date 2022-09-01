@@ -54,7 +54,8 @@ library RicochetLaunchpadHelper {
 
   function _emergencyCloseStream(RicochetLaunchpadStorage.RicochetLaunchpad storage self, address streamer) public {
     // Allows anyone to close any stream iff the app is jailed
-    bool isJailed = ISuperfluid(msg.sender).isAppJailed(ISuperApp(address(this)));
+    bool isJailed = self.host.isAppJailed(ISuperApp(address(this)));
+
     require(isJailed, "!jailed");
     self.host.callAgreement(
         self.cfa,
