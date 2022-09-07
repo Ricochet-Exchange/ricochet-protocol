@@ -13,7 +13,7 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const REXTwoWayAlluoMarket = await ethers.getContractFactory("REXTwoWayAlluoMarket");
-  // const rexTwoWayAlluoMarket = await REXTwoWayMarket.attach("");
+  // const rexTwoWayAlluoMarket = await REXTwoWayAlluoMarket.attach("0xA46B49168f77977b36813C863984BC4c38997324");
 
   console.log("Deploying REXTwoWayAlluoMarket")
   const REG_KEY = process.env.SF_REG_KEY !== undefined ? process.env.SF_REG_KEY : "";
@@ -33,9 +33,11 @@ async function main() {
   await rexTwoWayAlluoMarket.initializeTwoWayMarket(
     Constants.IBALLUOUSD_ADDRESS,
     Constants.TELLOR_USDC_REQUEST_ID,
-    1e7,
-    Constants.IBALLUOETH_ADDRESS,
-    Constants.TELLOR_ETH_REQUEST_ID,
+    1e6,
+    // Constants.IBALLUOETH_ADDRESS,
+    // Constants.TELLOR_ETH_REQUEST_ID,
+    Constants.IBALLUOBTC_ADDRESS,
+    Constants.TELLOR_WBTC_REQUEST_ID,
     1e9,
     5000,
     20000,
@@ -46,7 +48,7 @@ async function main() {
   await sleep(10000);
 
   // let ricAdress =
-  await rexTwoWayAlluoMarket.initializeSubsidies(0, Constants.RIC_TOKEN_ADDRESS); // 1e15/second
+  await rexTwoWayAlluoMarket.initializeSubsidies(0, Constants.RIC_TOKEN_ADDRESS, { gasLimit: 2000000 }); // 1e15/second
   console.log("Initialized subsidies.")
 
   console.log("Registering with RexReferral system...")

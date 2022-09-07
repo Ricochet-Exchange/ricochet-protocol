@@ -22,6 +22,7 @@ export const Constants = {
     // These are the supertoken versions
     IBALLUOUSD_ADDRESS: "0xE9E759B969B991F2bFae84308385405B9Ab01541",
     IBALLUOETH_ADDRESS: "0x2D4Dc956FBd0044a4EBA945e8bbaf98a14025C2d",
+    IBALLUOBTC_ADDRESS: "0x3E70E15c189e1FFe8FF44d713605528dC1701b63",
 
     // random address from polygonscan that have a lot of usdcx
     USDCX_SOURCE_ADDRESS: "0x81ea02098336435d5e92e032c029aab850304f5d",
