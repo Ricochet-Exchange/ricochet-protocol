@@ -327,6 +327,14 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
                 amount: initialAmount,
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred USDCx to bob =======");
+
+        await ibAlluoUSD
+            .transfer({
+                receiver: bobSigner.address,
+                amount: initialAmount,
+            }).exec(ibAlluoUSDWhaleSigner);
+        console.log("====== Transferred USDCx to bob =======");
+
         await ricochetUSDCx
             .transfer({
                 receiver: karenSigner.address,
@@ -401,16 +409,16 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: twoWayMarket.address,
-                superToken: ricochetUSDCx.address,
+                superToken: ibAlluoUSD.address,
                 flowRate: inflowRateUsdc,
             }).exec(bobSigner);
             console.log("Create flow bob");
             // Expect share allocations were done correctly
             expect(
-                await twoWayMarket.getStreamRate(bobSigner.address, ricochetUSDCx.address)
+                await twoWayMarket.getStreamRate(bobSigner.address, ibAlluoUSD.address)
             ).to.equal(inflowRateUsdc);
             expect(
-                (await twoWayMarket.getIDAShares(IBALLUOUSD_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
+                (await twoWayMarket.getIDAShares(USDCX_SUBSCRIPTION_INDEX, bobSigner.address)).toString()
             ).to.equal(`true,true,1000000000000000,0`);
 
         });
@@ -432,7 +440,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: twoWayMarket.address,
-                superToken: ricochetUSDCx.address,
+                superToken: ibAlluoUSD.address,
                 flowRate: inflowRateUsdc10x,
             }).exec(bobSigner);
 
@@ -449,7 +457,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: bobSigner.address,
-                superToken: ricochetUSDCx.address
+                superToken: ibAlluoUSD.address
             }).exec(bobSigner);
 
             await takeMeasurements();
@@ -491,9 +499,8 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
         });
 
-        it("#1.4 one-sided distribution", async () => {
+        it.only("#1.4 one-sided distribution", async () => {
             // Alice opens a USDC stream to REXMarket
-            console.log("")
             await sf.cfaV1.createFlow({
                 sender: aliceSigner.address,
                 receiver: twoWayMarket.address,
@@ -517,12 +524,27 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             let deltaCarl = await delta(carlSigner, carlBalances);
             let deltaOwner = await delta(adminSigner, ownerBalances);
 
+            // NOTE: Pulled manually from the forked block number
+            let realGrowingRatio = 1.031139986258114078;
+
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
             console.log("Alice got this much ibAlluoUSD", deltaAlice.ibAlluoUSD);
             console.log("Alice paid this much USDCx", -1 * deltaAlice.ricochetUSDCx);
             console.log("ibAlluoETH/USD rate", -1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD);
+            console.log("actual growing ratio", realGrowingRatio);
+            console.log("loss", (-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
+
+            // console.log("Bob got this much USDCx", deltaBob.ricochetUSDCx);
+            // console.log("Bob paid this much ibAlluoUSD", -1 * deltaBob.ibAlluoUSD);
+            // console.log("ibAlluoETH/USD rate", -1*deltaBob.ibAlluoUSD/deltaAlice.ricochetUSDCx);
+            // console.log("actual growing ratio", realGrowingRatio);
+            // console.log("loss", (-1*deltaBob.ibAlluoUSD/deltaAlice.ricochetUSDCx - realGrowingRatio) / realGrowingRatio);
+
+
             // Expect the growing ratio
-            expect(deltaAlice.ibAlluoUSD).to.be.above(-1 * deltaAlice.ricochetUSDCx * ethers.BigNumber.from('1000000000000000000') / ethers.BigNumber.from('1031139986258114078'));
+            // NOTE: There's a bit of loss in the rate due to a remainder from division in the IDA distribution
+            // Check here that that loss is less than 0.03%
+            expect((-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio).to.be.below(0.0003);
 
         });
 
