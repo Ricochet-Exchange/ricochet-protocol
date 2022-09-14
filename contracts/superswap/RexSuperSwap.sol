@@ -119,16 +119,10 @@ contract RexSuperSwap {
     // Step 5: Upgrade and send tokens back
     approve(IERC20(toBase), address(_to));
 
-    // Upgrade if it's not a native SuperToken
+    // Upgrade if it has underlying token
     if (_hasUnderlyingTo) {
-      if (address(_to) == superNativeToken) {
-        console.log("upgrade MATICX");
-        // if MATICX then use different method to upgrade
-        ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
-      } else {
-        console.log("reaching case to upgrade");
-        _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
-      }
+      console.log("reaching case to upgrade");
+      _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
     }
 
     approve(IERC20(address(_to)), msg.sender);

@@ -257,10 +257,10 @@ describe('REXSuperSwap', () => {
         const amountIn = ethers.utils.parseUnits("35", 18)
         
         // we should use coingecko to check the minimum amount
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-        const exchangeRate = response.data[COINGECKO_KEY].usd;
+        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+        // const exchangeRate = response.data[COINGECKO_KEY].usd;
       
-        const amountToSwap = 35 * exchangeRate;
+        const amountToSwap = 35 * 0.79;
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
