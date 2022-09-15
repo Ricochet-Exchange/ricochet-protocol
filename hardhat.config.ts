@@ -65,12 +65,12 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      forking: {
-        url: process.env.POLYGON_NODE_URL || "",
-        accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
-        enabled: true,
-        blockNumber: 22877930     // Essential for mainnet forking !!
-      },
+      // forking: {
+      //   url: process.env.POLYGON_NODE_URL || "",
+      //   accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
+      //   enabled: true,
+      //   blockNumber: 22877930     // Essential for mainnet forking !!
+      // },
       // blockGasLimit: 20000000,
       // gasPrice: 30000000000,
       // accounts: [{
@@ -78,6 +78,8 @@ const config: HardhatUserConfig = {
       //   balance: ethers.utils.parseUnits("10000", 18).toString()
       // }],
       // saveDeployments: false
+
+      blockGasLimit: 100000000 // REQUIRED for superfluidFrameworkDeployer
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,

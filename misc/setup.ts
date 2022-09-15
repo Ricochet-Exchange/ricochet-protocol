@@ -3,6 +3,7 @@ import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Constants } from "./Constants";
+import { deployFramework } from "./deploy-sf";
 import * as dotenv from "dotenv";
 
 const { provider, loadFixture } = waffle;
@@ -83,13 +84,26 @@ export const setup = async () => {
   const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender"];
 
   // Initialize superfluid sdk
+  // const superfluid = await Framework.create({
+  //   provider: ethers.provider,  //   PROVIDER,  // ethers.getDefaultProvider(),
+  //   // resolverAddress: Constants.SF_RESOLVER,
+  //   networkName: "hardhat",
+  //   dataMode: "WEB3_ONLY",
+  //   protocolReleaseVersion: "v1"
+  // });
+
+  // let admin;
+  // [admin] = await ethers.getSigners()
+  // let contractsFramework = await deployFramework(admin)
+  // console.log("contractsFramework here - ", contractsFramework)
+
   const superfluid = await Framework.create({
-    provider: ethers.provider,  //   PROVIDER,  // ethers.getDefaultProvider(),
-    resolverAddress: Constants.SF_RESOLVER,
-    networkName: "hardhat",
+    provider: ethers.provider,
+    resolverAddress: contractsFramework.resolver,
     dataMode: "WEB3_ONLY",
-    protocolReleaseVersion: "v1"
-  });
+    protocolReleaseVersion: "test",
+    networkName: "custom"
+  })
 
   // Declare supertokens as ERC 20 contracts
   const superTokens: ISuperToken = {
