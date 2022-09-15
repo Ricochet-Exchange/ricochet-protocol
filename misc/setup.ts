@@ -3,7 +3,7 @@ import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Constants } from "./Constants";
-import { deployFramework } from "./deploy-sf";
+import { deployFramework, deployWrapperSuperToken } from "./deploy-sf";
 import * as dotenv from "dotenv";
 
 const { provider, loadFixture } = waffle;
@@ -92,10 +92,10 @@ export const setup = async () => {
   //   protocolReleaseVersion: "v1"
   // });
 
-  // let admin;
-  // [admin] = await ethers.getSigners()
-  // let contractsFramework = await deployFramework(admin)
-  // console.log("contractsFramework here - ", contractsFramework)
+  let admin;
+  [admin] = await ethers.getSigners()
+  let contractsFramework = await deployFramework(admin)
+  console.log("contractsFramework here - ", contractsFramework)
 
   const superfluid = await Framework.create({
     provider: ethers.provider,
@@ -105,26 +105,52 @@ export const setup = async () => {
     networkName: "custom"
   })
 
+  // Use deployWrapperSuperToken here to deploy all of the below tokens used in the tests.
+  const maticx = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "Matic",
+    "maticx"
+  )
+  const ethx = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "Ethereum",
+    "ethx"
+  )
+  const usdcx = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "USD coin",
+    "usdcx"
+  )
+  const wbtcx = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "Wrapped bitcoin",
+    "usdcx"
+  )
+  const daix = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "Dai",
+    "daix"
+  )
+  const ric = await deployWrapperSuperToken(
+    admin,
+    contractsFramework.superTokenFactory,
+    "Ricochet token",
+    "ric"
+  )
+
   // Declare supertokens as ERC 20 contracts
   const superTokens: ISuperToken = {
-    maticx: await superfluid.loadSuperToken(
-      "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3"
-    ),
-    ethx: await superfluid.loadSuperToken(
-      "0x27e1e4E6BC79D93032abef01025811B7E4727e85"
-    ),
-    usdcx: await superfluid.loadSuperToken(
-      "0xCAa7349CEA390F89641fe306D93591f87595dc1F"
-    ),
-    wbtcx: await superfluid.loadSuperToken(
-      "0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92"
-    ),
-    daix: await superfluid.loadSuperToken(
-      "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
-    ),
-    ric: await superfluid.loadSuperToken(
-      Constants.RIC_TOKEN_ADDRESS
-    )
+    maticx: maticx.underlyingToken,
+    ethx: ethx.underlyingToken,
+    usdcx: usdcx.underlyingToken,
+    wbtcx: wbtcx.underlyingToken,
+    daix: daix.underlyingToken,
+    ric: ric.underlyingToken
   };
 
   // Declare all users for transactions (usdcx)
@@ -138,23 +164,23 @@ export const setup = async () => {
 
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
-    "ERC20", Constants.RIC_TOKEN_ADDRESS
+    "ERC20", superTokens.ric.address
   );
   tokens.weth = await ethers.getContractAt(
     "ERC20",
-    await superTokens.ethx.underlyingToken.address
+    await superTokens.ethx.address
   );
   tokens.wbtc = await ethers.getContractAt(
     "ERC20",
-    await superTokens.wbtcx.underlyingToken.address
+    await superTokens.wbtcx.address
   );
   tokens.usdc = await ethers.getContractAt(
     "ERC20",
-    await superTokens.usdcx.underlyingToken.address
+    await superTokens.usdcx.address
   );
   tokens.maticx = await ethers.getContractAt(
     "ERC20",
-    await superTokens.maticx.underlyingToken.address
+    await superTokens.maticx.address
   );
   // let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
