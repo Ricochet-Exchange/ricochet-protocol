@@ -69,7 +69,9 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
-        blockNumber: 31926750     // Essential for mainnet forking !!
+        blockNumber: 33013602, //32812267,
+        // ibAlluo market test block
+        // 31926750     // Essential for mainnet forking !!
       },
       // blockGasLimit: 20000000,
       // gasPrice: 30000000000,
