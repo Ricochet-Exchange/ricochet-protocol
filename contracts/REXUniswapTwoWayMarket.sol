@@ -23,7 +23,6 @@ contract REXTwoWayUniswapMarket is REXMarket {
     ISuperToken subsidyToken;
     IRexSuperSwap superSwap = IRexSuperSwap(0x7D0c6Cd0bfcb05710c0CC94fC673e866AdaE7745);
     uint24[] superSwapPoolFees = [500];
-    address[] superSwapPath;
     bool public hasUnderlayingTokenA = true;
     bool public hasUnderlayingTokenB = true;
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
@@ -44,14 +43,12 @@ contract REXTwoWayUniswapMarket is REXMarket {
         bool _hasUnderlayingTokenA,
         bool _hasUnderlayingTokenB,
         uint24[] memory _superSwapPoolFees,
-        IRexSuperSwap _superSwap,
-        address[] memory _superSwapPath
-    ) public onlyOwner {
+        IRexSuperSwap _superSwap
+    ) external onlyOwner {
         superSwapPoolFees = _superSwapPoolFees;
         hasUnderlayingTokenA = _hasUnderlayingTokenA;
         hasUnderlayingTokenB = _hasUnderlayingTokenB;
         superSwap = _superSwap;
-        superSwapPath = _superSwapPath;
     }
 
     function initializeTwoWayMarket(
@@ -378,7 +375,6 @@ contract REXTwoWayUniswapMarket is REXMarket {
     ) internal returns (uint256) {
         address inputToken; // The underlying input token address
         address outputToken; // The underlying output token address
-        address[] memory path; // The path to take
         uint256 minOutput; // The minimum amount of output tokens based on Tellor
         uint256 outputAmount; // The balance before the swap
 
@@ -393,6 +389,10 @@ contract REXTwoWayUniswapMarket is REXMarket {
             (amount * market.oracles[input].usdPrice) /
             market.oracles[output].usdPrice;
         minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
+
+        address[] memory superSwapPath = new address[](2);
+        superSwapPath[0] = inputToken;
+        superSwapPath[1] = outputToken;
 
         // Scale back from 1e18 to outputToken decimals
         minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
