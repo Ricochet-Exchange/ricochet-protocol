@@ -1,6 +1,6 @@
 import { waffle, ethers } from "hardhat";
 import { setup, IUser, ISuperToken } from "../misc/setup";
-import { common } from "../misc/common";
+import { common, createSFRegistrationKey } from "../misc/common";
 import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
@@ -196,8 +196,6 @@ describe('REXTwoWayMarket', () => {
         } = await setup();
         console.log("============ Right after initSuperfluid() ==================");
 
-        const { createSFRegistrationKey } = await common();
-
         u = users;
         sf = superfluid;
         superT = superTokens;
@@ -250,9 +248,14 @@ describe('REXTwoWayMarket', () => {
 
         console.log("======******** List of TOKENS addresses =======");
         console.log("======** usdc's address: ", ricochetUSDCx.address);
+
         // ==============================================================================
+        const adminAddress = await adminSigner.getAddress();
+
+        console.log("check provider - ", ricochetETHx)
+
         let whaleEthxBalance = await ricochetETHx.balanceOf({
-            account: Constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
+            account: adminAddress, providerOrSigner: provider
         });
         console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
 

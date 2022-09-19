@@ -43,6 +43,7 @@ const config: HardhatUserConfig = {
       }
     }
   },
+  defaultNetwork: "hardhat",
   // About the gas reporter options ---> https://github.com/cgewecke/eth-gas-reporter/blob/master/README.md
   gasReporter: {
     currency: "USD",

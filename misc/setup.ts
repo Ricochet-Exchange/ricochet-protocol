@@ -92,8 +92,7 @@ export const setup = async () => {
   //   protocolReleaseVersion: "v1"
   // });
 
-  let admin;
-  [admin] = await ethers.getSigners()
+  let [admin] = await ethers.getSigners()
   let contractsFramework = await deployFramework(admin)
   console.log("contractsFramework here - ", contractsFramework)
 

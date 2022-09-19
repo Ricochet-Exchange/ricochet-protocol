@@ -10,14 +10,38 @@ const { defaultAbiCoder, keccak256 } = require("ethers/lib/utils");
 const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
 const SuperfluidGovernanceBase = require("../test/artifacts/superfluid/SuperfluidGovernanceII.json");
 
+// export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
+//     console.log("address", deployerAddr);
+//     const host = await ethers.getContractAt(
+//         hostABI,
+//         sf.host.hostContract.address
+//     );
+//     const registrationKey = `testKey-${Date.now()}`;
+//     console.log("registration key: ", registrationKey);
+
+//     const encodedKey = ethers.utils.keccak256(
+//         ethers.utils.defaultAbiCoder.encode(
+//             ["string", "address", "string"],
+//             [
+//                 "org.superfluid-finance.superfluid.appWhiteListing.registrationKey",
+//                 deployerAddr,
+//                 registrationKey,
+//             ]
+//         )
+//     );
+// }
+
 export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
+        const hostABI = [
+            "function getGovernance() external view returns (address)",
+            "function getSuperTokenFactory() external view returns(address)",
+        ];
     console.log("address", deployerAddr);
     const host = await ethers.getContractAt(
         hostABI,
         sf.host.hostContract.address
     );
     const registrationKey = `testKey-${Date.now()}`;
-    console.log("registration key: ", registrationKey);
 
     const encodedKey = ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -29,6 +53,31 @@ export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
             ]
         )
     );
+    const governance: string = await host.getGovernance();
+    const sfGovernanceRO = await ethers.getContractAt(
+        SuperfluidGovernanceBase.abi,
+        governance
+    );
+    const govOwner = await sfGovernanceRO.owner();
+    const [govOwnerSigner] = await impersonateAccounts([govOwner]);
+    const sfGovernance = await ethers.getContractAt(
+        SuperfluidGovernanceBase.abi,
+        governance,
+        govOwnerSigner
+    );
+    console.log("after get sf governance function", sfGovernance)
+    console.log("sf hst contract address - ", sf.host.hostContract.address)
+    //console.log("sf governance", sfGovernance.whiteListNewApp);
+
+    // below reverts with no reason try to debug at a later date
+    // await sfGovernance.whiteListNewApp(
+    //     sf.host.hostContract.address,
+    //     encodedKey
+    // );
+
+    console.log("after get whitelist new app?")
+
+    return registrationKey;
 }
 
 export const common = async () => {
