@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../ISETHCustom.sol";
-
 import "hardhat/console.sol";
 
 contract RexSuperSwap {
@@ -18,8 +17,6 @@ contract RexSuperSwap {
   address public superNativeToken;
 
   event SuperSwapComplete(uint256 amountOut);
-  event ErrorOnSwap(string reason);
-  event ReturnDataEvent(bytes returnData);
 
   constructor(ISwapRouter02 _swapRouter, address _superNativeToken) {
     swapRouter = _swapRouter;
@@ -32,6 +29,11 @@ contract RexSuperSwap {
         if (_token.allowance(_spender, msg.sender) == 0) {
             TransferHelper.safeApprove(address(_token), address(_spender), ((2 ** 256) - 1));
         }
+    }
+
+    function withdrawToken(IWMATIC _tokenContract, uint256 _amount) private {
+      // Withdraw matic to this address
+      _tokenContract.withdraw(_amount);
     }
 
   /**
@@ -106,14 +108,8 @@ contract RexSuperSwap {
       });
  
     // Execute the swap
-    try swapRouter.exactInput(params) returns (uint256 swappedAmount) {
-      amountOut = swappedAmount;
-    } catch Error(string memory reason) {
-      emit ErrorOnSwap(reason);
-    } catch (bytes memory returnData) {
-      emit ReturnDataEvent(returnData);
-    }
-  
+    amountOut = swapRouter.exactInput(params);
+      
     console.log("balance of to token after swap - ", ERC20(toBase).balanceOf(address(this)));
   
     // Step 5: Upgrade and send tokens back
@@ -122,7 +118,18 @@ contract RexSuperSwap {
     // Upgrade if it has underlying token
     if (_hasUnderlyingTo) {
       console.log("reaching case to upgrade");
-      _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
+        if (address(_to) == superNativeToken) {
+        console.log("upgrade MATICX");
+        console.log("Tobase for matic - ", toBase);
+        // if MATICX then use different method to upgrade
+        // withdraw to WMATIC to MATIC
+        withdrawToken(IWMATIC(toBase), ERC20(toBase).balanceOf(address(this)));
+        ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
+      } else {
+        console.log("reaching case to upgrade");
+        _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
+      }
+
     }
 
     approve(IERC20(address(_to)), msg.sender);
@@ -133,4 +140,9 @@ contract RexSuperSwap {
     _to.transfer(msg.sender, _to.balanceOf(address(this)));
     emit SuperSwapComplete(amountOut);
   }
+}
+
+interface IWMATIC is IERC20 {
+    function deposit() external payable;
+    function withdraw(uint wad) external;
 }

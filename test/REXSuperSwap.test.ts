@@ -199,7 +199,8 @@ describe('REXSuperSwap', () => {
     });
     
     const swapRouterAddress = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
-    const maticAddress = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3"
+    const maticAddress = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3";
+
     superSwap = await rexSuperSwap.deploy(swapRouterAddress, maticAddress);
     await superSwap.deployed();
     console.log("=========== Deployed REXSuperSwap ============");
@@ -220,7 +221,7 @@ describe('REXSuperSwap', () => {
     await ricochetETHx
         .transfer({
             receiver: aliceSigner.address,
-            amount: ethers.utils.parseUnits("0.04", 18).toString(),
+            amount: ethers.utils.parseUnits("0.046", 18).toString(),
         }).exec(ethxWhaleSigner);
         console.log("ETH")
     await ricochetRIC
@@ -251,272 +252,238 @@ describe('REXSuperSwap', () => {
 
   context("#1 Test swap functionality", async () => {
 
-    it("#1.1 User can swap token maticx -> usdcx", async () => {
-        const from =  ricochetMATICx.address
-        const to = ricochetUSDCx.address
-        const amountIn = ethers.utils.parseUnits("35", 18)
+    // it("#1.1 User can swap token maticx -> usdcx", async () => {
+    //     const from =  ricochetMATICx.address
+    //     const to = ricochetUSDCx.address
+    //     const amountIn = ethers.utils.parseUnits("35", 18)
         
-        // we should use coingecko to check the minimum amount
-        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
-        // const exchangeRate = response.data[COINGECKO_KEY].usd;
+    //     // we should use coingecko to check the minimum amount
+    //     // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+    //     // const exchangeRate = response.data[COINGECKO_KEY].usd;
       
-        const amountToSwap = 35 * 0.79;
-        const percentage = amountToSwap / 100 * 3;
-        const amount = amountToSwap - percentage;
-        const amountOutMin = Math.round(amount)
+    //     const amountToSwap = 35 * 0.79;
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
 
-        const maticxAddress = superT.maticx.underlyingToken.address;
-        const usdcx = superT.usdcx.underlyingToken.address
-        const path = [maticxAddress, usdcx]
-        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances 1 - ", aliceBalances);
+    //     const maticxAddress = superT.maticx.underlyingToken.address;
+    //     const usdcx = superT.usdcx.underlyingToken.address
+    //     const path = [maticxAddress, usdcx]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
 
-        // approve token to be transferred to superSwap
-        await ricochetMATICx
-        .approve({
-            receiver: superSwap.address,
-            amount: '35000000000000000000'
-        }).exec(aliceSigner);
+    //     // approve token to be transferred to superSwap
+    //     await ricochetMATICx
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '35000000000000000000'
+    //     }).exec(aliceSigner);
 
-        // call swap function
-        const swapTx = await superSwap.connect(aliceSigner).swap(
-          from,
-          to,
-          amountIn,
-          amountOutMin,
-          path,
-          poolFees,
-          true,
-          true 
-        )
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       amountOutMin,
+    //       path,
+    //       poolFees,
+    //       true,
+    //       true 
+    //     )
 
-        const receipt = await swapTx.wait()
-        let swapComplete;
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
 
-        for (const event of receipt.events) {
-            if(event.event === "SuperSwapComplete"){
-                swapComplete  = event.args;
-            }
-        }
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete  = event.args;
+    //         }
+    //     }
    
-        console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap - ", aliceBalances);
+    //     console.log("swap function returns amount swapped as - ", swapComplete);
         
-        const amountSwapped = swapComplete[0] / 1e6;
-        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+    //     const amountSwapped = swapComplete[0] / 1e6;
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
 
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 - ", aliceBalances);
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 - ", aliceBalances);
         
-    });
+    // });
 
-    it("#1.2 User can swap token ethx -> usdcx", async () => {
-        const from =  ricochetETHx.address
-        const to = ricochetUSDCx.address
-        const amountIn = ethers.utils.parseUnits("0.04", 18)
+    // it("#1.2 User can swap token ethx -> usdcx", async () => {
+    //     const from =  ricochetETHx.address
+    //     const to = ricochetUSDCx.address
+    //     const amountIn = ethers.utils.parseUnits("0.04", 18)
         
-        // we should use coingecko to check the minimum amount
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ethereum'+'&vs_currencies=usd');
-        const exchangeRate = response.data['ethereum'].usd;
+    //     // we should use coingecko to check the minimum amount
+    //     const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+'ethereum'+'&vs_currencies=usd');
+    //     const exchangeRate = response.data['ethereum'].usd;
       
-        const amountToSwap = 0.04 * exchangeRate;
-        const percentage = amountToSwap / 100 * 3;
-        const amount = amountToSwap - percentage;
-        const amountOutMin = Math.round(amount)
+    //     const amountToSwap = 0.04 * exchangeRate;
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
 
-        const ethxAddress = superT.ethx.underlyingToken.address;
-        const usdcx = superT.usdcx.underlyingToken.address
-        const path = [ethxAddress, usdcx]
-        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances 1 - ", aliceBalances);
+    //     const ethxAddress = superT.ethx.underlyingToken.address;
+    //     const usdcx = superT.usdcx.underlyingToken.address
+    //     const path = [ethxAddress, usdcx]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
 
-        // approve token to be transferred to superSwap
-        await ricochetETHx
-        .approve({
-            receiver: superSwap.address,
-            amount: '40000000000000000'
-        }).exec(aliceSigner);
+    //     // approve token to be transferred to superSwap
+    //     await ricochetETHx
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '40000000000000000'
+    //     }).exec(aliceSigner);
 
-        // call swap function
-        const swapTx = await superSwap.connect(aliceSigner).swap(
-          from,
-          to,
-          amountIn,
-          amountOutMin,
-          path,
-          poolFees,
-          true,
-          true 
-        )
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       amountOutMin,
+    //       path,
+    //       poolFees,
+    //       true,
+    //       true 
+    //     )
 
-        const receipt = await swapTx.wait()
-        let swapComplete;
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
 
-        for (const event of receipt.events) {
-            if(event.event === "SuperSwapComplete"){
-                swapComplete  = event.args;
-            }
-        }
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete  = event.args;
+    //         }
+    //     }
         
-        console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap - ", aliceBalances);
+    //     console.log("swap function returns amount swapped as - ", swapComplete);
         
-        const amountSwapped = swapComplete[0] / 1e6;
-        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+    //     const amountSwapped = swapComplete[0] / 1e6;
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
 
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 - ", aliceBalances);
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 - ", aliceBalances);
         
-    });
+    // });
 
-    it("#1.3 User can swap native token RIC -> daix", async () => {
-        const from = ricochetRIC.address
-        const to  =  ricochetDAIX.address
-        const amountIn = ethers.utils.parseUnits("170", 18)
+    // it("#1.3 User can swap native token RIC -> daix", async () => {
+    //     const from = ricochetRIC.address
+    //     const to  =  ricochetDAIX.address
+    //     const amountIn = ethers.utils.parseUnits("170", 18)
               
-        // hardcoding for now
-        const amountToSwap = 170 * 0.0000053; // how to get current exchange rate?
-        const percentage = amountToSwap / 100 * 3;
-        const amount = amountToSwap - percentage;
-        const amountOutMin = Math.round(amount)
+    //     // hardcoding for now
+    //     const amountToSwap = 170 * 0.0000053; // how to get current exchange rate?
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
 
-        const ricAddress =   superT.ric.address
-        const daix = superT.daix.underlyingToken.address
-        const path = [ricAddress, daix]
-        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances ric - daix - ", aliceBalances);
+    //     const ricAddress =   superT.ric.address
+    //     const daix = superT.daix.underlyingToken.address
+    //     const path = [ricAddress, daix]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
 
-        // approve token to be transferred to superSwap
-        await ricochetRIC
-        .approve({
-            receiver: superSwap.address,
-            amount: '170000000000000000000'
-        }).exec(aliceSigner);
+    //     // approve token to be transferred to superSwap
+    //     await ricochetRIC
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '170000000000000000000'
+    //     }).exec(aliceSigner);
 
-        // call swap function
-        const swapTx = await superSwap.connect(aliceSigner).swap(
-          from,
-          to,
-          amountIn,
-          0,
-          path,
-          poolFees,
-          false,
-          true
-        )
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       0,
+    //       path,
+    //       poolFees,
+    //       false,
+    //       true
+    //     )
 
-        const receipt = await swapTx.wait()
-        let swapComplete;
-        let errorOnSwap = "Event wasn't emitted";
-        let returnDataEvent = "Event wasn't emitted";
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
 
-        for (const event of receipt.events) {
-            if(event.event === "SuperSwapComplete"){
-                swapComplete = event.args;
-            } if(event.event === "ErrorOnSwap"){
-                errorOnSwap = event.args;
-            } if(event.event === "ReturnDataEvent"){
-                returnDataEvent = event.args;
-            }
-        }
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete = event.args;
+    //         } 
+    //     }
     
-        console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap ric - daix - ", aliceBalances);
-        console.log("Reason for error on swap - ", errorOnSwap);
-        console.log("Low level data for swap error - ", returnDataEvent);
+    //     console.log("swap function returns amount swapped as - ", swapComplete);
         
-        const amountSwapped = swapComplete[0] / 1e18;
-        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+    //     const amountSwapped = swapComplete[0] / 1e18;
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
 
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 ric - daix - ", aliceBalances);
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 ric - daix - ", aliceBalances);
         
-    });
+    // });
 
-    it("#1.4 User can swap token MATICX -> WBTCX checking decimal issue", async () => {
-        const from =  ricochetMATICx.address
-        const to  =  ricochetWBTCx.address
-        const amountIn = ethers.utils.parseUnits("35", 18)
+    // it("#1.4 User can swap token MATICX -> WBTCX checking decimal issue", async () => {
+    //     const from =  ricochetMATICx.address
+    //     const to  =  ricochetWBTCx.address
+    //     const amountIn = ethers.utils.parseUnits("35", 18)
           
-        // hardcoding for now
-        const amountToSwap = 35 * 0.0000382;
-        const percentage = amountToSwap / 100 * 3;
-        const amount = amountToSwap - percentage;
-        const amountOutMin = Math.round(amount)
+    //     // hardcoding for now
+    //     const amountToSwap = 35 * 0.0000382;
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
   
-        const maticxAddress = superT.maticx.underlyingToken.address;
-        const wbtcx = superT.wbtcx.underlyingToken.address;
+    //     const maticxAddress = superT.maticx.underlyingToken.address;
+    //     const wbtcx = superT.wbtcx.underlyingToken.address;
 
-        const path = [maticxAddress, wbtcx]
-        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances maticx - wbtcx - ", aliceBalances);
+    //     const path = [maticxAddress, wbtcx]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
 
-        // approve token to be transferred to superSwap
-        await ricochetMATICx
-        .approve({
-            receiver: superSwap.address,
-            amount: '35000000000000000000'
-        }).exec(aliceSigner);
+    //     // approve token to be transferred to superSwap
+    //     await ricochetMATICx
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '35000000000000000000'
+    //     }).exec(aliceSigner);
 
-        // call swap function
-        const swapTx = await superSwap.connect(aliceSigner).swap(
-          from,
-          to,
-          amountIn,
-          amountOutMin,
-          path,
-          poolFees,
-          true,
-          true
-        )
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       amountOutMin,
+    //       path,
+    //       poolFees,
+    //       true,
+    //       true
+    //     )
 
-        const receipt = await swapTx.wait()
-        let swapComplete;
-        let errorOnSwap = "Event wasn't emitted";
-        let returnDataEvent = "Event wasn't emitted";
-
-        for (const event of receipt.events) {
-            if(event.event === "SuperSwapComplete"){
-                swapComplete = event.args;
-            } if(event.event === "ErrorOnSwap"){
-                errorOnSwap = event.args;
-            } if(event.event === "ReturnDataEvent"){
-                returnDataEvent = event.args;
-            }
-        }
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
+    
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete = event.args;
+    //         } 
+    //     }
 
         
-        console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap maticx - btcx - ", aliceBalances);
-
-        console.log("Reason for error on swap - ", errorOnSwap);
-        console.log("Low level data for swap error - ", returnDataEvent);
+    //     console.log("swap function returns amount swapped as - ", swapComplete);
         
-        const amountSwapped = swapComplete[0] / 1e8;
-        console.log("amount btcx after maticx - btcx swap - ", amountSwapped);
-        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+    //     const amountSwapped = swapComplete[0] / 1e8;
+    //     console.log("amount btcx after maticx - btcx swap - ", amountSwapped);
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
 
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 maticx - btcx - ", aliceBalances);
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 maticx - btcx - ", aliceBalances);
         
-    });
+    // });
 
     it("#1.5 User can swap native token RIC -> maticx", async () => {
         const from = ricochetRIC.address
         const to  =  ricochetMATICx.address
-
         const amountIn = ethers.utils.parseUnits("170", 18)
         
         // hardcoding for now
-        const amountToSwap = 170 * 0.012783; // how to get current exchange rate?
+        const amountToSwap = 170 * 0.0000053; // how to get current exchange rate?
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
@@ -526,8 +493,9 @@ describe('REXSuperSwap', () => {
         const maticxAddress = superT.maticx.underlyingToken.address;
         const path = [ricAddress, maticxAddress]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+
         await takeMeasurements();
-        console.log("aliceBalances ric - maticx - ", aliceBalances);
+        console.log("aliceBalances before swap2 ric - maticx - ", aliceBalances);
 
         // approve token to be transferred to superSwap
         await ricochetRIC
@@ -550,25 +518,14 @@ describe('REXSuperSwap', () => {
 
         const receipt = await swapTx.wait()
         let swapComplete;
-        let errorOnSwap = "Event wasn't emitted";
-        let returnDataEvent = "Event wasn't emitted";
 
         for (const event of receipt.events) {
             if(event.event === "SuperSwapComplete"){
                 swapComplete = event.args;
-            } if(event.event === "ErrorOnSwap"){
-                errorOnSwap = event.args;
-            } if(event.event === "ReturnDataEvent"){
-                returnDataEvent = event.args;
-            }
+            } 
         }
    
         console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap ric - maticx - ", aliceBalances);
-
-        console.log("Reason for error on swap - ", errorOnSwap);
-        console.log("Low level data for swap error - ", returnDataEvent);
         
         const amountSwapped = swapComplete[0] / 1e18;
         expect(amountSwapped).to.be.greaterThan(amountOutMin);
@@ -578,31 +535,136 @@ describe('REXSuperSwap', () => {
         
     });
 
-    it("#1.4 User can swap large amount of token USDCX -> WBTCX", async () => {
+    // it("#1.6 User can swap large amount of token USDCX -> WBTCX", async () => {
+    //     const from = ricochetUSDCx.address
+    //     const to = ricochetWBTCx.address
+    //     const amountIn = ethers.utils.parseUnits("200", 18)
+    //     console.log("Amount in for USDCX - ", amountIn)
+    //     // hardcoding for now
+    //     const amountToSwap = 200 * 0.000050;
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
+  
+    //     const wbtcx = superT.wbtcx.underlyingToken.address;
+    //     const usdcx = superT.usdcx.underlyingToken.address
+
+    //     const path = [usdcx, wbtcx]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+
+    //     // approve token to be transferred to superSwap
+    //     await ricochetUSDCx
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '200000000000000000000'
+    //     }).exec(aliceSigner);
+
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       amountOutMin,
+    //       path,
+    //       poolFees,
+    //       true,
+    //       true
+    //     )
+
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
+
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete = event.args;
+    //         } 
+    //     }
+        
+    //     console.log("swap function returns amount swapped as - ", swapComplete);
+        
+    //     const amountSwapped = swapComplete[0] / 1e8;
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
+
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 usdcx - wbtcx - ", aliceBalances);
+        
+    // });
+
+    // it("#1.7 User can swap small amount of token WBTCX -> USDCX", async () => {
+    //     const from = ricochetWBTCx.address
+    //     const to = ricochetUSDCx.address
+    //     const amountIn = ethers.utils.parseUnits("0.01", 18)
+    //     console.log("Amount in for wbtcx - ", amountIn)
+    //     // hardcoding for now
+    //     const amountToSwap = 0.01 * 19939.61;
+    //     const percentage = amountToSwap / 100 * 3;
+    //     const amount = amountToSwap - percentage;
+    //     const amountOutMin = Math.round(amount)
+  
+    //     const wbtcx = superT.wbtcx.underlyingToken.address;
+    //     const usdcx = superT.usdcx.underlyingToken.address
+
+    //     const path = [wbtcx, usdcx]
+    //     const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+
+    //     // approve token to be transferred to superSwap
+    //     await ricochetWBTCx
+    //     .approve({
+    //         receiver: superSwap.address,
+    //         amount: '10000000000000000'
+    //     }).exec(aliceSigner);
+
+    //     // call swap function
+    //     const swapTx = await superSwap.connect(aliceSigner).swap(
+    //       from,
+    //       to,
+    //       amountIn,
+    //       amountOutMin,
+    //       path,
+    //       poolFees,
+    //       true,
+    //       true
+    //     )
+
+    //     const receipt = await swapTx.wait()
+    //     let swapComplete;
+
+    //     for (const event of receipt.events) {
+    //         if(event.event === "SuperSwapComplete"){
+    //             swapComplete = event.args;
+    //         } 
+    //     }
+        
+    //     const amountSwapped = swapComplete[0] / 1e6;
+    //     expect(amountSwapped).to.be.greaterThan(amountOutMin);
+
+    //     await takeMeasurements();
+    //     console.log("aliceBalances after swap2 wbtcx - usdcx - ", aliceBalances);
+        
+    // });
+
+    it("#1.8 User can swap USDCX -> MATICX", async () => {
         const from = ricochetUSDCx.address
-        const to = ricochetWBTCx.address
-        const amountIn = ethers.utils.parseUnits("200", 18)
+        const to  =  ricochetMATICx.address
+        const amountIn = ethers.utils.parseUnits("1", 18)
         console.log("Amount in for USDCX - ", amountIn)
         // hardcoding for now
-        const amountToSwap = 200 * 0.000050;
+        const amountToSwap = 1 * 1.19;
         const percentage = amountToSwap / 100 * 3;
         const amount = amountToSwap - percentage;
         const amountOutMin = Math.round(amount)
   
-
-        const wbtcx = superT.wbtcx.underlyingToken.address;
         const usdcx = superT.usdcx.underlyingToken.address
+        const maticxAddress = superT.maticx.underlyingToken.address;
 
-        const path = [usdcx, wbtcx]
+        const path = [usdcx, maticxAddress]
         const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances  usdcx - wbtcx - ", aliceBalances);
 
         // approve token to be transferred to superSwap
         await ricochetUSDCx
         .approve({
             receiver: superSwap.address,
-            amount: '200000000000000000000'
+            amount: '1000000000000000000'
         }).exec(aliceSigner);
 
         // call swap function
@@ -619,103 +681,20 @@ describe('REXSuperSwap', () => {
 
         const receipt = await swapTx.wait()
         let swapComplete;
-        let errorOnSwap = "Event wasn't emitted";
-        let returnDataEvent = "Event wasn't emitted";
 
         for (const event of receipt.events) {
             if(event.event === "SuperSwapComplete"){
                 swapComplete = event.args;
-            } if(event.event === "ErrorOnSwap"){
-                errorOnSwap = event.args;
-            } if(event.event === "ReturnDataEvent"){
-                returnDataEvent = event.args;
-            }
+            } 
         }
 
-        
         console.log("swap function returns amount swapped as - ", swapComplete);
         await takeMeasurements();
         console.log("aliceBalances after swap usdcx - wbtcx - ", aliceBalances);
-
-        console.log("Reason for error on swap - ", errorOnSwap);
-        console.log("Low level data for swap error - ", returnDataEvent);
-        
+   
         const amountSwapped = swapComplete[0] / 1e8;
         expect(amountSwapped).to.be.greaterThan(amountOutMin);
-
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 usdcx - wbtcx - ", aliceBalances);
-        
-    });
-
-    it("#1.4 User can swap small amount of token WBTCX -> USDCX", async () => {
-        const from = ricochetWBTCx.address
-        const to = ricochetUSDCx.address
-        const amountIn = ethers.utils.parseUnits("0.01", 18)
-        console.log("Amount in for wbtcx - ", amountIn)
-        // hardcoding for now
-        const amountToSwap = 0.01 * 19939.61;
-        const percentage = amountToSwap / 100 * 3;
-        const amount = amountToSwap - percentage;
-        const amountOutMin = Math.round(amount)
   
-
-        const wbtcx = superT.wbtcx.underlyingToken.address;
-        const usdcx = superT.usdcx.underlyingToken.address
-
-        const path = [wbtcx, usdcx]
-        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
-        await takeMeasurements();
-        console.log("aliceBalances wbtcx - usdcx - ", aliceBalances);
-
-        // approve token to be transferred to superSwap
-        await ricochetWBTCx
-        .approve({
-            receiver: superSwap.address,
-            amount: '10000000000000000'
-        }).exec(aliceSigner);
-
-        // call swap function
-        const swapTx = await superSwap.connect(aliceSigner).swap(
-          from,
-          to,
-          amountIn,
-          amountOutMin,
-          path,
-          poolFees,
-          true,
-          true
-        )
-
-        const receipt = await swapTx.wait()
-        let swapComplete;
-        let errorOnSwap = "Event wasn't emitted";
-        let returnDataEvent = "Event wasn't emitted";
-
-        for (const event of receipt.events) {
-            if(event.event === "SuperSwapComplete"){
-                swapComplete = event.args;
-            } if(event.event === "ErrorOnSwap"){
-                errorOnSwap = event.args;
-            } if(event.event === "ReturnDataEvent"){
-                returnDataEvent = event.args;
-            }
-        }
-
-        
-        console.log("swap function returns amount swapped as - ", swapComplete);
-        await takeMeasurements();
-        console.log("aliceBalances after swap wbtcx - usdcx - ", aliceBalances);
-
-        console.log("Reason for error on swap - ", errorOnSwap);
-        console.log("Low level data for swap error - ", returnDataEvent);
-        
-        const amountSwapped = swapComplete[0] / 1e6;
-        expect(amountSwapped).to.be.greaterThan(amountOutMin);
-
-        await takeMeasurements();
-        console.log("aliceBalances after swap2 wbtcx - usdcx - ", aliceBalances);
-        
     });
 
   });
