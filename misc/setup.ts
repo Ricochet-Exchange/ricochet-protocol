@@ -115,10 +115,10 @@ export const setup = async () => {
     daix: await superfluid.loadSuperToken(
       "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
     ),
-    ibAlluoUSD: await superfluid.loadSuperToken(
+    stIbAlluoUSD: await superfluid.loadSuperToken(
       "0xE9E759B969B991F2bFae84308385405B9Ab01541"
     ),
-    ibAlluoETH: await superfluid.loadSuperToken(
+    stIbAlluoETH: await superfluid.loadSuperToken(
       "0x2D4Dc956FBd0044a4EBA945e8bbaf98a14025C2d"
     ),
     // ibAlluoUSD: await ethers.getContractAt(
@@ -163,7 +163,16 @@ export const setup = async () => {
     "ERC20",
     await superTokens.maticx.underlyingToken.address
   );
-  // let var2:string = tokens.usdc;
+  tokens.ibAlluoUSD = await ethers.getContractAt(
+    "ERC20",
+    await superTokens.stIbAlluoUSD.underlyingToken.address
+  );
+  tokens.ibAlluoETH = await ethers.getContractAt(
+    "ERC20",
+    await superTokens.stIbAlluoETH.underlyingToken.address
+  );
+
+  let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
 
   // Trellor Protocol to determine the price

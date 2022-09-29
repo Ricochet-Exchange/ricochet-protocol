@@ -13,6 +13,8 @@ contract REXTwoWayAlluoMarket is REXMarket {
 
     // DAI
     address constant inputTokenAUnderlying = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    // // WBTC
+    // address constant inputTokenBUnderlying = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
     // WETH
     address constant inputTokenBUnderlying = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
 
@@ -185,16 +187,17 @@ contract REXTwoWayAlluoMarket is REXMarket {
             market
                 .oracles[market.outputPools[OUTPUTA_INDEX].token]
                 .lastUpdatedAt >= block.timestamp - 3600,
-            "!currentValueA"
+            "!cva"
         );
         require(
             market
                 .oracles[market.outputPools[OUTPUTB_INDEX].token]
                 .lastUpdatedAt >= block.timestamp - 3600,
-            "!currentValueB"
+            "!cvb"
         );
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
-        // TODO, need to get tokenAAmount into native units, ibAlluoXXX isnt 1:1 with XXX
+        ibTokenA.updateRatio();
+        ibTokenB.updateRatio();
         uint256 tokenAAmount = inputTokenA.balanceOf(address(this)) * ibTokenA.growingRatio() / 1e18;
         uint256 tokenBAmount = inputTokenB.balanceOf(address(this)) * ibTokenB.growingRatio() / 1e18;
 
@@ -209,9 +212,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
             // tokenHave becomes tokenANeed
             tokenHave = tokenAAmount - tokenHave;
             // Convert token have A to ibAlluoA amount
-            tokenHave = tokenHave * 1e18 / ibTokenA.growingRatio();
-
-            inputTokenA.downgrade(tokenHave);
+            inputTokenA.downgrade(tokenHave * 1e18 / ibTokenA.growingRatio());
 
             ibTokenA.withdraw(
               inputTokenAUnderlying,
@@ -226,7 +227,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
               block.timestamp + 3600
             );
 
-            // TODO: Deposit inputTokenBUnderlying to inputTokenB
             ibTokenB.deposit(inputTokenBUnderlying, ERC20(inputTokenBUnderlying).balanceOf(address(this)));
             inputTokenB.upgrade(ibTokenB.balanceOf(address(this)));
         // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
@@ -236,14 +236,13 @@ contract REXTwoWayAlluoMarket is REXMarket {
                 market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
 
-            // Convert token have A to ibAlluoA amount
-            tokenHave = tokenHave * 1e18 / ibTokenB.growingRatio();
-            // TODO: Withdraw tokenHave from inputTokenA to swap, convert to assetValue
-            inputTokenB.downgrade(tokenHave);
+            // Convert token have B to ibAlluoB amount
+            inputTokenB.downgrade(tokenHave * 1e18 / ibTokenB.growingRatio());
+
             ibTokenB.withdrawTo(
               address(this),
               inputTokenBUnderlying,
-              ibTokenB.balanceOf(address(this))
+              tokenHave
             );
 
 
