@@ -589,11 +589,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint128 shares,
         ISuperToken distToken
     ) internal returns (bytes memory newCtx) {
-        // console.log("s", subscriber);
-        // console.log("i", index);
-        // console.log("d", address(distToken));
-        // console.log("s", uint(shares));
-        // console.log("s", subscriber);
         newCtx = ctx;
         (newCtx, ) = host.callAgreementWithContext(
             ida,

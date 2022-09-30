@@ -69,9 +69,11 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
-        blockNumber: 33013602, //32812267,
+        // blockNumber: 33013602, //32812267,
+        // standard rex market block number
+        // 22877930
         // ibAlluo market test block
-        // 31926750     // Essential for mainnet forking !!
+        blockNumber: 31926750     // Essential for mainnet forking !!
       },
       // blockGasLimit: 20000000,
       // gasPrice: 30000000000,
@@ -85,7 +87,7 @@ const config: HardhatUserConfig = {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
-      gasPrice: 35000000000 // 35 Gwei
+      gasPrice: 55000000000 // 35 Gwei
     },
     localhost: {
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
