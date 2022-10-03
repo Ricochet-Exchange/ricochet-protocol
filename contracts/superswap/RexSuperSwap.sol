@@ -117,16 +117,11 @@ contract RexSuperSwap {
 
     // Upgrade if it has underlying token
     if (_hasUnderlyingTo) {
-      console.log("reaching case to upgrade");
         if (address(_to) == superNativeToken) {
-        console.log("upgrade MATICX");
-        console.log("Tobase for matic - ", toBase);
-        // if MATICX then use different method to upgrade
-        // withdraw to WMATIC to MATIC
+        // withdraw from WMATIC to MATIC and then upgrade.
         withdrawToken(IWMATIC(toBase), ERC20(toBase).balanceOf(address(this)));
         ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
       } else {
-        console.log("reaching case to upgrade");
         _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
       }
 
@@ -139,6 +134,12 @@ contract RexSuperSwap {
     // transfer swapped token back to user
     _to.transfer(msg.sender, _to.balanceOf(address(this)));
     emit SuperSwapComplete(amountOut);
+  }
+
+  receive() external payable  { 
+  }
+
+  fallback() external payable {
   }
 }
 

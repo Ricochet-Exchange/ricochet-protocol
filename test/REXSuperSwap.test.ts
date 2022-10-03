@@ -667,6 +667,9 @@ describe('REXSuperSwap', () => {
             amount: '1000000000000000000'
         }).exec(aliceSigner);
 
+        await takeMeasurements();
+        console.log("Checking if RIC was refunded when swap fails - ", aliceBalances);
+
         // call swap function
         const swapTx = await superSwap.connect(aliceSigner).swap(
           from,
