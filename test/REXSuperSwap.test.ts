@@ -706,6 +706,63 @@ describe('REXSuperSwap', () => {
   
     });
 
+    it("#1.1 User can swap token maticx -> usdcx (small amount)", async () => {
+        const from =  ricochetMATICx.address
+        const to = ricochetUSDCx.address
+        const amountIn = ethers.utils.parseUnits("1.3", 18)
+        
+        // we should use coingecko to check the minimum amount
+        // const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids='+COINGECKO_KEY+'&vs_currencies=usd');
+        // const exchangeRate = response.data[COINGECKO_KEY].usd;
+      
+        const amountToSwap = 1.3 * 0.79;
+        const percentage = amountToSwap / 100 * 3;
+        const amount = amountToSwap - percentage;
+        const amountOutMin = Math.round(amount)
+
+        const maticxAddress = superT.maticx.underlyingToken.address;
+        const usdcx = superT.usdcx.underlyingToken.address
+        const path = [maticxAddress, usdcx]
+        const poolFees = [500] // There is a uniswap USDC/WETH pool with 0.05% fees
+
+        // approve token to be transferred to superSwap
+        await ricochetMATICx
+        .approve({
+            receiver: superSwap.address,
+            amount: '1300000000000000000'
+        }).exec(aliceSigner);
+
+        // call swap function
+        const swapTx = await superSwap.connect(aliceSigner).swap(
+          from,
+          to,
+          amountIn,
+          amountOutMin,
+          path,
+          poolFees,
+          true,
+          true 
+        )
+
+        const receipt = await swapTx.wait()
+        let swapComplete;
+
+        for (const event of receipt.events) {
+            if(event.event === "SuperSwapComplete"){
+                swapComplete  = event.args;
+            }
+        }
+   
+        console.log("swap function returns amount swapped as - ", swapComplete);
+        
+        const amountSwapped = swapComplete[0] / 1e6;
+        expect(amountSwapped).to.be.greaterThan(amountOutMin);
+
+        await takeMeasurements();
+        console.log("aliceBalances after swap2 - ", aliceBalances);
+        
+    });
+
   });
 
 })
