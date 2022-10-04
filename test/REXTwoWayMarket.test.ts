@@ -252,12 +252,12 @@ describe('REXTwoWayMarket', () => {
         // ==============================================================================
         const adminAddress = await adminSigner.getAddress();
 
-        console.log("check provider - ", ricochetETHx)
+        // console.log("check provider - ", ricochetETHx)
 
-        let whaleEthxBalance = await ricochetETHx.balanceOf({
-            account: adminAddress, providerOrSigner: provider
-        });
-        console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
+        // let whaleEthxBalance = await ricochetETHx.balanceOf({
+        //     account: adminAddress, providerOrSigner: provider
+        // });
+        // console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
 
         // ==============================================================================
 
@@ -284,7 +284,7 @@ describe('REXTwoWayMarket', () => {
             registrationKey,
             referral.address
         );
-        console.log("=========== Deployed REXTwoWayMarket ============");
+        console.log("=========== Deployed REXTwoWayMarket ============", twoWayMarket);
 
         // Update the oracles
         let httpService = new HttpService();

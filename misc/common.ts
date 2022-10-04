@@ -65,15 +65,16 @@ export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
         governance,
         govOwnerSigner
     );
-    console.log("after get sf governance function", sfGovernance)
+    // console.log("after get sf governance function", sfGovernance)
     console.log("sf hst contract address - ", sf.host.hostContract.address)
-    //console.log("sf governance", sfGovernance.whiteListNewApp);
 
-    // below reverts with no reason try to debug at a later date
-    // await sfGovernance.whiteListNewApp(
-    //     sf.host.hostContract.address,
-    //     encodedKey
-    // );
+    // console.log("sf governance", sfGovernance.whiteListNewApp);
+
+    // TODO: below reverts with no reason
+    await sfGovernance.whiteListNewApp(
+        sf.host.hostContract.address,
+        encodedKey
+    );
 
     console.log("after get whitelist new app?")
 

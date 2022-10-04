@@ -104,6 +104,8 @@ export const setup = async () => {
     networkName: "custom"
   })
 
+  console.log("superfluid framework here - ", superfluid)
+
   // Use deployWrapperSuperToken here to deploy all of the below tokens used in the tests.
   const maticx = await deployWrapperSuperToken(
     admin,
