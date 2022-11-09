@@ -13,10 +13,10 @@ contract REXTwoWayAlluoMarket is REXMarket {
 
     // DAI
     address constant inputTokenAUnderlying = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    // // WBTC
-    // address constant inputTokenBUnderlying = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
-    // WETH
-    address constant inputTokenBUnderlying = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
+    // WBTC
+    address constant inputTokenBUnderlying = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
+    // // WETH
+    // address constant inputTokenBUnderlying = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
 
     ISuperToken inputTokenA;
     ISuperToken inputTokenB;

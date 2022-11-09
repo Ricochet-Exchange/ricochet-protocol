@@ -30,6 +30,8 @@ async function main() {
   await rexTwoWayAlluoMarket.deployed();
   console.log("Deployed REXTwoWayAlluoMarket at address:", rexTwoWayAlluoMarket.address);
 
+  // !! NOTE: The underlying tokens for ibAlluoUSD/ETH/WBTC need to be coded
+  //          into the REXTwoWayAlluoMarket.sol contract
   await rexTwoWayAlluoMarket.initializeTwoWayMarket(
     Constants.IBALLUOUSD_ADDRESS,
     Constants.TELLOR_USDC_REQUEST_ID,
