@@ -10,26 +10,8 @@ const { defaultAbiCoder, keccak256 } = require("ethers/lib/utils");
 const { web3tx, wad4human } = require("@decentral.ee/web3-helpers");
 const SuperfluidGovernanceBase = require("../test/artifacts/superfluid/SuperfluidGovernanceII.json");
 
-export const createSFRegistrationKey = async (sf: any, deployerAddr: any) => {
-    console.log("address", deployerAddr);
-    const host = await ethers.getContractAt(
-        hostABI,
-        sf.host.hostContract.address
-    );
-    const registrationKey = `testKey-${Date.now()}`;
-    console.log("registration key: ", registrationKey);
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-    const encodedKey = ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-            ["string", "address", "string"],
-            [
-                "org.superfluid-finance.superfluid.appWhiteListing.registrationKey",
-                deployerAddr,
-                registrationKey,
-            ]
-        )
-    );
-}
 
 export const common = async () => {
     const { superfluid, users, tokens, superTokens, contracts } = await setup();
@@ -214,7 +196,7 @@ export const common = async () => {
         console.log("address", deployerAddr);
         const host = await ethers.getContractAt(
             hostABI,
-            sf.host.hostContract.address
+            sf.settings.config.hostAddress
         );
         const registrationKey = `testKey-${Date.now()}`;
         console.log("resigration ?? key", registrationKey);
@@ -241,10 +223,15 @@ export const common = async () => {
             governance,
             govOwnerSigner
         );
+
+        let expirationTs = Math.floor(Date.now() / 1000) + 3600 * 24 * 90; // 90 days from now
+
         //console.log("sf governance", sfGovernance.whiteListNewApp);
-        await sfGovernance.whiteListNewApp(
-            sf.host.hostContract.address,
-            encodedKey
+        await sfGovernance.setConfig(
+            sf.settings.config.hostAddress,
+            ZERO_ADDRESS,
+            encodedKey,
+            expirationTs
         );
 
         return registrationKey;

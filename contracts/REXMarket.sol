@@ -17,10 +17,11 @@ import "hardhat/console.sol";
 
 abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     struct ShareholderUpdate {
-        address shareholder;
-        int96 previousFlowRate;
-        int96 currentFlowRate;
-        ISuperToken token;
+      address shareholder;
+      address affiliate;
+      int96 previousFlowRate;
+      int96 currentFlowRate;
+      ISuperToken token;
     }
 
     struct OracleInfo {
@@ -139,10 +140,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
     function emergencyDrain(ISuperToken token) external virtual onlyOwner {
-        require(
-            cfa.getNetFlow(token, address(this)) == 0,
-            "!zeroStreamers"
-        );
         require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
 
         token.transfer(
@@ -383,7 +380,42 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function _updateShareholder(
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
-    ) internal virtual returns (bytes memory _newCtx) { }
+    ) internal virtual returns (bytes memory _newCtx) {
+        // We need to go through all the output tokens and update their IDA shares
+        _newCtx = _ctx;
+        (uint128 userShares, uint128 daoShares, uint128 affiliateShares) = _getShareAllocations(_shareholderUpdate);
+        // updateOutputPools
+        for (uint32 _index = 0; _index < market.numOutputPools; _index++) {
+            _newCtx = _updateSubscriptionWithContext(
+                _newCtx,
+                _index,
+                _shareholderUpdate.shareholder,
+                // shareholder gets 98% of the units, DAO takes 0.02%
+                userShares,
+                market.outputPools[_index].token
+            );
+            _newCtx = _updateSubscriptionWithContext(
+                _newCtx,
+                _index,
+                owner(),
+                // shareholder gets 98% of the units, DAO takes 2%
+                daoShares,
+                market.outputPools[_index].token
+            );
+            if (_shareholderUpdate.affiliate != address(0)) {
+              _newCtx = _updateSubscriptionWithContext(
+                  _newCtx,
+                  _index,
+                  _shareholderUpdate.affiliate,
+                  // affiliate may get 0.2%
+                  affiliateShares,
+                  market.outputPools[_index].token
+              );
+            }
+            // TODO: Update the fee taken by the DAO
+        }
+
+    }
 
     function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
      internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
@@ -391,9 +423,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
       daoShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
 
-      address affiliateAddress = referrals.getAffiliateAddress(_shareholderUpdate.shareholder);
-      if (address(0) != affiliateAddress) {
-        (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], affiliateAddress);
+      if (address(0) != _shareholderUpdate.affiliate) {
+        (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], _shareholderUpdate.affiliate);
         affiliateShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
       }
 
@@ -405,7 +436,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       if(changeInFlowRate > 0) {
         // Add new shares to the DAO
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-        if (address(0) != affiliateAddress) {
+        if (address(0) != _shareholderUpdate.affiliate) {
           affiliateShares += feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
         }
@@ -414,7 +445,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // Make the rate positive
         changeInFlowRate = -1 * changeInFlowRate;
         feeShares = uint128(uint256(int256(changeInFlowRate)) * market.feeRate / 1e6);
-        if (address(0) != affiliateAddress) {
+        if (address(0) != _shareholderUpdate.affiliate) {
           affiliateShares -= (feeShares * market.affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * market.affiliateFee / 1e6;
           feeShares -= feeShares * market.affiliateFee / 1e6;
         }
@@ -685,9 +716,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         _registerReferral(_ctx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, 0, _flowRate, _superToken
+          _shareholder, referrals.getAffiliateAddress(_shareholder), 0, _flowRate, _superToken
         );
-
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
     }
@@ -720,7 +750,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         bytes calldata _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
-
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
@@ -740,11 +769,12 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         }
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, _beforeFlowRate, _flowRate, _superToken
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, _flowRate, _superToken
         );
 
         // TODO: Udpate shareholder needs before and after flow rate
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
     }
 
     // We need before agreement to get the uninvested amount using the flowRate before update
@@ -787,7 +817,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, _beforeFlowRate, 0, _superToken
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, 0, _superToken
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
@@ -795,7 +825,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
-            // Nothing to do, pass
         }
     }
 }

@@ -8,14 +8,14 @@ import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-ethers";
-import "@openzeppelin/hardhat-upgrades";
+// import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 import "solidity-coverage";
 import { ethers } from "ethers";
-
+require("hardhat-tracer");
 dotenv.config();
 
 
@@ -69,7 +69,11 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
-        blockNumber: 22877930     // Essential for mainnet forking !!
+        // blockNumber: 33013602, //32812267,
+        // standard rex market block number
+        // 22877930
+        // ibAlluo market test block
+        blockNumber: 31926750     // Essential for mainnet forking !!
       },
       // blockGasLimit: 20000000,
       // gasPrice: 30000000000,
@@ -83,7 +87,7 @@ const config: HardhatUserConfig = {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
-      gasPrice: 35000000000 // 35 Gwei
+      gasPrice: 55000000000 // 35 Gwei
     },
     localhost: {
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
