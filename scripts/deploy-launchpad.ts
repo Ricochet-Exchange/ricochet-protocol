@@ -5,15 +5,19 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
-  // Polygon Mainnet
-  const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
-  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
-  const RIC_TREASURY_ADDRESS = "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89";
-  const OUTPUT_RATE = "32000000000000000"; // ~1M RIC/year
-  const FEE_RATE = "100000";  // 1
-  const INPUT_TOKEN_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  const OUTPUT_TOKEN_ADDRESS = Constants.RIC_TOKEN_ADDRESS; //RIC
+  // Polygon Mumbai
+  const HOST_ADDRESS = "0xEB796bdb90fFA0f28255275e16936D25d3418603";
+  const CFA_ADDRESS = "0x49e565Ed1bdc17F3d220f72DF0857C26FA83F873";
+  const IDA_ADDRESS = "0x804348D4960a61f2d5F9ce9103027A3E849E09b8";
+  const RIC_TREASURY_ADDRESS = "0xaf6cA9aD94D23127D75ab5f672592760D8A52b32"; // rexSHIRT DAO on Mumbai
+  const OUTPUT_RATE = "1929012345680"; // ~1M RIC/year
+  const FEE_RATE = "30000";  // 1
+  const REX_REFERRAL_ADDRESS = "0x5C2E1A331678e1A9c6f8c156b5D48A5cC7e50cDa"; // Mumbai polygon
+
+  // Fake fUSDCx on Mumbai
+  const INPUT_TOKEN_ADDRESS = "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7";
+  // Launching Token (i.e. RIC, rexSHIRT, rexHAT, etc.)
+  const OUTPUT_TOKEN_ADDRESS = "0x759B618fa2C28Ff964978Dc1b3fF4a5C8140E0D8"; //mumbai rexSHIRT
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -41,7 +45,8 @@ async function main() {
   const ricochetLaunchpad = await RicochetLaunchpad.deploy( HOST_ADDRESS,
                                                       CFA_ADDRESS,
                                                       IDA_ADDRESS,
-                                                      process.env.SF_REG_KEY );
+                                                      '0x',
+                                                      REX_REFERRAL_ADDRESS);
   console.log("Deployed app, initializing...")
   console.log(INPUT_TOKEN_ADDRESS,
              OUTPUT_TOKEN_ADDRESS,

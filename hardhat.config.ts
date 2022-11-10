@@ -15,7 +15,6 @@ import "@nomiclabs/hardhat-etherscan";
 import "@typechain/hardhat";
 import "solidity-coverage";
 import { ethers } from "ethers";
-require("hardhat-tracer");
 dotenv.config();
 
 
@@ -88,6 +87,11 @@ const config: HardhatUserConfig = {
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
       gasPrice: 55000000000 // 35 Gwei
+    },
+    mumbai: {
+      url: process.env.MUMBAI_NODE_URL,
+      accounts: process.env.MUMBAI_PRIVATE_KEY !== undefined ? [process.env.MUMBAI_PRIVATE_KEY] : [],
+      blockGasLimit: 20000000,
     },
     localhost: {
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
