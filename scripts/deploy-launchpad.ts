@@ -6,18 +6,18 @@ async function main() {
   const [deployer] = await ethers.getSigners();
 
   // Polygon Mumbai
-  const HOST_ADDRESS = "0xEB796bdb90fFA0f28255275e16936D25d3418603";
-  const CFA_ADDRESS = "0x49e565Ed1bdc17F3d220f72DF0857C26FA83F873";
-  const IDA_ADDRESS = "0x804348D4960a61f2d5F9ce9103027A3E849E09b8";
-  const RIC_TREASURY_ADDRESS = "0xaf6cA9aD94D23127D75ab5f672592760D8A52b32"; // rexSHIRT DAO on Mumbai
-  const OUTPUT_RATE = "1929012345680"; // ~1M RIC/year
-  const FEE_RATE = "30000";  // 1
-  const REX_REFERRAL_ADDRESS = "0x5C2E1A331678e1A9c6f8c156b5D48A5cC7e50cDa"; // Mumbai polygon
+  const HOST_ADDRESS = Constants.HOST_SUPERFLUID_ADDRESS;
+  const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
+  const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
+  const RIC_TREASURY_ADDRESS = Constants.RIC_TREASURY_ADDRESS;
+  const OUTPUT_RATE = "1929012345680";
+  const FEE_RATE = "20000";
+  const REX_REFERRAL_ADDRESS = Constants.REX_REFERRAL_ADDRESS;
 
   // Fake fUSDCx on Mumbai
   const INPUT_TOKEN_ADDRESS = "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7";
   // Launching Token (i.e. RIC, rexSHIRT, rexHAT, etc.)
-  const OUTPUT_TOKEN_ADDRESS = "0x759B618fa2C28Ff964978Dc1b3fF4a5C8140E0D8"; //mumbai rexSHIRT
+  const OUTPUT_TOKEN_ADDRESS = Constants.REX_SHIRT_ADDRESS;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
