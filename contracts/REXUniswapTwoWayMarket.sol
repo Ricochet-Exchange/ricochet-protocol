@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
-import './ISETHCustom.sol';
+import "./ISETHCustom.sol";
+import "./IRexSuperSwap.sol";
 
-contract REXTwoWayMarket is REXMarket {
+contract REXTwoWayUniswapMarket is REXMarket {
     using SafeERC20 for ERC20;
 
     ISuperToken inputTokenA;
@@ -19,9 +19,12 @@ contract REXTwoWayMarket is REXMarket {
     uint256 lastDistributionTokenAAt;
     uint256 lastDistributionTokenBAt;
     address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
+    address public constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     ISuperToken subsidyToken;
-    IUniswapV2Router02 router =
-        IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+    IRexSuperSwap superSwap = IRexSuperSwap(0x7D0c6Cd0bfcb05710c0CC94fC673e866AdaE7745);
+    uint24[] superSwapPoolFees = [500];
+    bool public hasUnderlayingTokenA = true;
+    bool public hasUnderlayingTokenB = true;
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
     // REX Two Way Market Contracts
@@ -35,6 +38,18 @@ contract REXTwoWayMarket is REXMarket {
         string memory _registrationKey,
         IREXReferral _rexReferral
     ) REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {}
+
+    function initializeSuperSwap(
+        bool _hasUnderlayingTokenA,
+        bool _hasUnderlayingTokenB,
+        uint24[] memory _superSwapPoolFees,
+        IRexSuperSwap _superSwap
+    ) external onlyOwner {
+        superSwapPoolFees = _superSwapPoolFees;
+        hasUnderlayingTokenA = _hasUnderlayingTokenA;
+        hasUnderlayingTokenB = _hasUnderlayingTokenB;
+        superSwap = _superSwap;
+    }
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
@@ -53,6 +68,7 @@ contract REXTwoWayMarket is REXMarket {
         oracle = tellor;
         market.feeRate = _feeRate;
         market.affiliateFee = 500000;
+
         require(
             _inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6,
             "!scaleable"
@@ -74,42 +90,16 @@ contract REXTwoWayMarket is REXMarket {
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
-        // Approvals for sushiswap and upgrading tokens
-        address inputTokenAUnderlying = address(
-            inputTokenA.getUnderlyingToken()
-        );
-        address inputTokenBUnderlying = address(
-            inputTokenB.getUnderlyingToken()
-        );
 
-        if (inputTokenAUnderlying == address(0)) {
-            // inputTokenA is supertoken, approve swap router for it
-            inputTokenAUnderlying = address(inputTokenA);
-        } else {
-            // otherwise approve underlying for upgrade
-            ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
-                address(inputTokenA),
-                2**256 - 1
-            );
-        }
-
-        if (inputTokenBUnderlying == address(0)) {
-            // inputTokenB is supertoken, approve swap router for it
-            inputTokenBUnderlying = address(inputTokenB);
-        } else {
-            // otherwise approve underlying for upgrade
-            ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
-                address(inputTokenB),
-                2**256 - 1
-            );
-        }
-
-        ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
-            address(router),
+        // approve superToken for RexSuperSwap
+        ERC20(address(inputTokenA)).safeIncreaseAllowance(
+            address(superSwap),
             2**256 - 1
         );
-        ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
-            address(router),
+        
+
+        ERC20(address(inputTokenB)).safeIncreaseAllowance(
+            address(superSwap),
             2**256 - 1
         );
 
@@ -385,27 +375,14 @@ contract REXTwoWayMarket is REXMarket {
     ) internal returns (uint256) {
         address inputToken; // The underlying input token address
         address outputToken; // The underlying output token address
-        address[] memory path; // The path to take
         uint256 minOutput; // The minimum amount of output tokens based on Tellor
         uint256 outputAmount; // The balance before the swap
 
         inputToken = input.getUnderlyingToken();
         outputToken = output.getUnderlyingToken();
 
-        // Downgrade and scale the input amount
-        // Handle case input or output is native supertoken
-        if (inputToken == address(0)) {
-            inputToken = address(input);
-        } else {
-            input.downgrade(amount);
-            // Scale it to 1e18 for calculations
-            amount =
-                ERC20(inputToken).balanceOf(address(this)) *
-                (10**(18 - ERC20(inputToken).decimals()));
-        }
-
         if (outputToken == address(0)) {
-            outputToken = address(output);
+            outputToken = address(WMATIC);
         }
 
         minOutput =
@@ -413,43 +390,25 @@ contract REXTwoWayMarket is REXMarket {
             market.oracles[output].usdPrice;
         minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
 
+        address[] memory superSwapPath = new address[](2);
+        superSwapPath[0] = inputToken;
+        superSwapPath[1] = outputToken;
+
         // Scale back from 1e18 to outputToken decimals
         minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(inputToken).decimals()));
 
-        // Assumes a direct path to swap input/output
-        path = new address[](2);
-        path[0] = inputToken;
-        path[1] = outputToken;
-
-        if (address(output) == MATICX) {
-          router.swapExactTokensForETH(
-             amount,
-             0,
-             path,
-             address(this),
-             block.timestamp + 3600
+        outputAmount = superSwap.swap(
+            input,
+            output,
+            amount,
+            minOutput,
+            superSwapPath,
+            superSwapPoolFees,
+            hasUnderlayingTokenA,
+            hasUnderlayingTokenB
           );
-          ISETHCustom(address(output)).upgradeByETH{value: address(this).balance}();
-        } else {
-          router.swapExactTokensForTokens(
-             amount,
-             minOutput,
-             path,
-             address(this),
-             block.timestamp + 3600
-          );
-          if (address(output) != outputToken) {
-              output.upgrade(
-                  ERC20(outputToken).balanceOf(address(this)) *
-                      (10**(18 - ERC20(outputToken).decimals()))
-              );
-          }
-        }
-
-        // Assumes `amount` was outputToken.balanceOf(address(this))
-        outputAmount = ERC20(outputToken).balanceOf(address(this));
 
         return outputAmount;
     }
