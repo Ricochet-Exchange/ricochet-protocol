@@ -33,6 +33,8 @@ export interface ISuperToken {
   daix: SuperToken;
   ric: SuperToken;
   maticx: SuperToken;
+  ibAlluoUSD: SuperToken;
+  ibAlluoETH: SuperToken;
 }
 
 export interface IUser {
@@ -59,6 +61,8 @@ export const setup = async () => {
     "SF_RESOLVER": Constants.SF_RESOLVER,
     "USDCX_SOURCE_ADDRESS": Constants.USDCX_SOURCE_ADDRESS,
     "MATICX_SOURCE_ADDRESS": Constants.MATICX_SOURCE_ADDRESS,
+    "IBALLUOUSD_SOURCE_ADDRESS": Constants.IBALLUOUSD_SOURCE_ADDRESS,
+    "IBALLUOETH_SOURCE_ADDRESS": Constants.IBALLUOETH_SOURCE_ADDRESS,
     "TELLOR_ORACLE_ADDRESS": Constants.TELLOR_ORACLE_ADDRESS,
     "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
     "TELLOR_ETH_REQUEST_ID": Constants.TELLOR_ETH_REQUEST_ID.toString(),
@@ -76,11 +80,13 @@ export const setup = async () => {
     Constants.USDCX_SOURCE_ADDRESS,
     Constants.ETHX_SOURCE_ADDRESS,
     Constants.MATICX_SOURCE_ADDRESS,
+    Constants.IBALLUOUSD_SOURCE_ADDRESS,
+    Constants.IBALLUOETH_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender"];
+  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -88,7 +94,8 @@ export const setup = async () => {
     resolverAddress: Constants.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
-    protocolReleaseVersion: "v1"
+    protocolReleaseVersion: "v1",
+    chainId: 31337
   });
 
   // Declare supertokens as ERC 20 contracts
@@ -108,10 +115,23 @@ export const setup = async () => {
     daix: await superfluid.loadSuperToken(
       "0x1305f6b6df9dc47159d12eb7ac2804d4a33173c2"
     ),
+    stIbAlluoUSD: await superfluid.loadSuperToken(
+      "0xE9E759B969B991F2bFae84308385405B9Ab01541"
+    ),
+    stIbAlluoETH: await superfluid.loadSuperToken(
+      "0x2D4Dc956FBd0044a4EBA945e8bbaf98a14025C2d"
+    ),
+    // ibAlluoUSD: await ethers.getContractAt(
+    //   "IbAlluo", "0xC2DbaAEA2EfA47EBda3E572aa0e55B742E408BF6"
+    // ),
+    // ibAlluoETH: await ethers.getContractAt(
+    //   "IbAlluo", "0xc677B0918a96ad258A68785C2a3955428DeA7e50"
+    // ),
     ric: await superfluid.loadSuperToken(
       Constants.RIC_TOKEN_ADDRESS
     )
   };
+
 
   // Declare all users for transactions (usdcx)
   for (let i = 0; i < names.length; i += 1) {
@@ -122,14 +142,15 @@ export const setup = async () => {
     };
   }
 
+  // console.log(superTokens.ethx)
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
     "ERC20", Constants.RIC_TOKEN_ADDRESS
   );
-  tokens.weth = await ethers.getContractAt(
-    "ERC20",
-    await superTokens.ethx.underlyingToken.address
-  );
+  // tokens.weth = await ethers.getContractAt(
+  //   "ERC20",
+  //   await superTokens.ethx.underlyingToken.address
+  // );
   tokens.wbtc = await ethers.getContractAt(
     "ERC20",
     await superTokens.wbtcx.underlyingToken.address
@@ -142,7 +163,16 @@ export const setup = async () => {
     "ERC20",
     await superTokens.maticx.underlyingToken.address
   );
-  // let var2:string = tokens.usdc;
+  tokens.ibAlluoUSD = await ethers.getContractAt(
+    "ERC20",
+    await superTokens.stIbAlluoUSD.underlyingToken.address
+  );
+  tokens.ibAlluoETH = await ethers.getContractAt(
+    "ERC20",
+    await superTokens.stIbAlluoETH.underlyingToken.address
+  );
+
+  let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
 
   // Trellor Protocol to determine the price
@@ -158,6 +188,6 @@ export const setup = async () => {
     superTokens,
     contracts,
     constants,
-    tellor
+    tellor,
   };
 };

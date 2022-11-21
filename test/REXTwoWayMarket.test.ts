@@ -275,7 +275,7 @@ describe('REXTwoWayMarket', () => {
         );
         twoWayMarket = await REXMarketFactory.deploy(
             adminSigner.address,
-            sf.host.hostContract.address,
+            sf.settings.config.hostAddress,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
@@ -341,12 +341,6 @@ describe('REXTwoWayMarket', () => {
         console.log("================ End of \"before\" block ==============================");
         console.log("=======================================================================");
 
-
-        // Do all the approvals
-        // TODO: Redo how indexes are setup
-        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
-            [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
-
         // Give Alice, Bob, Karen some tokens
         const initialAmount = ethers.utils.parseUnits("1000", 18).toString();
         await ricochetUSDCx
@@ -380,6 +374,12 @@ describe('REXTwoWayMarket', () => {
                 amount: initialAmount,
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to karen =======");
+
+        // Do all the approvals
+        // TODO: Redo how indexes are setup
+        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
+            [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
+
 
         // Take a snapshot to avoid redoing the setup
         snapshot = await provider.send('evm_snapshot', []);
@@ -418,7 +418,7 @@ describe('REXTwoWayMarket', () => {
 
         });
 
-        it("#1.2 before/afterAgreementCreated callbacks", async () => {
+        it.only("#1.2 before/afterAgreementCreated callbacks", async () => {
 
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -901,7 +901,7 @@ describe('REXTwoWayMarket', () => {
 
             twoWayMarket = await REXMarketFactory.deploy(
                 adminSigner.address,
-                sf.host.hostContract.address,
+                sf.settings.config.hostAddress,
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,
@@ -1069,7 +1069,7 @@ describe('REXTwoWayMarket', () => {
 
             twoWayMarket = await REXMarketFactory.deploy(
                 adminSigner.address,
-                sf.host.hostContract.address,
+                sf.settings.config.hostAddress,
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,
