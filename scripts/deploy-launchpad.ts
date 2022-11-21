@@ -15,7 +15,7 @@ async function main() {
   const REX_REFERRAL_ADDRESS = Constants.REX_REFERRAL_ADDRESS;
 
   // Fake fUSDCx on Mumbai
-  const INPUT_TOKEN_ADDRESS = "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7";
+  const INPUT_TOKEN_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
   // Launching Token (i.e. RIC, rexSHIRT, rexHAT, etc.)
   const OUTPUT_TOKEN_ADDRESS = Constants.REX_SHIRT_ADDRESS;
 
@@ -26,6 +26,8 @@ async function main() {
   const RicochetLaunchpadHelper = await ethers.getContractFactory("RicochetLaunchpadHelper");
   let ricochetLaunchpadHelpder = await RicochetLaunchpadHelper.deploy();
   console.log("Deployed RicochetLaunchpadHelper ")
+  console.log("Deployed RicochetLaunchpadHelper at address:", ricochetLaunchpadHelpder.address);
+
 
   const RicochetLaunchpad = await ethers.getContractFactory("RicochetLaunchpad", {
     libraries: {
@@ -45,9 +47,11 @@ async function main() {
   const ricochetLaunchpad = await RicochetLaunchpad.deploy( HOST_ADDRESS,
                                                       CFA_ADDRESS,
                                                       IDA_ADDRESS,
-                                                      '0x',
-                                                      REX_REFERRAL_ADDRESS);
-  console.log("Deployed app, initializing...")
+                                                      process.env.SF_REG_KEY,
+                                                      REX_REFERRAL_ADDRESS, { gasLimit: 5000000 });
+  await ricochetLaunchpad.deployed();
+  console.log("Deployed RicochetLaunchpad at address:", ricochetLaunchpad.address);
+  console.log("Initializing...")
   console.log(INPUT_TOKEN_ADDRESS,
              OUTPUT_TOKEN_ADDRESS,
              deployer.address,
@@ -60,9 +64,17 @@ async function main() {
                        RIC_TREASURY_ADDRESS,
                        OUTPUT_RATE,
                        FEE_RATE);
-  await ricochetLaunchpad.deployed();
-  console.log("Deployed RicochetLaunchpadHelper at address:", ricochetLaunchpadHelpder.address);
-  console.log("Deployed RicochetLaunchpad at address:", ricochetLaunchpad.address);
+  console.log("Initialized");
+
+  console.log("Registering with RexReferral system...")
+  const REXReferral = await ethers.getContractFactory("REXReferral");
+  const referral = await REXReferral.attach(Constants.REX_REFERRAL_ADDRESS);
+  await referral.registerApp(ricochetLaunchpad.address);
+  console.log("Registered:", ricochetLaunchpad.address);
+  console.log("Transferring ownership to the DAO");
+  await ricochetLaunchpad.transferOwnership("0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89"); // 1e15/second
+  console.log("Ownership transferred.");
+
 }
 
 main()

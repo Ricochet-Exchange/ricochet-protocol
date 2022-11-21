@@ -131,11 +131,8 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
                                                                          _launchpad.outputToken,
                                                                          address(this),
                                                                          _launchpad.outputIndexId);
-    // Check balance and account for
-    uint256 balance = ISuperToken(_launchpad.inputToken).balanceOf(address(this)) /
-                      (10 ** (18 - ERC20(_launchpad.inputToken.getUnderlyingToken()).decimals()));
 
-    if (doDistributeFirst && totalUnitsApproved + totalUnitsPending > 0 && balance > 0) {
+    if (doDistributeFirst && totalUnitsApproved + totalUnitsPending > 0 && _launchpad.inputToken.balanceOf(address(this)) > 0) {
       newCtx = _launchpad._distribute(newCtx);
     }
 
@@ -275,7 +272,7 @@ contract RicochetLaunchpad is Ownable, SuperAppBase {
       if (!_launchpad._isInputToken(_superToken) || !_launchpad._isCFAv1(_agreementClass)) return _ctx;
 
       (address requester) = abi.decode(_agreementData, (address));
-  
+
       _registerReferral(_ctx, requester);
       return _updateOutflow(_ctx, _agreementData, true);
   }
