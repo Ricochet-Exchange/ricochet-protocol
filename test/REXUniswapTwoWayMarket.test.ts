@@ -2,11 +2,11 @@ import { waffle, ethers } from "hardhat";
 import { setup, IUser, ISuperToken } from "../misc/setup";
 import { common } from "../misc/common";
 import { expect } from "chai";
-import { HttpService } from "../misc/HttpService";
+import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayUniswapMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain-types";
-import { increaseTime, impersonateAndSetBalance } from "../misc/helpers";
+import { TellorPlayground, REXTwoWayUniswapMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
+import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
 
@@ -23,7 +23,7 @@ export interface superTokenAndItsIDAIndex {
     IDAIndex: number;
 }
 
-describe('REXTwoWayUniswapMarket', () => {
+describe('REXUniswapTwoWayMarket', () => {
     const errorHandler = (err: any) => {
         if (err) throw err;
     };
@@ -268,20 +268,20 @@ describe('REXTwoWayUniswapMarket', () => {
 
         // ==============
         // Deploy REX Market
-        console.log("Deploying REXTwoWayUniswapMarket...");
+        console.log("Deploying REXTwoWayMarket...");
         REXMarketFactory = await ethers.getContractFactory(
             "REXTwoWayUniswapMarket",
             adminSigner
         );
         twoWayMarket = await REXMarketFactory.deploy(
             adminSigner.address,
-            sf.host.hostContract.address,
+            sf.settings.config.hostAddress,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address
         );
-        console.log("=========== Deployed REXTwoWayUniswapMarket ============");
+        console.log("=========== Deployed REXUniswapTwoWayMarket ============");
 
         // Update the oracles
         let httpService = new HttpService();
@@ -312,14 +312,15 @@ describe('REXTwoWayUniswapMarket', () => {
             20000
         );
         console.log("=========== Initialized TwoWayMarket ============");
-        
+
+        // Initialize the Superswap
         await twoWayMarket.initializeSuperSwap(
-            ricochetUSDCx.underlyingToken.address,
-            ricochetETHx.underlyingToken.address,
+            true,
+            true,
             [3000],
-            "0x7D0c6Cd0bfcb05710c0CC94fC673e866AdaE7745",
-        )
-        console.log("=========== Initialized SuperSwap ============");
+            "0x2995702816a86086Baa799F44F76c33111094498"
+        );
+        console.log("=========== Initialized Superswap ============");
 
         await twoWayMarket.initializeSubsidies(subsidyRate, ricochetRIC.address);
         console.log("========== Initialized subsidies ===========");
@@ -344,16 +345,10 @@ describe('REXTwoWayUniswapMarket', () => {
         await referral.applyForAffiliate("carl", "carl");
         referral = await referral.connect(adminSigner);
         await referral.verifyAffiliate("carl");
-        console.log("                      ============ The affiliate has been veryfied =============");
+        console.log("                      ============ The affiliate has been verified =============");
         console.log("=======================================================================");
         console.log("================ End of \"before\" block ==============================");
         console.log("=======================================================================");
-
-
-        // Do all the approvals
-        // TODO: Redo how indexes are setup
-        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
-            [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
 
         // Give Alice, Bob, Karen some tokens
         const initialAmount = ethers.utils.parseUnits("1000", 18).toString();
@@ -388,6 +383,12 @@ describe('REXTwoWayUniswapMarket', () => {
                 amount: initialAmount,
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred to karen =======");
+
+        // Do all the approvals
+        // TODO: Redo how indexes are setup
+        await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
+            [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
+
 
         // Take a snapshot to avoid redoing the setup
         snapshot = await provider.send('evm_snapshot', []);
@@ -426,7 +427,7 @@ describe('REXTwoWayUniswapMarket', () => {
 
         });
 
-        it("#1.2 before/afterAgreementCreated callbacks", async () => {
+        it.only("#1.2 before/afterAgreementCreated callbacks", async () => {
 
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -435,6 +436,7 @@ describe('REXTwoWayUniswapMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Expect share allocations were done correctly
@@ -909,7 +911,7 @@ describe('REXTwoWayUniswapMarket', () => {
 
             twoWayMarket = await REXMarketFactory.deploy(
                 adminSigner.address,
-                sf.host.hostContract.address,
+                sf.settings.config.hostAddress,
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,
@@ -1077,7 +1079,7 @@ describe('REXTwoWayUniswapMarket', () => {
 
             twoWayMarket = await REXMarketFactory.deploy(
                 adminSigner.address,
-                sf.host.hostContract.address,
+                sf.settings.config.hostAddress,
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,

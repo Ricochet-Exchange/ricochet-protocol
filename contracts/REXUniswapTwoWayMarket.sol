@@ -21,7 +21,7 @@ contract REXTwoWayUniswapMarket is REXMarket {
     address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
     address public constant WMATIC = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     ISuperToken subsidyToken;
-    IRexSuperSwap superSwap = IRexSuperSwap(0x7D0c6Cd0bfcb05710c0CC94fC673e866AdaE7745);
+    IRexSuperSwap superSwap = IRexSuperSwap(0x2995702816a86086Baa799F44F76c33111094498);
     uint24[] superSwapPoolFees = [500];
     bool public hasUnderlayingTokenA = true;
     bool public hasUnderlayingTokenB = true;

@@ -336,7 +336,7 @@ describe('REXTwoWayMarket', () => {
         await referral.applyForAffiliate("carl", "carl");
         referral = await referral.connect(adminSigner);
         await referral.verifyAffiliate("carl");
-        console.log("                      ============ The affiliate has been veryfied =============");
+        console.log("                      ============ The affiliate has been verified =============");
         console.log("=======================================================================");
         console.log("================ End of \"before\" block ==============================");
         console.log("=======================================================================");
