@@ -430,14 +430,25 @@ describe('REXUniswapTwoWayMarket', () => {
         it.only("#1.2 before/afterAgreementCreated callbacks", async () => {
 
             // Alice opens a USDC stream to REXMarket
-            await sf.cfaV1.createFlow({
+            const data = await sf.cfaV1.createFlow({
+                flowRate: inflowRateUsdc,
                 sender: aliceSigner.address,
                 receiver: twoWayMarket.address,
                 superToken: ricochetUSDCx.address,
-                flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
-                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
+            
+            console.log("Data: ", data);        
+
+            // Check the agreement was created
+            const agreement = await sf.cfaV1.getFlow({
+                superToken: ricochetUSDCx.address,
+                sender: aliceSigner.address,
+                receiver: twoWayMarket.address,
+                providerOrSigner: aliceSigner,
+            });
+            console.log("Agreement: ", agreement);
+            expect(agreement.flowRate).to.equal(inflowRateUsdc);
 
             // Expect share allocations were done correctly
             expect(
@@ -460,6 +471,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetETHx.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             // Expect share allocations were done correctly
@@ -490,6 +502,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Bob opens a ETH stream to REXMarket
@@ -498,6 +511,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetETHx.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             await increaseTime(3600)
@@ -555,6 +569,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Check balance
@@ -599,6 +614,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Bob opens a ETH stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -606,6 +622,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetETHx.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             // Take a snapshot
@@ -656,6 +673,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(karenSigner);
 
             // Expect share allocations were done correctly
@@ -754,6 +772,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Bob opens a ETH stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -761,6 +780,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetETHx.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             await increaseTime(3600);
@@ -953,6 +973,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc10x,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             console.log("alice")
             await sf.cfaV1.createFlow({
@@ -960,6 +981,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetRIC.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
             console.log("bob")
 
@@ -1121,6 +1143,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             console.log("alice")
             await sf.cfaV1.createFlow({
@@ -1128,6 +1151,7 @@ describe('REXUniswapTwoWayMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: ricochetMATICx.address,
                 flowRate: "1000000000000",
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
             console.log("bob")
 
