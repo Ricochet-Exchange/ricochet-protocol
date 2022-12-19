@@ -415,7 +415,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
-            console.log("Create flow alice");
+
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(aliceSigner.address, stIbAlluoUSD.address)
@@ -439,7 +439,6 @@ describe('REXTwoWayAlluoMarket', () => {
                 flowRate: inflowRateEth,
                 shouldUseCallAgreement: true,
             }).exec(bobSigner);
-            console.log("Create flow bob");
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(bobSigner.address, stIbAlluoETH.address)
@@ -504,9 +503,6 @@ describe('REXTwoWayAlluoMarket', () => {
             let aliceDelta = await delta(aliceSigner, aliceBalances);
             let bobDelta = await delta(bobSigner, bobBalances);
 
-            console.log("babBalances", bobBalances)
-            console.log("aliceBalances", aliceBalances)
-
             // Expect alice didn't lose anything since she closed stream before distribute
             expect(aliceDelta.stIbAlluoUSD).to.equal(0);
 
@@ -568,9 +564,9 @@ describe('REXTwoWayAlluoMarket', () => {
             let deltaOwner = await delta(adminSigner, ownerBalances);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            console.log("Alice got this much stIbAlluoETH", deltaAlice.stIbAlluoETH);
-            console.log("Alice paid this much stIbAlluoUSD", -1 * deltaAlice.stIbAlluoUSD);
-            console.log("stIbAlluoETH/USD rate", -1*deltaAlice.stIbAlluoUSD/deltaAlice.stIbAlluoETH);
+            // console.log("Alice got this much stIbAlluoETH", deltaAlice.stIbAlluoETH);
+            // console.log("Alice paid this much stIbAlluoUSD", -1 * deltaAlice.stIbAlluoUSD);
+            // console.log("stIbAlluoETH/USD rate", -1*deltaAlice.stIbAlluoUSD/deltaAlice.stIbAlluoETH);
             expect(deltaAlice.stIbAlluoETH).to.be.above(deltaAlice.stIbAlluoUSD / oraclePrice * 1e6 * -1 * 0.97)
 
             // Expect Owner and Carl got their fee from Alice

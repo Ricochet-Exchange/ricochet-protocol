@@ -338,7 +338,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
                 receiver: bobSigner.address,
                 amount: '1000000000000000000000',
             }).exec(adminSigner);
-            console.log("RIC")
 
         // Take a snapshot to avoid redoing the setup
         snapshot = await provider.send('evm_snapshot', []);
@@ -388,7 +387,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
-            console.log("Create flow alice");
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(aliceSigner.address, ricochetUSDCx.address)
@@ -406,7 +404,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
                 flowRate: inflowRateUsdc,
                 shouldUseCallAgreement: true,
             }).exec(bobSigner);
-            console.log("Create flow bob");
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(bobSigner.address, ricochetUSDCx.address)
@@ -463,9 +460,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             // Check balance for alice again
             let aliceDelta = await delta(aliceSigner, aliceBalances);
             let bobDelta = await delta(bobSigner, bobBalances);
-
-            console.log("babBalances", bobBalances)
-            console.log("aliceBalances", aliceBalances)
 
             // Expect alice didn't lose anything since she closed stream before distribute
             expect(aliceDelta.ricochetUSDCx).to.equal(0);
@@ -527,18 +521,18 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             let realGrowingRatio = 1.031139986258114078;
 
             // Expect Alice and Bob got the right output
-            console.log("Alice got this much ibAlluoUSD", deltaAlice.ibAlluoUSD);
-            console.log("Alice paid this much USDCx", -1 * deltaAlice.ricochetUSDCx);
-            console.log("ibAlluoETH/USD rate", -1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD);
-            console.log("actual growing ratio", realGrowingRatio);
-            console.log("loss", (-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
+            // console.log("Alice got this much ibAlluoUSD", deltaAlice.ibAlluoUSD);
+            // console.log("Alice paid this much USDCx", -1 * deltaAlice.ricochetUSDCx);
+            // console.log("ibAlluoETH/USD rate", -1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD);
+            // console.log("actual growing ratio", realGrowingRatio);
+            // console.log("loss", (-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            console.log("Bob got this much ibAlluoUSD", deltaBob.ibAlluoUSD);
-            console.log("Bob paid this much USDCx", -1 * deltaBob.ricochetUSDCx);
-            console.log("ibAlluoETH/USD rate", -1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD);
-            console.log("actual growing ratio", realGrowingRatio);
-            console.log("loss", (-1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
+            // console.log("Bob got this much ibAlluoUSD", deltaBob.ibAlluoUSD);
+            // console.log("Bob paid this much USDCx", -1 * deltaBob.ricochetUSDCx);
+            // console.log("ibAlluoETH/USD rate", -1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD);
+            // console.log("actual growing ratio", realGrowingRatio);
+            // console.log("loss", (-1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
 
 
             // console.log("Bob got this much USDCx", deltaBob.ricochetUSDCx);
