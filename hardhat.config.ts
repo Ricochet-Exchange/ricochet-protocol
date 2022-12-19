@@ -69,11 +69,10 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
-        blockNumber: 32509800 // Essential for mainnet forking !!
-        // blockNumber: 33013602, //32812267,
-        // standard rex market block number
-        // 22877930
-        // ibAlluo market test block
+        // REX Alluo Market Test Block
+        blockNumber: 31926750
+        // REX Market Test Block
+        // blockNumber: 22877930
  
       },
       // blockGasLimit: 20000000,

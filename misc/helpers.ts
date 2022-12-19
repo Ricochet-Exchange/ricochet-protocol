@@ -16,12 +16,9 @@ import { Framework } from "@superfluid-finance/sdk-core";
 import SuperfluidGovernanceBase from "../test/artifacts/superfluid/SuperfluidGovernanceII.json";
 import { ISuperToken } from "../typechain";
 // import Operation = require("@superfluid-finance/sdk-core/dist/module/Operation");
-import { IInstantDistributionAgreementV1 } from "@superfluid-finance/sdk-core/dist/module/typechain";
-import { abi as IInstantDistributionAgreementV1ABI } from "@superfluid-finance/sdk-core/dist/module/abi/IInstantDistributionAgreementV1.json";
 import { PopulatedTransaction } from "ethers";
 import { Constants } from "./Constants";
 // import Operation from "@superfluid-finance/sdk-core/dist/module/Operation";
-const idaInterface = new ethers.utils.Interface(IInstantDistributionAgreementV1ABI);
 const { provider, loadFixture } = waffle;
 const PROVIDER = provider;
 
