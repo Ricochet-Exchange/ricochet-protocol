@@ -48,18 +48,18 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
     let usdcxWhaleSigner: SignerWithAddress;
     let ethxWhaleSigner: SignerWithAddress;
     let maticxWhaleSigner: SignerWithAddress;
-    let ibAlluoUSDWhaleSigner: SignerWithAddress;
+    let stIbAlluoUSDWhaleSigner: SignerWithAddress;
     let ibAlluoETHWhaleSigner: SignerWithAddress;
     let karenSigner: SignerWithAddress;
 
     let oraclePrice: number;
 
-    let appBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
-    let ownerBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
-    let aliceBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
-    let bobBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
-    let carlBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
-    let karenBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let appBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let ownerBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let aliceBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let bobBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let carlBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
+    let karenBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [], maticx: [] };
 
     let sf: Framework,
         superT: ISuperToken,
@@ -73,7 +73,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
-    let ibAlluoUSD: SuperToken;
+    let stIbAlluoUSD: SuperToken;
     let ibAlluoETH: SuperToken;
     let ricochetRIC: SuperToken;
     let ricochetUSDCx: SuperToken;
@@ -81,19 +81,19 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
     let weth: any;
 
     let usdcxAndItsIDAIndex: superTokenAndItsIDAIndex;
-    let ibAlluoUSDAndItsIDAIndex: superTokenAndItsIDAIndex;
+    let stIbAlluoUSDAndItsIDAIndex: superTokenAndItsIDAIndex;
     let ricAndItsIDAIndex: superTokenAndItsIDAIndex;
     let ricAndItsOtherIDAIndex: superTokenAndItsIDAIndex;
 
     // ***************************************************************************************
     async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
 
-        appBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: twoWayMarket.address, providerOrSigner: provider })).toString());
-        ownerBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        karenBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
-        bobBalances.ibAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
+        appBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: twoWayMarket.address, providerOrSigner: provider })).toString());
+        ownerBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
+        aliceBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
+        carlBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
+        karenBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({account: u.karen.address, providerOrSigner: provider})).toString());
+        bobBalances.stIbAlluoUSD.push((await superT.stIbAlluoUSD.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
 
         appBalances.ricochetUSDCx.push((await ricochetUSDCx.balanceOf({ account: twoWayMarket.address, providerOrSigner: provider })).toString());
         ownerBalances.ricochetUSDCx.push((await ricochetUSDCx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
@@ -111,12 +111,12 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
     }
 
     async function resetMeasurements(): Promise<void> {
-        appBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
-        ownerBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
-        aliceBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
-        bobBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
-        carlBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
-        karenBalances = { ibAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        appBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        ownerBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        aliceBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        bobBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        carlBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
+        karenBalances = { stIbAlluoUSD: [], ricochetUSDCx: [], ric: [] };
     }
 
     async function approveSubscriptions(tokensAndIDAIndexes: superTokenAndItsIDAIndex[], signers: SignerWithAddress[]) {
@@ -143,7 +143,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         let balanceUsdcx = await ricochetUSDCx.balanceOf({
             account: user.address, providerOrSigner: provider
         });
-        let balanceIballuoUSD = await ibAlluoUSD.balanceOf({
+        let balanceIballuoUSD = await stIbAlluoUSD.balanceOf({
             account: user.address, providerOrSigner: provider
         });
         let balanceRic = await ricochetRIC.balanceOf({
@@ -151,7 +151,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         });
 
         console.log("Balance in USDCx: ", balanceUsdcx);
-        console.log("Balance in ibAlluoUSD: ", balanceIballuoUSD);
+        console.log("Balance in stIbAlluoUSD: ", balanceIballuoUSD);
         console.log("Balance in RIC: ", balanceRic);
         console.log(" checkBalance END ====================================================== ");
     }
@@ -160,7 +160,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         const len = balances.ricochetUSDCx.length;
         return {
             ricochetUSDCx: balances.ricochetUSDCx[len - 1] - balances.ricochetUSDCx[len - 2],
-            ibAlluoUSD: balances.ibAlluoUSD[len - 1] - balances.ibAlluoUSD[len - 2],
+            stIbAlluoUSD: balances.stIbAlluoUSD[len - 1] - balances.stIbAlluoUSD[len - 2],
             ric: balances.ric[len - 1] - balances.ric[len - 2],
         }
     }
@@ -197,16 +197,16 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         carlSigner = accountss[3];
         karenSigner = accountss[4];
         usdcxWhaleSigner = accountss[5];
-        ibAlluoUSDWhaleSigner = accountss[8];
+        stIbAlluoUSDWhaleSigner = accountss[8];
 
         ricochetRIC = superT.ric;
         ricochetUSDCx = superT.usdcx;
-        ibAlluoUSD = superT.stIbAlluoUSD;
+        stIbAlluoUSD = superT.stIbAlluoUSD;
         weth = tokenss.weth
 
         // TODO: Please refactor this
-        ibAlluoUSDAndItsIDAIndex = {
-            token: ibAlluoUSD,
+        stIbAlluoUSDAndItsIDAIndex = {
+            token: stIbAlluoUSD,
             IDAIndex: 0,
         }
         ricAndItsIDAIndex = {
@@ -224,7 +224,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         console.log("++++++++++++++ carl address number: ", carlSigner.address);
 
         console.log("======******** List of TOKENS addresses =======");
-        console.log("======** ibAlluoUSD's address: ", ibAlluoUSD.address);
+        console.log("======** stIbAlluoUSD's address: ", stIbAlluoUSD.address);
         console.log("======** USDCx's address: ", ricochetUSDCx.address);
         // ==============================================================================
 
@@ -258,12 +258,12 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         );
         console.log("=========== Deployed REXTwoWayAlluoUsdcxMarket ============");
 
-        console.log("initializeTwoWayMarket", ibAlluoUSD.address, ricochetUSDCx.address);
+        console.log("initializeTwoWayMarket", stIbAlluoUSD.address, ricochetUSDCx.address);
         await twoWayMarket.initializeTwoWayMarket(
             ricochetUSDCx.address,
             Constants.TELLOR_USDC_REQUEST_ID,
             1,
-            ibAlluoUSD.address,
+            stIbAlluoUSD.address,
             Constants.TELLOR_USDC_REQUEST_ID,
             1,
             0,
@@ -274,7 +274,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         await twoWayMarket.initializeSubsidies(subsidyRate, ricochetRIC.address);
         console.log("========== Initialized subsidies ===========");
 
-        await checkBalance(ibAlluoUSDWhaleSigner, "the ibAlluoUSD whale");
+        await checkBalance(stIbAlluoUSDWhaleSigner, "the stIbAlluoUSD whale");
         await checkBalance(usdcxWhaleSigner, "the USDCx whale");
         // send the contract some RIC
         try {
@@ -302,7 +302,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
         // Do all the approvals
         // TODO: Redo how indexes are setup
-        await approveSubscriptions([ibAlluoUSDAndItsIDAIndex, ricAndItsIDAIndex],
+        await approveSubscriptions([stIbAlluoUSDAndItsIDAIndex, ricAndItsIDAIndex],
             [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
 
         // Give Alice, Bob, Karen some tokens
@@ -320,11 +320,11 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             }).exec(usdcxWhaleSigner);
         console.log("====== Transferred USDCx to bob =======");
 
-        await ibAlluoUSD
+        await stIbAlluoUSD
             .transfer({
                 receiver: bobSigner.address,
                 amount: initialAmount,
-            }).exec(ibAlluoUSDWhaleSigner);
+            }).exec(stIbAlluoUSDWhaleSigner);
         console.log("====== Transferred USDCx to bob =======");
 
         await ricochetUSDCx
@@ -370,7 +370,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             expect(await twoWayMarket.getFeeRate(0)).to.equal(1000);
             await twoWayMarket.setEmissionRate(0, 1000);
             expect(await twoWayMarket.getEmissionRate(0)).to.equal(1000);
-            expect((await twoWayMarket.getOutputPool(0)).toString()).to.equal(`${ibAlluoUSD.address},1000,1000,1`);
+            expect((await twoWayMarket.getOutputPool(0)).toString()).to.equal(`${stIbAlluoUSD.address},1000,1000,1`);
             expect((await twoWayMarket.getLastDistributionAt()).toNumber()).to.be.above(0)
 
 
@@ -484,7 +484,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
         });
 
-        it("#1.4 one-sided distribution USDCx > ibAlluoUSD", async () => {
+        it("#1.4 one-sided distribution USDCx > stIbAlluoUSD", async () => {
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
                 sender: aliceSigner.address,
@@ -521,32 +521,32 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             let realGrowingRatio = 1.031139986258114078;
 
             // Expect Alice and Bob got the right output
-            // console.log("Alice got this much ibAlluoUSD", deltaAlice.ibAlluoUSD);
+            // console.log("Alice got this much stIbAlluoUSD", deltaAlice.stIbAlluoUSD);
             // console.log("Alice paid this much USDCx", -1 * deltaAlice.ricochetUSDCx);
-            // console.log("ibAlluoETH/USD rate", -1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD);
+            // console.log("ibAlluoETH/USD rate", -1*deltaAlice.ricochetUSDCx/deltaAlice.stIbAlluoUSD);
             // console.log("actual growing ratio", realGrowingRatio);
-            // console.log("loss", (-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
+            // console.log("loss", (-1*deltaAlice.ricochetUSDCx/deltaAlice.stIbAlluoUSD - realGrowingRatio) / realGrowingRatio);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            // console.log("Bob got this much ibAlluoUSD", deltaBob.ibAlluoUSD);
+            // console.log("Bob got this much stIbAlluoUSD", deltaBob.stIbAlluoUSD);
             // console.log("Bob paid this much USDCx", -1 * deltaBob.ricochetUSDCx);
-            // console.log("ibAlluoETH/USD rate", -1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD);
+            // console.log("ibAlluoETH/USD rate", -1*deltaBob.ricochetUSDCx/deltaBob.stIbAlluoUSD);
             // console.log("actual growing ratio", realGrowingRatio);
-            // console.log("loss", (-1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD - realGrowingRatio) / realGrowingRatio);
+            // console.log("loss", (-1*deltaBob.ricochetUSDCx/deltaBob.stIbAlluoUSD - realGrowingRatio) / realGrowingRatio);
 
 
             // console.log("Bob got this much USDCx", deltaBob.ricochetUSDCx);
-            // console.log("Bob paid this much ibAlluoUSD", -1 * deltaBob.ibAlluoUSD);
-            // console.log("ibAlluoETH/USD rate", -1*deltaBob.ibAlluoUSD/deltaAlice.ricochetUSDCx);
+            // console.log("Bob paid this much stIbAlluoUSD", -1 * deltaBob.stIbAlluoUSD);
+            // console.log("ibAlluoETH/USD rate", -1*deltaBob.stIbAlluoUSD/deltaAlice.ricochetUSDCx);
             // console.log("actual growing ratio", realGrowingRatio);
-            // console.log("loss", (-1*deltaBob.ibAlluoUSD/deltaAlice.ricochetUSDCx - realGrowingRatio) / realGrowingRatio);
+            // console.log("loss", (-1*deltaBob.stIbAlluoUSD/deltaAlice.ricochetUSDCx - realGrowingRatio) / realGrowingRatio);
 
 
             // Expect the growing ratio
             // NOTE: There's a bit of loss in the rate due to a remainder from division in the IDA distribution
             // Check here that that loss is less than 0.03%
-            expect((-1*deltaAlice.ricochetUSDCx/deltaAlice.ibAlluoUSD - realGrowingRatio) / realGrowingRatio).to.be.below(0.0003);
-            expect((-1*deltaBob.ricochetUSDCx/deltaBob.ibAlluoUSD - realGrowingRatio) / realGrowingRatio).to.be.below(0.0003);
+            expect((-1*deltaAlice.ricochetUSDCx/deltaAlice.stIbAlluoUSD - realGrowingRatio) / realGrowingRatio).to.be.below(0.0003);
+            expect((-1*deltaBob.ricochetUSDCx/deltaBob.stIbAlluoUSD - realGrowingRatio) / realGrowingRatio).to.be.below(0.0003);
 
         });
 
@@ -600,7 +600,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: karenSigner.address,
-                superToken: ibAlluoUSD.address,
+                superToken: stIbAlluoUSD.address,
                 shouldUseCallAgreement: true,
                 overrides,
             }).exec(karenSigner);
@@ -627,11 +627,11 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
         it("#3.1 emergencyCloseStream", async () => {
 
-            await twoWayMarket.emergencyCloseStream(aliceSigner.address, ibAlluoUSD.address);
+            await twoWayMarket.emergencyCloseStream(aliceSigner.address, stIbAlluoUSD.address);
             await twoWayMarket.emergencyCloseStream(bobSigner.address, ibAlluoETH.address);
 
             expect(
-                await twoWayMarket.getStreamRate(aliceSigner.address, ibAlluoUSD.address)
+                await twoWayMarket.getStreamRate(aliceSigner.address, stIbAlluoUSD.address)
             ).to.equal(0);
 
             expect(
@@ -647,7 +647,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             // ).to.be.revertedWith('!zeroStreamers');
             //
             // await expect(
-            //     twoWayMarket.emergencyDrain(ibAlluoUSD.address),
+            //     twoWayMarket.emergencyDrain(stIbAlluoUSD.address),
             // ).to.be.revertedWith('!zeroStreamers');
 
             // Close both flows
@@ -655,7 +655,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: aliceSigner.address,
-                superToken: ibAlluoUSD.address,
+                superToken: stIbAlluoUSD.address,
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
@@ -668,10 +668,10 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             }).exec(bobSigner);
 
             await twoWayMarket.emergencyDrain(ibAlluoETH.address);
-            await twoWayMarket.emergencyDrain(ibAlluoUSD.address);
+            await twoWayMarket.emergencyDrain(stIbAlluoUSD.address);
             await twoWayMarket.emergencyDrain(ricochetRIC.address);
 
-            expect((await ibAlluoUSD.balanceOf({
+            expect((await stIbAlluoUSD.balanceOf({
                 account: twoWayMarket.address, providerOrSigner: provider
             })).toString()).to.equal('0');
 
@@ -693,7 +693,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
             // Expect the owner can recover the locked funds
             expect(ownerDelta.ibAlluoETH).to.be.within(-1 * bobDelta.ibAlluoETH * 0.99, -1 * bobDelta.ibAlluoETH * 1.01);
-            expect(ownerDelta.ibAlluoUSD).to.be.within(-1 * aliceDelta.ibAlluoUSD * 0.99, -1 * aliceDelta.ibAlluoUSD * 1.01);
+            expect(ownerDelta.stIbAlluoUSD).to.be.within(-1 * aliceDelta.stIbAlluoUSD * 0.99, -1 * aliceDelta.stIbAlluoUSD * 1.01);
             // Recover the RIC subsidies
             expect(ownerDelta.ric).to.be.within(-1 * appDelta.ric * 0.99999, -1 * appDelta.ric * 1.00001);
 
@@ -702,7 +702,7 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
 
         it("#3.3 closeStream", async () => {
 
-            let aliceBalanceUsdcx = await ibAlluoUSD.balanceOf({
+            let aliceBalanceUsdcx = await stIbAlluoUSD.balanceOf({
                 account: aliceSigner.address, providerOrSigner: provider
             });
             aliceBalanceUsdcx = ethers.BigNumber.from(aliceBalanceUsdcx.toString())
@@ -713,20 +713,20 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             await sf.cfaV1.updateFlow({
                 sender: aliceSigner.address,
                 receiver: twoWayMarket.address,
-                superToken: ibAlluoUSD.address,
+                superToken: stIbAlluoUSD.address,
                 flowRate: inflowRate.toString(),
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Verfiy closing attempts revert
-            await expect(twoWayMarket.closeStream(aliceSigner.address, ibAlluoUSD.address)).to.revertedWith('!closable');
+            await expect(twoWayMarket.closeStream(aliceSigner.address, stIbAlluoUSD.address)).to.revertedWith('!closable');
             // Advance time 2 hours
             await increaseTime(2 * 3600);
             // Verify closing the stream works
-            aliceBalanceUsdcx = await ibAlluoUSD.balanceOf({
+            aliceBalanceUsdcx = await stIbAlluoUSD.balanceOf({
                 account: aliceSigner.address, providerOrSigner: provider
             });
-            await twoWayMarket.closeStream(aliceSigner.address, ibAlluoUSD.address);
-            expect(await twoWayMarket.getStreamRate(aliceSigner.address, ibAlluoUSD.address)).to.equal('0');
+            await twoWayMarket.closeStream(aliceSigner.address, stIbAlluoUSD.address);
+            expect(await twoWayMarket.getStreamRate(aliceSigner.address, stIbAlluoUSD.address)).to.equal('0');
 
         });
 
