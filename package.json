@@ -64,6 +64,7 @@
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "@uniswap/v2-sdk": "^3.0.1",
     "@uniswap/v3-periphery": "^1.4.1",
+    "graphql": "^16.6.0",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-tracer": "^1.1.0-rc.6",
     "ricochet-exchange-sfcontracts-used": "^1.0.2",
