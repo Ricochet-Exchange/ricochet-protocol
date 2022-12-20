@@ -118,6 +118,10 @@ contract REXTwoWayUniswapMarket is REXMarket {
         market.lastDistributionAt = block.timestamp;
     }
 
+    function updatePoolFees(uint24[] memory _poolFees) external onlyOwner {
+        poolFees = _poolFees;
+    }
+
     function initializeSubsidies(
         uint256 _emissionRate,
         ISuperToken _subsidyToken
