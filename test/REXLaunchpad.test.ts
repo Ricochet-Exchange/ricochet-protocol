@@ -282,7 +282,7 @@ describe('REXLaunchpad', () => {
         });
 
         launchpad = await RicochetLaunchpad.deploy(
-            sf.host.hostContract.address,
+            sf.host.contract.address,
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
@@ -419,6 +419,7 @@ describe('REXLaunchpad', () => {
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["bob"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Alice gets 98% because of referral fee
@@ -436,7 +437,8 @@ describe('REXLaunchpad', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: launchpad.address,
                 sender: aliceSigner.address,
-                superToken: ricochetUSDCx.address
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             expect(
@@ -452,6 +454,7 @@ describe('REXLaunchpad', () => {
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Alice gets 100% as there are no affiliates
@@ -488,6 +491,7 @@ describe('REXLaunchpad', () => {
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             const feeRate = 1000;
@@ -559,6 +563,7 @@ describe('REXLaunchpad', () => {
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             expect(
@@ -568,7 +573,8 @@ describe('REXLaunchpad', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: launchpad.address,
                 sender: aliceSigner.address,
-                superToken: ricochetUSDCx.address
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             expect(
@@ -577,7 +583,8 @@ describe('REXLaunchpad', () => {
         });
     });
 
-    context("#4 - rex launchpad is jailed", async () => {
+    // No longer possible to jail apps
+    xcontext("#4 - rex launchpad is jailed", async () => {
         before(async () => {
             const success = await provider.send('evm_revert', [
                 snapshot
@@ -590,6 +597,7 @@ describe('REXLaunchpad', () => {
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             
 
@@ -598,7 +606,7 @@ describe('REXLaunchpad', () => {
             // Jail the app
             await impersonateAndSetBalance(Constants.CFA_SUPERFLUID_ADDRESS);
             let cfaSigner = await ethers.getSigner(Constants.CFA_SUPERFLUID_ADDRESS)
-            await sf.host.hostContract.connect(cfaSigner).jailApp('0x', launchpad.address, 0) //.exec(cfaSigner);
+            await sf.host.contract.connect(cfaSigner).jailApp('0x', launchpad.address, 0) //.exec(cfaSigner);
 
 
             // Take a snapshot
@@ -644,7 +652,8 @@ describe('REXLaunchpad', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: launchpad.address,
                 sender: aliceSigner.address,
-                superToken: ricochetUSDCx.address
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             await launchpad.emergencyDrain();
@@ -678,9 +687,11 @@ describe('REXLaunchpad', () => {
             const inflowRate = aliceBalanceUsdcx.sub(initialDeposit).div(ethers.BigNumber.from(9 * 3600)).toString();
             // Initialize a streamer with 9 hours of balance
             await sf.cfaV1.updateFlow({
+                sender: aliceSigner.address,
                 receiver: launchpad.address,
                 superToken: ricochetUSDCx.address,
                 flowRate: inflowRate.toString(),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Verfiy closing attempts revert
             await expect(launchpad.closeStream(aliceSigner.address)).to.revertedWith('!closable');

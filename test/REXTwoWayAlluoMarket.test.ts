@@ -384,9 +384,7 @@ describe('REXTwoWayAlluoMarket', () => {
             expect(await twoWayMarket.isAppJailed()).to.equal(false);
 
             // Check there's ibToken dust in the contract
-            console.log("leftover USD?");
             expect(await ibAlluoUSD.balanceOf(twoWayMarket.address)).to.equal(0);
-            console.log("leftover ETH?");
             expect(await ibAlluoETH.balanceOf(twoWayMarket.address)).to.equal(0);
 
             await resetMeasurements();
@@ -415,8 +413,9 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
-            console.log("Create flow alice");
+
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(aliceSigner.address, stIbAlluoUSD.address)
@@ -438,8 +437,8 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoETH.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
-            console.log("Create flow bob");
             // Expect share allocations were done correctly
             expect(
                 await twoWayMarket.getStreamRate(bobSigner.address, stIbAlluoETH.address)
@@ -468,6 +467,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Bob opens a ETH stream to REXMarket
@@ -476,6 +476,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoETH.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true
             }).exec(bobSigner);
 
             await increaseTime(3600)
@@ -484,14 +485,16 @@ describe('REXTwoWayAlluoMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: aliceSigner.address,
-                superToken: stIbAlluoUSD.address
+                superToken: stIbAlluoUSD.address,
+                shouldUseCallAgreement: true
             }).exec(aliceSigner);
 
             // Delete Alices stream before first  distributions
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: bobSigner.address,
-                superToken: stIbAlluoETH.address
+                superToken: stIbAlluoETH.address,
+                shouldUseCallAgreement: true
             }).exec(bobSigner);
 
             await takeMeasurements();
@@ -499,9 +502,6 @@ describe('REXTwoWayAlluoMarket', () => {
             // Check balance for alice again
             let aliceDelta = await delta(aliceSigner, aliceBalances);
             let bobDelta = await delta(bobSigner, bobBalances);
-
-            console.log("babBalances", bobBalances)
-            console.log("aliceBalances", aliceBalances)
 
             // Expect alice didn't lose anything since she closed stream before distribute
             expect(aliceDelta.stIbAlluoUSD).to.equal(0);
@@ -541,6 +541,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Check balance
@@ -563,9 +564,9 @@ describe('REXTwoWayAlluoMarket', () => {
             let deltaOwner = await delta(adminSigner, ownerBalances);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            console.log("Alice got this much stIbAlluoETH", deltaAlice.stIbAlluoETH);
-            console.log("Alice paid this much stIbAlluoUSD", -1 * deltaAlice.stIbAlluoUSD);
-            console.log("stIbAlluoETH/USD rate", -1*deltaAlice.stIbAlluoUSD/deltaAlice.stIbAlluoETH);
+            // console.log("Alice got this much stIbAlluoETH", deltaAlice.stIbAlluoETH);
+            // console.log("Alice paid this much stIbAlluoUSD", -1 * deltaAlice.stIbAlluoUSD);
+            // console.log("stIbAlluoETH/USD rate", -1*deltaAlice.stIbAlluoUSD/deltaAlice.stIbAlluoETH);
             expect(deltaAlice.stIbAlluoETH).to.be.above(deltaAlice.stIbAlluoUSD / oraclePrice * 1e6 * -1 * 0.97)
 
             // Expect Owner and Carl got their fee from Alice
@@ -588,6 +589,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoETH.address,
                 flowRate: inflowRateEth,
+                shouldUseCallAgreement: true,
                 overrides
             }).exec(bobSigner);
 
@@ -599,6 +601,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
                 overrides
             }).exec(aliceSigner);
 
@@ -634,6 +637,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 sender: aliceSigner.address,
                 superToken: stIbAlluoUSD.address,
+                shouldUseCallAgreement: true,
                 overrides,
             }).exec(aliceSigner);
 
@@ -642,6 +646,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 sender: bobSigner.address,
                 superToken: stIbAlluoETH.address,
+                shouldUseCallAgreement: true,
                 overrides,
             }).exec(bobSigner);
 
@@ -656,7 +661,8 @@ describe('REXTwoWayAlluoMarket', () => {
                 sender: karenSigner.address,
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoUSD.address,
-                flowRate: inflowRateUsdc
+                flowRate: inflowRateUsdc,
+                shouldUseCallAgreement: true,
             }).exec(karenSigner);
 
             // Expect share allocations were done correctly
@@ -681,9 +687,11 @@ describe('REXTwoWayAlluoMarket', () => {
         it("#2.2 before/afterAgreementUpdated callbacks", async () => {
 
             await sf.cfaV1.updateFlow({
+                sender: aliceSigner.address,
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc10x,
                 receiver: twoWayMarket.address,
+                shouldUseCallAgreement: true,
                 overrides,
             }).exec(aliceSigner);
 
@@ -707,6 +715,7 @@ describe('REXTwoWayAlluoMarket', () => {
         it("#2.3 two-sided distribution", async () => {
 
             // Check balance
+            await twoWayMarket.distribute("0x");
             await takeMeasurements();
 
             // Fast forward an hour and distribute
@@ -756,6 +765,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Bob opens a ETH stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -763,6 +773,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoETH.address,
                 flowRate: inflowRateEthHalf,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             await sf.cfaV1.createFlow({
@@ -771,6 +782,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRateUsdc,
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
             }).exec(karenSigner);
 
             await increaseTime(3600);
@@ -786,6 +798,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 sender: karenSigner.address,
                 superToken: stIbAlluoUSD.address,
+                shouldUseCallAgreement: true,
                 overrides,
             }).exec(karenSigner);
 
@@ -839,14 +852,16 @@ describe('REXTwoWayAlluoMarket', () => {
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: aliceSigner.address,
-                superToken: stIbAlluoUSD.address
+                superToken: stIbAlluoUSD.address,
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
             // Delete Bobs stream
             await sf.cfaV1.deleteFlow({
                 receiver: twoWayMarket.address,
                 sender: bobSigner.address,
-                superToken: stIbAlluoETH.address
+                superToken: stIbAlluoETH.address,
+                shouldUseCallAgreement: true,
             }).exec(bobSigner);
 
             await twoWayMarket.emergencyDrain(stIbAlluoETH.address);
@@ -896,6 +911,7 @@ describe('REXTwoWayAlluoMarket', () => {
                 receiver: twoWayMarket.address,
                 superToken: stIbAlluoUSD.address,
                 flowRate: inflowRate.toString(),
+                shouldUseCallAgreement: true,
             }).exec(aliceSigner);
             // Verfiy closing attempts revert
             await expect(twoWayMarket.closeStream(aliceSigner.address, stIbAlluoUSD.address)).to.revertedWith('!closable');
