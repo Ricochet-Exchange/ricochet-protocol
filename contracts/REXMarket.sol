@@ -330,20 +330,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     function updateTokenPrice(ISuperToken _token) public {
-        (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        ) = getCurrentValue(market.oracles[_token].requestId);
-
-        require(_ifRetrieve, "!getCurrentValue");
-        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
-
-        market.oracles[_token].usdPrice = _value;
-        market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
-    }
-
-    function updateTokenPrice(ISuperToken _token) public {
         // Optimizing Uniswap V3 consult() code for gas efficiency as we dont need code for harmonicMeanLiquidity
         uint32[] memory secondsAgos = new uint32[](2);
         secondsAgos[0] = secondsAgo;
