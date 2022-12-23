@@ -25,6 +25,7 @@ contract REXTwoWayUniswapMarket is REXMarket {
     ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
     uint24[] public poolFees = [500];
+    address[] public uniswapPath;
 
     // REX Two Way Market Contracts
     // - Swaps the accumulated input tokens for output tokens
@@ -83,7 +84,6 @@ contract REXTwoWayUniswapMarket is REXMarket {
         address inputTokenBUnderlying = address(
             inputTokenB.getUnderlyingToken()
         );
-
         if (inputTokenAUnderlying == address(0)) {
             // inputTokenA is supertoken, approve swap router for it
             inputTokenAUnderlying = address(inputTokenA);
@@ -118,7 +118,13 @@ contract REXTwoWayUniswapMarket is REXMarket {
         market.lastDistributionAt = block.timestamp;
     }
 
-    function updatePoolFees(uint24[] memory _poolFees) external onlyOwner {
+    function initializeUniswap(
+        ISwapRouter02 _uniswapRouter,
+        address[] memory _uniswapPath,
+        uint24[] memory _poolFees
+    ) external onlyOwner {
+        router = _uniswapRouter;
+        uniswapPath = _uniswapPath;
         poolFees = _poolFees;
     }
 
@@ -209,14 +215,14 @@ contract REXTwoWayUniswapMarket is REXMarket {
         // If we have more tokenA than we need, swap the surplus to inputTokenB
         if (tokenHave < tokenAAmount) {
             tokenHave = tokenAAmount - tokenHave;
-            _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
+            _swap(inputTokenA, inputTokenB, tokenHave);
             // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
             tokenHave =
                 (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
                 market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
-            _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
+            _swap(inputTokenB, inputTokenA, tokenHave);
         }
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
@@ -405,12 +411,10 @@ contract REXTwoWayUniswapMarket is REXMarket {
     function _swap(
         ISuperToken input,
         ISuperToken output,
-        uint256 amount,
-        uint256 deadline
+        uint256 amount
     ) internal returns (uint256) {
         address inputToken; // The underlying input token address
         address outputToken; // The underlying output token address
-        address[] memory path; // The path to take
         uint256 minOutput; // The minimum amount of output tokens based on Tellor
         uint256 outputAmount; // The balance before the swap
 
@@ -443,14 +447,9 @@ contract REXTwoWayUniswapMarket is REXMarket {
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(inputToken).decimals()));
 
-        // Assumes a direct path to swap input/output
-        path = new address[](2);
-        path[0] = inputToken;
-        path[1] = outputToken;
-
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
-                path: _getEncodedPath(path, poolFees),
+                path: _getEncodedPath(uniswapPath, poolFees),
                 recipient: address(this),
                 amountIn: amount,
                 amountOutMinimum: minOutput

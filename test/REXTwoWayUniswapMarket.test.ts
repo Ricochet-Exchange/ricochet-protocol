@@ -312,7 +312,15 @@ describe('REXTwoWayUniswapMarket', () => {
             20000,
             20000
         );
-        console.log("=========== Initialized TwoWayMarket ============");
+
+        // Initialize the uniswap data
+        await twoWayMarket.initializeUniswap(
+            "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45", // Uniswap router address
+            [ethers.utils.getAddress(ricochetUSDCx.underlyingToken!.address), "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"], // [USDC, WETH]
+            [500]
+        )
+
+        console.log("=========== Initialized Uniswap ============");
 
         await twoWayMarket.initializeSubsidies(subsidyRate, ricochetRIC.address);
         console.log("========== Initialized subsidies ===========");
