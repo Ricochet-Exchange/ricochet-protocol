@@ -301,8 +301,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint128 _shareScaler
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
-        require(_requestId != 0, "!validReqId");
-        require(market.oracles[_token].pool == 0, "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
 
         OutputPool memory _newPool = OutputPool(
