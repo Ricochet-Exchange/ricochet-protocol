@@ -331,6 +331,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
 
     function updateTokenPrice(ISuperToken _token) public {
         // Optimizing Uniswap V3 consult() code for gas efficiency as we dont need code for harmonicMeanLiquidity
+        // Copied from Uniswap V3 consult(), but removed the harmonicMeanLiquidity code
         uint32[] memory secondsAgos = new uint32[](2);
         secondsAgos[0] = secondsAgo;
         secondsAgos[1] = 0;
