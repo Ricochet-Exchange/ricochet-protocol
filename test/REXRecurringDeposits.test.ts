@@ -22,7 +22,7 @@ describe("RecurringDeposits", () => {
       const mockSuperToken = await MockSuperToken.deploy(mockERC20.address);
       
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
-      const recurringDeposits = await RecurringDeposits.deploy(mockSuperToken.address, period);
+      const recurringDeposits = await RecurringDeposits.deploy(mockSuperToken.address, period, 25);
 
       // Approve the contract to spend alice and bob's tokens
       await mockERC20.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
@@ -72,6 +72,8 @@ describe("RecurringDeposits", () => {
       // Schedule a recurring deposit
       const amount = ethers.utils.parseEther("1");
       const times = 1;
+      const feeRateScaler = 10000;
+      const feeRate = await recurringDeposits.feeRate();
       await recurringDeposits.connect(alice).scheduleDeposit(amount, times);
 
       // Get the token balances for alice
@@ -92,9 +94,13 @@ describe("RecurringDeposits", () => {
       const finalERC20Balance = await mockERC20.balanceOf(alice.getAddress());
       const finalSuperTokenBalance = await mockSuperToken.balanceOf(alice.getAddress());
 
+      // Get the depolyer's balance of the deposit token
+      const deployerERC20Balance = await mockERC20.balanceOf(deployer.getAddress());
+
       // Check that the deposit has been performed
-      expect(finalERC20Balance.sub(initialERC20Balance).toString()).to.equal((amount.mul(-1)).toString(), "Incorrect amount deposited");
-      expect(finalSuperTokenBalance.sub(initialSuperTokenBalance).toString()).to.equal(amount.toString(), "Incorrect amount minted");
+      expect(finalERC20Balance.sub(initialERC20Balance).toString()).to.equal(amount.mul(-1).toString(), "Incorrect amount deposited");
+      expect(deployerERC20Balance.toString()).to.equal((amount.mul(feeRate).div(feeRateScaler)).toString(), "Incorrect fee taken");
+      expect(finalSuperTokenBalance.sub(initialSuperTokenBalance).toString()).to.equal((amount.mul(feeRateScaler-feeRate).div(feeRateScaler)).toString(), "Incorrect amount received");
       const scheduledDeposit = await recurringDeposits.scheduledDeposits(0);
       expect(scheduledDeposit.times.toString()).to.equal("0", "Incorrect number of times");
     });

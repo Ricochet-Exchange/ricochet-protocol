@@ -2,10 +2,13 @@ pragma solidity ^0.8.0;
 
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract RecurringDeposits {
+contract RecurringDeposits is Ownable {
   ISuperToken public depositToken;
   uint256 public period;
+  uint256 public feeRate;
+  uint256 public feeRateScaler;
 
   struct ScheduledDeposit {
     uint256 amount;
@@ -25,7 +28,8 @@ contract RecurringDeposits {
 
   event DepositPerformed(
     address indexed depositor,
-    uint256 amount
+    uint256 amount,
+    uint256 fee
   );
 
   event DepositScheduled(
@@ -35,9 +39,11 @@ contract RecurringDeposits {
     uint256 nextDepositTime
   );
 
-  constructor(ISuperToken _depositToken, uint256 _period) public {
+  constructor(ISuperToken _depositToken, uint256 _period, uint256 _feeRate) public {
     depositToken = _depositToken;
     period = _period;
+    feeRate = _feeRate;
+    feeRateScaler = 10000;
     nextIndex = 0;
 
     // Approve the deposit token to be spent by this contract
@@ -98,14 +104,24 @@ contract RecurringDeposits {
   }
 
   function _performDeposit(address _depositor, uint _amount) internal {
-      
-
-
+    uint fee = _amount * feeRate / feeRateScaler; // Calculate the fee
+    uint depositAmount = _amount - fee; // Calculate the amount to be deposited after deducting the fee
+    
+    
+    // Transfer the deposit amount from the depositor to the contract
     ERC20(depositToken.getUnderlyingToken()).transferFrom(_depositor, address(this), _amount);
-    depositToken.upgradeTo(_depositor, _amount, '');
+
+    // Transfer the fee to the contract owner
+    ERC20(depositToken.getUnderlyingToken()).transfer(owner(), fee);
+
+    // Upgrade the deposit amount to SuperTokens
+    depositToken.upgradeTo(_depositor, depositAmount, '');
+
+    // Emit the DepositPerformed event
     emit DepositPerformed(
       _depositor,
-      _amount
+      depositAmount,
+      fee
     );
   }
 
