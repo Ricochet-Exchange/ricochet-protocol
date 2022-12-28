@@ -2,7 +2,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MockSupertoken is ERC20 {
+contract MockSuperToken is ERC20 {
 
   ERC20 public underlyingToken;
 
@@ -15,5 +15,14 @@ contract MockSupertoken is ERC20 {
   function upgrade(uint amount) public {
     require(underlyingToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
     _mint(msg.sender, amount);
+  }
+
+  function upgradeTo(address to, uint amount, bytes calldata data) public {
+    require(underlyingToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+    _mint(to, amount);
+  }
+
+  function getUnderlyingToken() public view returns (address) {
+    return address(underlyingToken);
   }
 }

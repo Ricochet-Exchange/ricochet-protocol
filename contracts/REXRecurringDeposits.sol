@@ -1,9 +1,10 @@
 pragma solidity ^0.8.0;
 
-import ERC20 from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract RecurringDeposits {
-  ERC20 public depositToken;
+  ISuperToken public depositToken;
   uint256 public period;
 
   struct ScheduledDeposit {
@@ -12,9 +13,10 @@ contract RecurringDeposits {
     uint256 nextDepositTime;
     address owner;
     uint256 next;
+    uint256 prev;
   }
 
-  
+  // Use a first-in-first-out queue to store the scheduled deposits
   mapping(uint256 => ScheduledDeposit) public scheduledDeposits;
   mapping(address => uint256) public depositIndices;
   uint256 public nextIndex;
@@ -22,72 +24,96 @@ contract RecurringDeposits {
   uint256 public tail;
 
   event DepositPerformed(
-    uint256 indexed _index,
-    uint256 _amount,
-    uint256 _times,
-    uint256 _nextDepositTime
+    address indexed depositor,
+    uint256 amount
   );
 
-  constructor(ERC20 _depositToken, uint256 _period) public {
+  event DepositScheduled(
+    address indexed depositor,
+    uint256 amount,
+    uint256 times,
+    uint256 nextDepositTime
+  );
+
+  constructor(ISuperToken _depositToken, uint256 _period) public {
     depositToken = _depositToken;
     period = _period;
     nextIndex = 0;
+
+    // Approve the deposit token to be spent by this contract
+    ERC20(depositToken.getUnderlyingToken()).approve(address(depositToken), type(uint256).max);
   }
 
-  function scheduleDeposit(uint256 amount, uint256 times) public {
-    ScheduledDeposit deposit = ScheduledDeposit(
-      amount,
-      times,
-      now.add(period),
+  function scheduleDeposit(uint256 _amount, uint256 _times) public {
+    ScheduledDeposit memory deposit = ScheduledDeposit(
+      _amount,
+      _times,
+      block.timestamp + period,
       msg.sender,
+      0,
       0
     );
     scheduledDeposits[nextIndex] = deposit;
-    depositIndices[msg.sender] = nextIndex;
-    if (tail == 0) {
+    if (head == 0) {
       head = nextIndex;
-      tail = nextIndex;
     } else {
       scheduledDeposits[tail].next = nextIndex;
-      tail = nextIndex;
+      deposit.prev = tail;
     }
-    nextIndex = nextIndex.add(1);
+    tail = nextIndex;
+    nextIndex = nextIndex + 1;
+    emit DepositScheduled(
+      msg.sender,
+      _amount,
+      _times,
+      block.timestamp + period
+    );
   }
 
+
   function performNextDeposit() public {
-    require(head != 0, "Queue is empty");
-    ScheduledDeposit deposit = scheduledDeposits[head];
-    require(deposit.nextDepositTime <= now, "Next deposit time has not yet passed");
+    ScheduledDeposit storage deposit = scheduledDeposits[head];
+    uint depositAmount = deposit.amount;
+    address depositor = deposit.owner;
+    require(deposit.nextDepositTime <= block.timestamp, "Next deposit time has not yet passed");
     if (deposit.times > 0) {
       deposit.times -= 1;
     }
-    deposit.nextDepositTime = now.add(period);
     if (deposit.times == 0) {
+      delete scheduledDeposits[head];
       head = deposit.next;
       if (head == 0) {
         tail = 0;
+      } else {
+        scheduledDeposits[head].prev = 0;
       }
-    }
-    if (deposit.times > 0) {
-      scheduledDeposits[head].times = deposit.times;
-      scheduledDeposits[head].nextDepositTime = deposit.nextDepositTime;
+    } else {
       scheduledDeposits[tail].next = head;
+      deposit.prev = tail;
+      deposit.next = 0;
       tail = head;
     }
+    deposit.nextDepositTime = block.timestamp + period;
+    _performDeposit(depositor, depositAmount);
+  }
+
+  function _performDeposit(address _depositor, uint _amount) internal {
+      
+
+
+    ERC20(depositToken.getUnderlyingToken()).transferFrom(_depositor, address(this), _amount);
+    depositToken.upgradeTo(_depositor, _amount, '');
     emit DepositPerformed(
-      head,
-      deposit.amount,
-      deposit.times,
-      deposit.nextDepositTime
+      _depositor,
+      _amount
     );
   }
 
   function cancelScheduledDeposit() public {
     uint256 index = depositIndices[msg.sender];
-    require(index != 0, "No scheduled deposit found for account");
-    ScheduledDeposit deposit = scheduledDeposits[index];
+    ScheduledDeposit memory deposit = scheduledDeposits[index];
+    require(deposit.owner == msg.sender, "No scheduled deposit found for this address");
     delete scheduledDeposits[index];
-
     // Update the prev and next fields of the surrounding scheduled deposits
     if (deposit.next != 0) {
       scheduledDeposits[deposit.next].prev = deposit.prev;
