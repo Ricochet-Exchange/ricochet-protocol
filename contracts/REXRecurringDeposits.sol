@@ -3,8 +3,15 @@ pragma solidity ^0.8.0;
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "./gelato/OpsTaskCreator.sol";
+import "hardhat/console.sol";
 
-contract RecurringDeposits is Ownable {
+// TODO:
+// 1. Implement a RIC gas tank, require some RIC to be deposited to the contract and use it to pay for gas
+// 2. Implement a way to edit a scheduled deposit
+// 3. Incorporate the REX Referral contract
+
+contract RecurringDeposits is Ownable, OpsTaskCreator {
   ISuperToken public depositToken;
   uint256 public period;
   uint256 public feeRate;
@@ -26,6 +33,15 @@ contract RecurringDeposits is Ownable {
   uint256 public head;
   uint256 public tail;
 
+  // Gelato task variables
+  uint256 public count;
+  uint256 public lastExecuted;
+  bytes32 public taskId;
+  uint256 public constant MAX_COUNT = 5;
+  uint256 public constant INTERVAL = 1 minutes;
+
+  event ProcessNextDepositTaskCreated(bytes32 taskId);
+
   event DepositPerformed(
     address indexed depositor,
     uint256 amount,
@@ -39,7 +55,7 @@ contract RecurringDeposits is Ownable {
     uint256 nextDepositTime
   );
 
-  constructor(ISuperToken _depositToken, uint256 _period, uint256 _feeRate) public {
+  constructor(ISuperToken _depositToken, uint256 _period, uint256 _feeRate, address payable _ops, address _taskCreator) OpsTaskCreator(_ops, _taskCreator) {
     depositToken = _depositToken;
     period = _period;
     feeRate = _feeRate;
@@ -49,6 +65,31 @@ contract RecurringDeposits is Ownable {
     // Approve the deposit token to be spent by this contract
     ERC20(depositToken.getUnderlyingToken()).approve(address(depositToken), type(uint256).max);
   }
+
+  // Gelato Create Task
+  receive() external payable {}
+
+  function createTask() external payable {
+      require(taskId == bytes32(""), "Already started task");
+
+      bytes memory execData = abi.encodeCall(this.performNextDeposit, ());
+
+      ModuleData memory moduleData = ModuleData({
+          modules: new Module[](2),
+          args: new bytes[](2)
+      });
+      moduleData.modules[0] = Module.TIME;
+      moduleData.modules[1] = Module.PROXY;
+
+      moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
+      moduleData.args[1] = _proxyModuleArg();
+
+      bytes32 id = _createTask(address(this), execData, moduleData, ETH);
+
+      taskId = id;
+      emit ProcessNextDepositTaskCreated(id);
+  }
+
 
   function scheduleDeposit(uint256 _amount, uint256 _times) public {
     ScheduledDeposit memory deposit = ScheduledDeposit(

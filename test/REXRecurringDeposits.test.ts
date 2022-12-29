@@ -9,6 +9,7 @@ describe("RecurringDeposits", () => {
     let bob: SignerWithAddress;
     let mockSuperToken: any;
     let recurringDeposits: any;
+    const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
 
     const deploy = async (period: number) => {
       const MockERC20 = await ethers.getContractFactory("MockERC20");
@@ -21,8 +22,9 @@ describe("RecurringDeposits", () => {
       const MockSuperToken = await ethers.getContractFactory("MockSuperToken");
       const mockSuperToken = await MockSuperToken.deploy(mockERC20.address);
       
+      console.log("Recurring deposits");
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
-      const recurringDeposits = await RecurringDeposits.deploy(mockSuperToken.address, period, 25);
+      const recurringDeposits = await RecurringDeposits.deploy(mockSuperToken.address, period, 25, GELATO_OPS, deployer.address, { gasLimit: 10000000 });
 
       // Approve the contract to spend alice and bob's tokens
       await mockERC20.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
