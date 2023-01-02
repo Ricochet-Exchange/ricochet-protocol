@@ -13,6 +13,7 @@ import "hardhat/console.sol";
 
 contract RecurringDeposits is Ownable, OpsTaskCreator {
   ISuperToken public depositToken;
+  ERC20 public gasToken;
   uint256 public period;
   uint256 public feeRate;
   uint256 public feeRateScaler;
@@ -26,12 +27,15 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     uint256 prev;
   }
 
-  // Use a first-in-first-out queue to store the scheduled deposits
+  // Use a linked list to store the scheduled deposits
   mapping(uint256 => ScheduledDeposit) public scheduledDeposits;
   mapping(address => uint256) public depositIndices;
   uint256 public nextIndex;
   uint256 public head;
   uint256 public tail;
+
+  // Keep track of gas for each account using this contract
+  mapping(address => uint256) pubic gasTank;
 
   // Gelato task variables
   uint256 public count;
@@ -55,8 +59,9 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     uint256 nextDepositTime
   );
 
-  constructor(ISuperToken _depositToken, uint256 _period, uint256 _feeRate, address payable _ops, address _taskCreator) OpsTaskCreator(_ops, _taskCreator) {
+  constructor(ISuperToken _depositToken, ERC20 _gasToken uint256 _period, uint256 _feeRate, address payable _ops, address _taskCreator) OpsTaskCreator(_ops, _taskCreator) {
     depositToken = _depositToken;
+    gasToken = _gasToken;
     period = _period;
     feeRate = _feeRate;
     feeRateScaler = 10000;
@@ -117,6 +122,20 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     );
   }
 
+  // Gas Tank Functions
+  // - Gas tank takes gasTokens and sells them for MATIC to reimburse the user for gas costs
+  function depositGas(uint amount) public  {
+    // Require they have a scheduled deposit
+    require(scheduledDeposits[depositIndices[msg.sender]].owner == msg.sender, "No scheduled deposit found for this account");
+    gasToken.transferFrom(msg.sender, address(this), amount);
+    gasTank[msg.sender] += amount;
+  }
+
+  function withdrawGas(uint amount) public  {
+    require(amount <= gasTank[msg.sender], "Not enough gas in the tank");
+    gasTank[msg.sender] -= amount;
+    gasToken.transferFrom(address(this), msg.sender, amount);
+  }
 
   function performNextDeposit() public {
     ScheduledDeposit storage deposit = scheduledDeposits[head];
@@ -142,6 +161,13 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     }
     deposit.nextDepositTime = block.timestamp + period;
     _performDeposit(depositor, depositAmount);
+
+    // Gelato transaction pays for itself
+    (uint256 fee, address feeToken) = _getFeeDetails();
+
+    // Swap the gasTokens for MATIC on uniswap 
+
+    _transfer(fee, feeToken);
   }
 
   function _performDeposit(address _depositor, uint _amount) internal {
