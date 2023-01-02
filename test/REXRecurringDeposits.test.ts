@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { network, ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
@@ -9,25 +9,58 @@ describe("RecurringDeposits", () => {
     let mockSuperToken: any;
     let recurringDeposits: any;
     const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
+    const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
+    const RIC_HOLDER = "0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"; // Ricochet holder
+    const UNISWAP_ROUTER = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"; // Mainnet Uniswap Router Address
 
     const deploy = async (period: number) => {
+      // Get RIC token at contract address
+      const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
+
+      // Impersonate a large RIC token holder and transfer RIC to alice and bob
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        // Ricochet holder
+        params: ["0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"],
+      });
+      const ricHolder = await ethers.getSigner(RIC_HOLDER);
+      await ricToken.connect(ricHolder).transfer(alice.getAddress(), ethers.utils.parseEther("1000"));
+      await ricToken.connect(ricHolder).transfer(bob.getAddress(), ethers.utils.parseEther("1000"));
+
+      // Make a mock token for scheduled deposits
       const MockERC20 = await ethers.getContractFactory("MockERC20");
       const mockERC20 = await MockERC20.deploy("MockERC20", "MERC20");
-
+    
       // Mint alice and bob some tokens
       await mockERC20.mint(alice.getAddress(), ethers.utils.parseEther("1000"));
       await mockERC20.mint(bob.getAddress(), ethers.utils.parseEther("1000"));
 
+
+      // Make a corresponding mock super token for mockERC20
       const MockSuperToken = await ethers.getContractFactory("MockSuperToken");
       const mockSuperToken = await MockSuperToken.deploy(mockERC20.address);
       
       console.log("Recurring deposits");
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
-      const recurringDeposits = await RecurringDeposits.deploy(mockSuperToken.address, period, 25, GELATO_OPS, deployer.address, { gasLimit: 10000000 });
+      const recurringDeposits = await RecurringDeposits.deploy(
+          mockSuperToken.address, 
+          ricToken.address,
+          UNISWAP_ROUTER,
+          period, 
+          25, 
+          GELATO_OPS, 
+          deployer.address, 
+          { gasLimit: 10000000 }
+      );
+      await recurringDeposits.deployed();
+      await recurringDeposits.createTask();
 
       // Approve the contract to spend alice and bob's tokens
+      await ricToken.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
+      await ricToken.connect(bob).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
       await mockERC20.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
       await mockERC20.connect(bob).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
+
       
       return { recurringDeposits, mockSuperToken, mockERC20 };
     };

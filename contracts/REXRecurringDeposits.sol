@@ -1,10 +1,12 @@
+// SPDX-License-Identifier: All rights reserved
 pragma solidity ^0.8.0;
 
-import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "./gelato/OpsTaskCreator.sol";
+import "./superswap/interfaces/IV3SwapRouter.sol";
+import "./matic/IWMATIC.sol";
 import "hardhat/console.sol";
 
 // TODO:
@@ -14,6 +16,9 @@ import "hardhat/console.sol";
 // 4. Gelato integration: create task, txn pays for itself
 
 contract RecurringDeposits is Ownable, OpsTaskCreator {
+
+    IWMATIC public constant WMATIC = IWMATIC(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+
     ISuperToken public depositToken;
     ERC20 public gasToken;
     uint256 public period;
@@ -47,9 +52,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     uint256 public constant INTERVAL = 1 minutes;
 
     // Uniswap integration variables
-    ISwapRouter02 public router;
-    uint24[] public poolFees;
-    address[] public uniswapPath;
+    IV3SwapRouter public router;
 
     // Events
     event ProcessNextDepositTaskCreated(bytes32 taskId);
@@ -70,6 +73,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     constructor(
         ISuperToken _depositToken,
         ERC20 _gasToken,
+        IV3SwapRouter _uniswapRouter,
         uint256 _period,
         uint256 _feeRate,
         address payable _ops,
@@ -77,6 +81,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     ) OpsTaskCreator(_ops, _taskCreator) {
         depositToken = _depositToken;
         gasToken = _gasToken;
+        router = _uniswapRouter;
         period = _period;
         feeRate = _feeRate;
         feeRateScaler = 10000;
@@ -110,35 +115,27 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         emit ProcessNextDepositTaskCreated(id);
     }
 
-    // Initializes Uniswap v3
-    function initializeUniswap(
-        ISwapRouter02 _uniswapRouter,
-        address[] memory _uniswapPath,
-        uint24[] memory _poolFees
-    ) external onlyOwner {
-        router = _uniswapRouter;
-        uniswapPath = _uniswapPath;
-        poolFees = _poolFees;
-    }
-
     // Uniswap V3 Helper functions
 
-    // Wrapper around uniswap v3 swap
-    function _swap(
+    // Swaps deposit tokens and repays the gas
+    function _swapAndPay(
         uint256 amountOut,
         uint256 amountInMaximum,
-        address[] memory path,
         uint24 fee
     ) internal {
-        ISwapRouter.ExactOutputParams memory params = ISwapRouter
-            .ExactOutputParams({
-                path: path,
+
+        // Swap gasTokens for to pay Gelato 
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+                path: abi.encodePacked(gasToken, fee, ETH),
                 recipient: address(this),
-                deadline: block.timestamp + 1 minutes,
                 amountOut: amountOut,
                 amountInMaximum: amountInMaximum
             });
-        router.exactOutput(params, fee);
+
+        uint amountIn = router.exactOutput(params);
+
+        // Deduct the amount of gasToken used to pay for the swap
+        gasTank[msg.sender] -= amountIn;
     }
 
     // Gas Tank Functions
@@ -222,6 +219,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         (uint256 fee, address feeToken) = _getFeeDetails();
 
         // Swap the gasTokens for MATIC on uniswap
+        _swapAndPay(fee, type(uint256).max, 500);
 
         _transfer(fee, feeToken);
     }
