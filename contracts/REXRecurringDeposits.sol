@@ -1,5 +1,6 @@
 pragma solidity ^0.8.0;
 
+import "@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,12 +11,17 @@ import "hardhat/console.sol";
 // 1. Implement a RIC gas tank, require some RIC to be deposited to the contract and use it to pay for gas
 // 2. Implement a way to edit a scheduled deposit
 // 3. Incorporate the REX Referral contract
+// 4. Gelato integration: create task, txn pays for itself
 
 contract RecurringDeposits is Ownable, OpsTaskCreator {
   ISuperToken public depositToken;
   uint256 public period;
   uint256 public feeRate;
   uint256 public feeRateScaler;
+
+  uint24[] public poolFees = [500];
+  address[] public uniswapPath;
+  IUniswapV3Factory public uniswapFactory; // Address of deployed uniswap factory
 
   struct ScheduledDeposit {
     uint256 amount;
@@ -64,32 +70,51 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
     // Approve the deposit token to be spent by this contract
     ERC20(depositToken.getUnderlyingToken()).approve(address(depositToken), type(uint256).max);
+
   }
 
-  // Gelato Create Task
   receive() external payable {}
 
-  function createTask() external payable {
+  // Creates the performNextDeposit task on Gelato Network
+  function createTask() external payable onlyOwner {
       require(taskId == bytes32(""), "Already started task");
-
       bytes memory execData = abi.encodeCall(this.performNextDeposit, ());
-
       ModuleData memory moduleData = ModuleData({
           modules: new Module[](2),
           args: new bytes[](2)
       });
       moduleData.modules[0] = Module.TIME;
       moduleData.modules[1] = Module.PROXY;
-
       moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
       moduleData.args[1] = _proxyModuleArg();
-
       bytes32 id = _createTask(address(this), execData, moduleData, ETH);
-
       taskId = id;
       emit ProcessNextDepositTaskCreated(id);
   }
 
+  // Initialize Uniswap v3
+    function initializeUniswap(
+        ISwapRouter02 _uniswapRouter,
+        address[] memory _uniswapPath,
+        uint24[] memory _poolFees
+    ) external onlyOwner {
+        router = _uniswapRouter;
+        uniswapPath = _uniswapPath;
+        poolFees = _poolFees;
+    }
+
+  // Wrapper around uniswap v3 swap
+  function _swap(uint256 amountIn, uint256 amountOutMin, address[] memory path, uint24 fee) internal {
+    ISwapRouter.ExactInputParams memory params =
+      ISwapRouter.ExactInputParams({
+        path: path,
+        recipient: address(this),
+        deadline: block.timestamp,
+        amountIn: amountIn,
+        amountOutMinimum: amountOutMin
+      });
+    router.exactInput(params, fee);
+  }
 
   function scheduleDeposit(uint256 _amount, uint256 _times) public {
     ScheduledDeposit memory deposit = ScheduledDeposit(
