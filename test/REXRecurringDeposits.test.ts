@@ -11,7 +11,7 @@ describe("RecurringDeposits", () => {
     const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
     const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
     const RIC_HOLDER = "0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"; // Ricochet holder
-    const UNISWAP_ROUTER = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"; // Mainnet Uniswap Router Address
+    const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet Uniswap Router Address
 
     const deploy = async (period: number) => {
       // Get RIC token at contract address
@@ -62,7 +62,7 @@ describe("RecurringDeposits", () => {
       await mockERC20.connect(bob).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
 
       
-      return { recurringDeposits, mockSuperToken, mockERC20 };
+      return { recurringDeposits, mockSuperToken, mockERC20, ricToken };
     };
   
     before(async () => {
@@ -79,11 +79,42 @@ describe("RecurringDeposits", () => {
       const period = await recurringDeposits.period();
       expect(depositTokenAddress).to.equal(mockSuperToken.address, "Incorrect deposit token address");
       expect(period.toString()).to.equal("3600", "Incorrect period");
+      expect(await recurringDeposits.gelatoOps()).to.equal(GELATO_OPS, "Incorrect Gelato Ops address");
+
     });
+
+    it("1.2 Creates the gelato task", async () => {
+
+    });
+  
+  });
+
+  // Create a new context and test case for the depositGas and withdrawGas functions in REXRecurringDeposits.sol
+  context.only("2 Gas Tank", () => {
+    
+    it("2.1 Deposit and withdraw gas works", async () => {
+      const { recurringDeposits, ricToken } = await deploy(3600);
+
+      // Create a new scheduled deposit
+      let createDeposit = await recurringDeposits.connect(alice).scheduleDeposit(ethers.utils.parseEther("1000"), 1);
+
+      // Deposit gas for alice
+      let depositGas = await recurringDeposits.connect(alice).depositGas(ethers.utils.parseEther("1000"));
+      expect(await recurringDeposits.gasTank(alice.address)).to.equal(ethers.utils.parseEther("1000") , "Incorrect deposit gas");
+      expect(await ricToken.balanceOf(alice.address)).to.equal(0, "Incorrect ric balance after deposit");
+
+      // Withdraw gas for alice
+      let withdrawGas = await recurringDeposits.connect(alice).withdrawGas(ethers.utils.parseEther("1000"));
+      expect(await recurringDeposits.gasTank(alice.address)).to.equal(0, "Incorrect withdraw gas"); 
+      expect(await ricToken.balanceOf(alice.address)).to.equal(ethers.utils.parseEther("1000"), "Incorrect ric balance after withdraw");
+
+    });
+
   });
 
     
   context("2 Scheduling a recurring deposit", () => {
+
     it("2.1 User can schedule a recurring deposit", async () => {
       // Deploy the Supertoken and RecurringDeposits contracts
       const { recurringDeposits, mockSuperToken } = await deploy(3600);

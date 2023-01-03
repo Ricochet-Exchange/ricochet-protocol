@@ -34,16 +34,12 @@ abstract contract OpsReady {
      * _taskCreator is the address which will create tasks for this contract.
      */
     constructor(address _ops, address _taskCreator) {
-        console.log("ops address:", _ops);
-        console.log("task creator address:", _taskCreator);
         ops = IOps(_ops);
         _gelato = IOps(_ops).gelato();
-        console.log("gelato address:", address(_gelato));
         bool test;
         (dedicatedMsgSender, test) = IOpsProxyFactory(OPS_PROXY_FACTORY).getProxyOf(
             _taskCreator
         );
-        console.log("dedicated msg sender address:", dedicatedMsgSender);
     }
 
     /**
