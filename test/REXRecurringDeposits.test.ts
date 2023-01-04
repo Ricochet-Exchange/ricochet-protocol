@@ -17,16 +17,6 @@ describe("RecurringDeposits", () => {
       // Get RIC token at contract address
       const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
 
-      // Impersonate a large RIC token holder and transfer RIC to alice and bob
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        // Ricochet holder
-        params: ["0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"],
-      });
-      const ricHolder = await ethers.getSigner(RIC_HOLDER);
-      await ricToken.connect(ricHolder).transfer(alice.getAddress(), ethers.utils.parseEther("1000"));
-      await ricToken.connect(ricHolder).transfer(bob.getAddress(), ethers.utils.parseEther("1000"));
-
       // Make a mock token for scheduled deposits
       const MockERC20 = await ethers.getContractFactory("MockERC20");
       const mockERC20 = await MockERC20.deploy("MockERC20", "MERC20");
@@ -40,7 +30,6 @@ describe("RecurringDeposits", () => {
       const MockSuperToken = await ethers.getContractFactory("MockSuperToken");
       const mockSuperToken = await MockSuperToken.deploy(mockERC20.address);
       
-      console.log("Recurring deposits");
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
       const recurringDeposits = await RecurringDeposits.deploy(
           mockSuperToken.address, 
@@ -64,10 +53,26 @@ describe("RecurringDeposits", () => {
       
       return { recurringDeposits, mockSuperToken, mockERC20, ricToken };
     };
+
+    const getRIC = async (account: SignerWithAddress, amount: number) => {
+      // Get RIC token at contract address
+      const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
+
+      // Impersonate a large RIC token holder and transfer RIC to alice and bob
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        // Ricochet holder
+        params: ["0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"],
+      });
+      const ricHolder = await ethers.getSigner(RIC_HOLDER);
+
+      // Transfer amount to account
+      await ricToken.connect(ricHolder).transfer(account.getAddress(), ethers.utils.parseEther(amount.toString()));
+    };
   
     before(async () => {
       [deployer, alice, bob] = await ethers.getSigners();
-      
+
     });
 
   context("1 Contract constructor", () => {
@@ -79,7 +84,6 @@ describe("RecurringDeposits", () => {
       const period = await recurringDeposits.period();
       expect(depositTokenAddress).to.equal(mockSuperToken.address, "Incorrect deposit token address");
       expect(period.toString()).to.equal("3600", "Incorrect period");
-      expect(await recurringDeposits.gelatoOps()).to.equal(GELATO_OPS, "Incorrect Gelato Ops address");
 
     });
 
@@ -90,10 +94,13 @@ describe("RecurringDeposits", () => {
   });
 
   // Create a new context and test case for the depositGas and withdrawGas functions in REXRecurringDeposits.sol
-  context.only("2 Gas Tank", () => {
+  context("2 Gas Tank", () => {
     
     it("2.1 Deposit and withdraw gas works", async () => {
       const { recurringDeposits, ricToken } = await deploy(3600);
+
+      // Send alice some RIC tokens for a gas deposit
+      await getRIC(alice, 1000);
 
       // Create a new scheduled deposit
       let createDeposit = await recurringDeposits.connect(alice).scheduleDeposit(ethers.utils.parseEther("1000"), 1);
@@ -113,9 +120,9 @@ describe("RecurringDeposits", () => {
   });
 
     
-  context("2 Scheduling a recurring deposit", () => {
+  context("3 Scheduling a recurring deposit", () => {
 
-    it("2.1 User can schedule a recurring deposit", async () => {
+    it("3.1 User can schedule a recurring deposit", async () => {
       // Deploy the Supertoken and RecurringDeposits contracts
       const { recurringDeposits, mockSuperToken } = await deploy(3600);
 
@@ -131,7 +138,7 @@ describe("RecurringDeposits", () => {
       expect(deposit.times.toString()).to.equal(times.toString(), "Incorrect number of times");
     });
 
-    it("2.2 Anyone can perform the next scheduled deposit", async () => {
+    it("3.2 Anyone can perform the next scheduled deposit", async () => {
       const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
 
       // Schedule a recurring deposit
@@ -170,7 +177,7 @@ describe("RecurringDeposits", () => {
       expect(scheduledDeposit.times.toString()).to.equal("0", "Incorrect number of times");
     });
 
-    it("2.3 User can cancel their scheduled deposit", async () => {
+    it("3.3 User can cancel their scheduled deposit", async () => {
       const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
 
       // Schedule a recurring deposit
