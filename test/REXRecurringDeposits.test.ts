@@ -1,6 +1,7 @@
 import { network, ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { BigNumber } from "ethers";
 
 describe("RecurringDeposits", () => {
     let deployer: SignerWithAddress;
@@ -9,21 +10,25 @@ describe("RecurringDeposits", () => {
     let mockSuperToken: any;
     let recurringDeposits: any;
     const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
+    const USDC_TOKEN = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Mainnet USDC Token Address
     const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
     const RIC_HOLDER = "0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"; // Ricochet holder
     const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet Uniswap Router Address
+    const ONE_ETH = BigNumber.from("1000000");
 
     const deploy = async (period: number) => {
       // Get RIC token at contract address
       const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
+      const usdcToken = await ethers.getContractAt("MockERC20", USDC_TOKEN);
+      const gasToken = usdcToken;
 
       // Make a mock token for scheduled deposits
       const MockERC20 = await ethers.getContractFactory("MockERC20");
       const mockERC20 = await MockERC20.deploy("MockERC20", "MERC20");
     
       // Mint alice and bob some tokens
-      await mockERC20.mint(alice.getAddress(), ethers.utils.parseEther("1000"));
-      await mockERC20.mint(bob.getAddress(), ethers.utils.parseEther("1000"));
+      await mockERC20.mint(alice.getAddress(), ONE_ETH);
+      await mockERC20.mint(bob.getAddress(), ONE_ETH);
 
 
       // Make a corresponding mock super token for mockERC20
@@ -33,7 +38,7 @@ describe("RecurringDeposits", () => {
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
       const recurringDeposits = await RecurringDeposits.deploy(
           mockSuperToken.address, 
-          ricToken.address,
+          usdcToken.address,
           UNISWAP_ROUTER,
           period, 
           25, 
@@ -45,18 +50,18 @@ describe("RecurringDeposits", () => {
       await recurringDeposits.createTask();
 
       // Approve the contract to spend alice and bob's tokens
-      await ricToken.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
-      await ricToken.connect(bob).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
-      await mockERC20.connect(alice).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
-      await mockERC20.connect(bob).approve(recurringDeposits.address, ethers.utils.parseEther("1000"));
+      await gasToken.connect(alice).approve(recurringDeposits.address, ONE_ETH);
+      await gasToken.connect(bob).approve(recurringDeposits.address, ONE_ETH);
+      await mockERC20.connect(alice).approve(recurringDeposits.address, ONE_ETH);
+      await mockERC20.connect(bob).approve(recurringDeposits.address, ONE_ETH);
 
       
-      return { recurringDeposits, mockSuperToken, mockERC20, ricToken };
+      return { recurringDeposits, mockSuperToken, mockERC20, gasToken };
     };
 
-    const getRIC = async (account: SignerWithAddress, amount: number) => {
-      // Get RIC token at contract address
-      const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
+    const getTokens = async (account: SignerWithAddress, tokenAddress: string, amount: BigNumber) => {
+      // Get token at contract address
+      const token = await ethers.getContractAt("MockERC20", tokenAddress);
 
       // Impersonate a large RIC token holder and transfer RIC to alice and bob
       await network.provider.request({
@@ -67,7 +72,7 @@ describe("RecurringDeposits", () => {
       const ricHolder = await ethers.getSigner(RIC_HOLDER);
 
       // Transfer amount to account
-      await ricToken.connect(ricHolder).transfer(account.getAddress(), ethers.utils.parseEther(amount.toString()));
+      await token.connect(ricHolder).transfer(account.getAddress(), amount);
     };
   
     before(async () => {
@@ -97,23 +102,23 @@ describe("RecurringDeposits", () => {
   context("2 Gas Tank", () => {
     
     it("2.1 Deposit and withdraw gas works", async () => {
-      const { recurringDeposits, ricToken } = await deploy(3600);
+      const { recurringDeposits, gasToken } = await deploy(3600);
 
       // Send alice some RIC tokens for a gas deposit
-      await getRIC(alice, 1000);
+      await getTokens(alice, gasToken.address, ONE_ETH);
 
       // Create a new scheduled deposit
-      let createDeposit = await recurringDeposits.connect(alice).scheduleDeposit(ethers.utils.parseEther("1000"), 1);
+      let createDeposit = await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, 1);
 
       // Deposit gas for alice
-      let depositGas = await recurringDeposits.connect(alice).depositGas(ethers.utils.parseEther("1000"));
-      expect(await recurringDeposits.gasTank(alice.address)).to.equal(ethers.utils.parseEther("1000") , "Incorrect deposit gas");
-      expect(await ricToken.balanceOf(alice.address)).to.equal(0, "Incorrect ric balance after deposit");
+      let depositGas = await recurringDeposits.connect(alice).depositGas(ONE_ETH);
+      expect(await recurringDeposits.gasTank(alice.address)).to.equal(ONE_ETH , "Incorrect deposit gas");
+      expect(await gasToken.balanceOf(alice.address)).to.equal(0, "Incorrect ric balance after deposit");
 
       // Withdraw gas for alice
-      let withdrawGas = await recurringDeposits.connect(alice).withdrawGas(ethers.utils.parseEther("1000"));
+      let withdrawGas = await recurringDeposits.connect(alice).withdrawGas(ONE_ETH);
       expect(await recurringDeposits.gasTank(alice.address)).to.equal(0, "Incorrect withdraw gas"); 
-      expect(await ricToken.balanceOf(alice.address)).to.equal(ethers.utils.parseEther("1000"), "Incorrect ric balance after withdraw");
+      expect(await gasToken.balanceOf(alice.address)).to.equal(ONE_ETH, "Incorrect ric balance after withdraw");
 
     });
 
@@ -127,14 +132,13 @@ describe("RecurringDeposits", () => {
       const { recurringDeposits, mockSuperToken } = await deploy(3600);
 
       // Schedule a recurring deposit
-      const amount = await ethers.BigNumber.from("1000");
       const times = await ethers.BigNumber.from("10");
-      await recurringDeposits.connect(alice).scheduleDeposit(amount, times);
+      await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
 
       // Check that the deposit was scheduled correctly
       const owner = (await recurringDeposits.depositIndices(alice.getAddress())).toString();
       const deposit = await recurringDeposits.scheduledDeposits(owner);
-      expect(deposit.amount.toString()).to.equal(amount.toString(), "Incorrect deposit amount");
+      expect(deposit.amount.toString()).to.equal(ONE_ETH.toString(), "Incorrect deposit amount");
       expect(deposit.times.toString()).to.equal(times.toString(), "Incorrect number of times");
     });
 
@@ -142,11 +146,10 @@ describe("RecurringDeposits", () => {
       const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
 
       // Schedule a recurring deposit
-      const amount = ethers.utils.parseEther("1");
       const times = 1;
       const feeRateScaler = 10000;
       const feeRate = await recurringDeposits.feeRate();
-      await recurringDeposits.connect(alice).scheduleDeposit(amount, times);
+      await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
 
       // Get the token balances for alice
       const initialERC20Balance = await mockERC20.balanceOf(alice.getAddress());
@@ -157,7 +160,7 @@ describe("RecurringDeposits", () => {
       await ethers.provider.send("evm_mine", []);
 
       // Approve the contract to spend the depositor's tokens
-      await mockERC20.connect(alice).approve(recurringDeposits.address, amount);
+      await mockERC20.connect(alice).approve(recurringDeposits.address, ONE_ETH);
 
       // Perform the next deposit
       await recurringDeposits.performNextDeposit();
@@ -170,9 +173,9 @@ describe("RecurringDeposits", () => {
       const deployerERC20Balance = await mockERC20.balanceOf(deployer.getAddress());
 
       // Check that the deposit has been performed
-      expect(finalERC20Balance.sub(initialERC20Balance).toString()).to.equal(amount.mul(-1).toString(), "Incorrect amount deposited");
-      expect(deployerERC20Balance.toString()).to.equal((amount.mul(feeRate).div(feeRateScaler)).toString(), "Incorrect fee taken");
-      expect(finalSuperTokenBalance.sub(initialSuperTokenBalance).toString()).to.equal((amount.mul(feeRateScaler-feeRate).div(feeRateScaler)).toString(), "Incorrect amount received");
+      expect(finalERC20Balance.sub(initialERC20Balance).toString()).to.equal(ONE_ETH.mul(-1).toString(), "Incorrect amount deposited");
+      expect(deployerERC20Balance.toString()).to.equal((ONE_ETH.mul(feeRate).div(feeRateScaler)).toString(), "Incorrect fee taken");
+      expect(finalSuperTokenBalance.sub(initialSuperTokenBalance).toString()).to.equal((ONE_ETH.mul(feeRateScaler-feeRate).div(feeRateScaler)).toString(), "Incorrect amount received");
       const scheduledDeposit = await recurringDeposits.scheduledDeposits(0);
       expect(scheduledDeposit.times.toString()).to.equal("0", "Incorrect number of times");
     });
@@ -181,12 +184,11 @@ describe("RecurringDeposits", () => {
       const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
 
       // Schedule a recurring deposit
-      const amount = ethers.utils.parseEther("1");
       const times = 1;
-      await recurringDeposits.connect(alice).scheduleDeposit(amount, times);
+      await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
 
       // Approve the contract to spend the depositor's tokens
-      await mockERC20.connect(alice).approve(recurringDeposits.address, amount);
+      await mockERC20.connect(alice).approve(recurringDeposits.address, ONE_ETH);
 
       // Cancel the deposit
       await recurringDeposits.connect(alice).cancelScheduledDeposit();

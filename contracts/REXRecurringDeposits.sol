@@ -115,29 +115,6 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         emit ProcessNextDepositTaskCreated(id);
     }
 
-    // Uniswap V3 Helper functions
-
-    // Swaps deposit tokens and repays the gas
-    function _swapAndPay(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint24 fee
-    ) internal {
-
-        // Swap gasTokens for to pay Gelato 
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-                path: abi.encodePacked(gasToken, fee, ETH),
-                recipient: address(this),
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum
-            });
-
-        uint amountIn = router.exactOutput(params);
-
-        // Deduct the amount of gasToken used to pay for the swap
-        gasTank[msg.sender] -= amountIn;
-    }
-
     // Gas Tank Functions
     // - Gas tank takes gasTokens and sells them for MATIC to reimburse the user for gas costs
     function depositGas(uint256 amount) public {
@@ -146,14 +123,15 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
             scheduledDeposits[depositIndices[msg.sender]].owner == msg.sender,
             "No scheduled deposit found for this account"
         );
-        gasToken.transferFrom(msg.sender, address(this), amount);
+        require(gasToken.transferFrom(msg.sender, address(this), amount));
         gasTank[msg.sender] += amount;
+
     }
 
     function withdrawGas(uint256 amount) public {
         require(amount <= gasTank[msg.sender], "Not enough gas in the tank");
         gasTank[msg.sender] -= amount;
-        gasToken.transferFrom(address(this), msg.sender, amount);
+        gasToken.transfer(msg.sender, amount);
     }
 
     // Recurring Deposit Functions
@@ -218,10 +196,11 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         // Gelato transaction pays for itself
         (uint256 fee, address feeToken) = _getFeeDetails();
 
-        // Swap the gasTokens for MATIC on uniswap
-        _swapAndPay(fee, type(uint256).max, 500);
-
-        _transfer(fee, feeToken);
+        // If the gelato executor is paying for the transaction, pay for the gas for them
+        if(fee > 0) {
+            _swapAndPay(fee, type(uint256).max, 500);
+            _transfer(fee, feeToken);
+        }
     }
 
     // Perform a deposit (upgrade) for a specific user for a specific amount
@@ -272,5 +251,31 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         }
 
         delete depositIndices[msg.sender];
+    }
+
+    // Uniswap V3 Helper functions
+
+    // Swaps deposit tokens and repays the gas
+    function _swapAndPay(
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        uint24 fee
+    ) internal {
+
+        // Swap gasTokens for to pay Gelato 
+        console.log("amountOut", amountOut);
+        console.log("amountInMaximum", amountInMaximum);
+
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+                path: abi.encodePacked(gasToken, fee, ETH),
+                recipient: address(this),
+                amountOut: amountOut,
+                amountInMaximum: amountInMaximum
+        });
+
+        uint amountIn = router.exactOutput(params);
+
+        // Deduct the amount of gasToken used to pay for the swap
+        gasTank[msg.sender] -= amountIn;
     }
 }
