@@ -57,6 +57,7 @@ interface IV3SwapRouter is IV3SwapCallback {
     struct ExactOutputParams {
         bytes path;
         address recipient;
+        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
     }

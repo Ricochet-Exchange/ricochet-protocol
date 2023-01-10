@@ -127,6 +127,8 @@ describe("RecurringDeposits", () => {
     
   context("3 Scheduling a recurring deposit", () => {
 
+    console.log("Inside context 3");
+
     it("3.1 User can schedule a recurring deposit", async () => {
       // Deploy the Supertoken and RecurringDeposits contracts
       const { recurringDeposits, mockSuperToken } = await deploy(3600);
@@ -163,7 +165,7 @@ describe("RecurringDeposits", () => {
       await mockERC20.connect(alice).approve(recurringDeposits.address, ONE_ETH);
 
       // Perform the next deposit
-      await recurringDeposits.performNextDeposit();
+      await recurringDeposits.performNextDeposit({ gasLimit: 1000000});
 
       // Get the balance of the depositor after the deposit
       const finalERC20Balance = await mockERC20.balanceOf(alice.getAddress());

@@ -9,11 +9,6 @@ import "./superswap/interfaces/IV3SwapRouter.sol";
 import "./matic/IWMATIC.sol";
 import "hardhat/console.sol";
 
-// TODO:
-// 1. Implement a RIC gas tank, require some RIC to be deposited to the contract and use it to pay for gas
-// 2. Implement a way to edit a scheduled deposit
-// 3. Incorporate the REX Referral contract
-// 4. Gelato integration: create task, txn pays for itself
 
 contract RecurringDeposits is Ownable, OpsTaskCreator {
 
@@ -92,6 +87,9 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
             address(depositToken),
             type(uint256).max
         );
+
+        // Approve the router to spend the gasTokens
+        gasToken.approve(address(router), type(uint256).max);
     }
 
     receive() external payable {}
@@ -166,6 +164,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
     // Polled by gelato to perform the next deposit, gas tank is used to reimburse the user for gas costs
     function performNextDeposit() public {
+        uint gasUsed = gasleft(); 
         ScheduledDeposit storage deposit = scheduledDeposits[head];
         uint256 depositAmount = deposit.amount;
         address depositor = deposit.owner;
@@ -195,11 +194,18 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
         // Gelato transaction pays for itself
         (uint256 fee, address feeToken) = _getFeeDetails();
+        console.log("feeToken", feeToken);
 
         // If the gelato executor is paying for the transaction, pay for the gas for them
         if(fee > 0) {
-            _swapAndPay(fee, type(uint256).max, 500);
+            _swap(fee, type(uint256).max, 500);
             _transfer(fee, feeToken);
+        } else {
+            gasUsed = gasUsed - gasleft();
+            fee = gasUsed * tx.gasprice;
+            _swap(fee, type(uint256).max, 500);
+
+            payable(msg.sender).transfer(fee);
         }
     }
 
@@ -256,7 +262,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     // Uniswap V3 Helper functions
 
     // Swaps deposit tokens and repays the gas
-    function _swapAndPay(
+    function _swap(
         uint256 amountOut,
         uint256 amountInMaximum,
         uint24 fee
@@ -265,13 +271,23 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         // Swap gasTokens for to pay Gelato 
         console.log("amountOut", amountOut);
         console.log("amountInMaximum", amountInMaximum);
-
+        console.log("fee", fee);
+        console.log("gasToken", address(gasToken));
+        console.log("WMATIC", address(WMATIC));
+   
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-                path: abi.encodePacked(gasToken, fee, ETH),
+                path: abi.encodePacked(address(gasToken), fee, address(WMATIC)),
                 recipient: address(this),
+                deadline: block.timestamp + 3600,
                 amountOut: amountOut,
                 amountInMaximum: amountInMaximum
         });
+        // console.log("params.path", params.path);
+        console.log("params.recipient", params.recipient);
+        console.log("params.deadline", params.deadline);
+        console.log("block.timestamp", block.timestamp);
+        console.log("params.amountOut", params.amountOut);
+        console.log("params.amountInMaximum", params.amountInMaximum);
 
         uint amountIn = router.exactOutput(params);
 
