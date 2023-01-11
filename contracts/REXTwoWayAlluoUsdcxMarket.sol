@@ -34,10 +34,8 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
-        uint256 _inputTokenARequestId,
         uint128 _inputTokenAShareScaler,
         ISuperToken _inputTokenB,
-        uint256 _inputTokenBRequestId,
         uint128 _inputTokenBShareScaler,
         uint128 _feeRate,
         uint256 _rateTolerance
@@ -52,7 +50,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
             inputTokenB,
             _feeRate,
             0,
-            _inputTokenBRequestId,
             _inputTokenBShareScaler
         );
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
@@ -86,7 +83,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
             _subsidyToken,
             0,
             _emissionRate,
-            77,
             market.outputPools[OUTPUTB_INDEX].shareScaler
         );
 
@@ -99,7 +95,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
         uint128 _shareScaler
     ) public override onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
@@ -116,8 +111,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
         // updateTokenPrice(_token);
     }
 

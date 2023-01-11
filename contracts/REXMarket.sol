@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "./tellor/ITellor.sol";
 import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
@@ -45,12 +44,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       ISuperToken token;
     }
 
-    struct OracleInfo {
-        uint256 requestId;
-        uint256 usdPrice;
-        uint256 lastUpdatedAt;
-    }
-
     struct OutputPool {
         ISuperToken token;
         uint128 feeRate; // Fee taken by the DAO on each output distribution
@@ -65,7 +58,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint128 feeRate;
         uint128 affiliateFee;
         address owner; // The owner of the market (reciever of fees)
-        mapping(ISuperToken => OracleInfo) oracles; // Maps tokens to their oracle info
         mapping(uint32 => OutputPool) outputPools; // Maps IDA indexes to their distributed Supertokens
         mapping(ISuperToken => uint32) outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
         uint8 numOutputPools; // Indexes outputPools and outputPoolFees
@@ -74,7 +66,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellor public oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -211,16 +202,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return market.outputPools[_index];
     }
 
-    /// @dev Get output token address
-    /// @return output token address
-    function getOracleInfo(ISuperToken token)
-        external
-        view
-        returns (OracleInfo memory)
-    {
-        return market.oracles[token];
-    }
-
     /// @dev Get last distribution timestamp
     /// @return last distribution timestamp
     function getLastDistributionAt() external view returns (uint256) {
@@ -266,7 +247,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function initializeMarket(
         ISuperToken _inputToken,
         uint256 _rateTolerance,
-        ITellor _tellor,
         uint256 _inputTokenRequestId,
         uint128 _affiliateFee,
         uint128 _feeRate
@@ -279,22 +259,15 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.rateTolerance = _rateTolerance;
         market.affiliateFee = _affiliateFee;
         market. feeRate = _feeRate;
-        oracle = _tellor;
-        OracleInfo memory _newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
-        market.oracles[market.inputToken] = _newOracle;
-        updateTokenPrice(_inputToken);
     }
 
     function addOutputPool(
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
         uint128 _shareScaler
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
-        require(_requestId != 0, "!validReqId");
-        require(market.oracles[_token].requestId == 0, "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
 
         OutputPool memory _newPool = OutputPool(
@@ -307,54 +280,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
-        updateTokenPrice(_token);
-    }
-
-    // Standardized functionality for all REX Markets
-
-    // Oracle Functions
-
-    function updateTokenPrices() public {
-      updateTokenPrice(market.inputToken);
-      for (uint32 index = 0; index < market.numOutputPools; index++) {
-          updateTokenPrice(market.outputPools[index].token);
-      }
-    }
-
-    function updateTokenPrice(ISuperToken _token) public {
-        (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        ) = getCurrentValue(market.oracles[_token].requestId);
-
-        require(_ifRetrieve, "!getCurrentValue");
-        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
-
-        market.oracles[_token].usdPrice = _value;
-        market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
-    }
-
-    function getCurrentValue(uint256 _requestId)
-        public
-        view
-        returns (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        )
-    {
-        uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
-        _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
-            _requestId,
-            _count - 1
-        );
-        _value = oracle.retrieveData(_requestId, _timestampRetrieved);
-
-        if (_value > 0) return (true, _value, _timestampRetrieved);
-        return (false, 0, _timestampRetrieved);
     }
 
     /// @dev Get flow rate for `_streamer`

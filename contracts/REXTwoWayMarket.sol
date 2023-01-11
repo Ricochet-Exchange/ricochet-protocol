@@ -22,7 +22,6 @@ contract REXTwoWayMarket is REXMarket {
     ISuperToken subsidyToken;
     IUniswapV2Router02 router =
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-    ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
     // REX Two Way Market Contracts
     // - Swaps the accumulated input tokens for output tokens
@@ -38,10 +37,8 @@ contract REXTwoWayMarket is REXMarket {
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
-        uint256 _inputTokenARequestId,
         uint128 _inputTokenAShareScaler,
         ISuperToken _inputTokenB,
-        uint256 _inputTokenBRequestId,
         uint128 _inputTokenBShareScaler,
         uint128 _feeRate,
         uint256 _rateTolerance
@@ -50,7 +47,6 @@ contract REXTwoWayMarket is REXMarket {
         inputTokenB = _inputTokenB;
         market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
         market.rateTolerance = _rateTolerance;
-        oracle = tellor;
         market.feeRate = _feeRate;
         market.affiliateFee = 500000;
         require(
@@ -61,14 +57,12 @@ contract REXTwoWayMarket is REXMarket {
             inputTokenA,
             _feeRate,
             0,
-            _inputTokenARequestId,
             _inputTokenAShareScaler
         );
         addOutputPool(
             inputTokenB,
             _feeRate,
             0,
-            _inputTokenBRequestId,
             _inputTokenBShareScaler
         );
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
@@ -130,14 +124,12 @@ contract REXTwoWayMarket is REXMarket {
             _subsidyToken,
             0,
             _emissionRate,
-            77,
             market.outputPools[OUTPUTB_INDEX].shareScaler
         );
         addOutputPool(
             _subsidyToken,
             0,
             _emissionRate,
-            77,
             market.outputPools[OUTPUTA_INDEX].shareScaler
         );
         lastDistributionTokenAAt = block.timestamp;
@@ -150,7 +142,6 @@ contract REXTwoWayMarket is REXMarket {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
         uint128 _shareScaler
     ) public override onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
@@ -167,9 +158,6 @@ contract REXTwoWayMarket is REXMarket {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
-        updateTokenPrice(_token);
     }
 
     function distribute(bytes memory ctx)
@@ -179,36 +167,25 @@ contract REXTwoWayMarket is REXMarket {
     {
         newCtx = ctx;
 
-        require(
-            market
-                .oracles[market.outputPools[OUTPUTA_INDEX].token]
-                .lastUpdatedAt >= block.timestamp - 3600,
-            "!currentValueA"
-        );
-        require(
-            market
-                .oracles[market.outputPools[OUTPUTB_INDEX].token]
-                .lastUpdatedAt >= block.timestamp - 3600,
-            "!currentValueB"
-        );
-
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         uint256 tokenAAmount = inputTokenA.balanceOf(address(this));
         uint256 tokenBAmount = inputTokenB.balanceOf(address(this));
 
+        // TODO: Calculate the amount of tokenA and tokenB we need to have
         // Check how much inputTokenA we have already from tokenB
-        uint256 tokenHave = (tokenBAmount *
-            market.oracles[inputTokenB].usdPrice) /
-            market.oracles[inputTokenA].usdPrice;
+        uint256 tokenHave = 0;
+            // (tokenBAmount *
+            // market.oracles[inputTokenB].usdPrice) /
+            // market.oracles[inputTokenA].usdPrice;
         // If we have more tokenA than we need, swap the surplus to inputTokenB
         if (tokenHave < tokenAAmount) {
             tokenHave = tokenAAmount - tokenHave;
             _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
             // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
-            tokenHave =
-                (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
-                market.oracles[inputTokenB].usdPrice;
+            tokenHave = 0;
+                // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
+                // market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
             _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
         }
@@ -386,7 +363,7 @@ contract REXTwoWayMarket is REXMarket {
         address inputToken; // The underlying input token address
         address outputToken; // The underlying output token address
         address[] memory path; // The path to take
-        uint256 minOutput; // The minimum amount of output tokens based on Tellor
+        uint256 minOutput; // The minimum amount of output tokens based on oracle
         uint256 outputAmount; // The balance before the swap
 
         inputToken = input.getUnderlyingToken();
@@ -408,13 +385,14 @@ contract REXTwoWayMarket is REXMarket {
             outputToken = address(output);
         }
 
-        minOutput =
-            (amount * market.oracles[input].usdPrice) /
-            market.oracles[output].usdPrice;
-        minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
+        // TODO: Calculate minOutput based on oracle
+        minOutput = 0;
+            // (amount * market.oracles[input].usdPrice) /
+            // market.oracles[output].usdPrice;
+        // minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
 
         // Scale back from 1e18 to outputToken decimals
-        minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
+        // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(inputToken).decimals()));
 

@@ -30,7 +30,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
     // Quickswap
     IUniswapV2Router02 router =
         IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-    ITellor tellor = ITellor(0xACC2d27400029904919ea54fFc0b18Bf07C57875);
 
     // REX Two Way Alluo Market
     // - Accepts ibAlluoXXX and convert it to ibAlluoYYY (both directions)
@@ -47,10 +46,8 @@ contract REXTwoWayAlluoMarket is REXMarket {
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
-        uint256 _inputTokenARequestId,
         uint128 _inputTokenAShareScaler,
         ISuperToken _inputTokenB,
-        uint256 _inputTokenBRequestId,
         uint128 _inputTokenBShareScaler,
         uint128 _feeRate,
         uint256 _rateTolerance
@@ -59,7 +56,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
         inputTokenB = _inputTokenB;
         market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
         market.rateTolerance = _rateTolerance;
-        oracle = tellor;
         market.feeRate = _feeRate;
         market.affiliateFee = 500000;
         require(
@@ -70,14 +66,12 @@ contract REXTwoWayAlluoMarket is REXMarket {
             inputTokenA,
             _feeRate,
             0,
-            _inputTokenARequestId,
             _inputTokenAShareScaler
         );
         addOutputPool(
             inputTokenB,
             _feeRate,
             0,
-            _inputTokenBRequestId,
             _inputTokenBShareScaler
         );
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
@@ -131,14 +125,12 @@ contract REXTwoWayAlluoMarket is REXMarket {
             _subsidyToken,
             0,
             _emissionRate,
-            77,
             market.outputPools[OUTPUTB_INDEX].shareScaler
         );
         addOutputPool(
             _subsidyToken,
             0,
             _emissionRate,
-            77,
             market.outputPools[OUTPUTA_INDEX].shareScaler
         );
         lastDistributionTokenAAt = block.timestamp;
@@ -151,7 +143,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate,
-        uint256 _requestId,
         uint128 _shareScaler
     ) public override onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
@@ -168,9 +159,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
-        updateTokenPrice(_token);
     }
 
     function distribute(bytes memory ctx)
@@ -183,28 +171,17 @@ contract REXTwoWayAlluoMarket is REXMarket {
         IbAlluo ibTokenA = IbAlluo(inputTokenA.getUnderlyingToken());
         IbAlluo ibTokenB = IbAlluo(inputTokenB.getUnderlyingToken());
 
-        require(
-            market
-                .oracles[market.outputPools[OUTPUTA_INDEX].token]
-                .lastUpdatedAt >= block.timestamp - 3600,
-            "!cva"
-        );
-        require(
-            market
-                .oracles[market.outputPools[OUTPUTB_INDEX].token]
-                .lastUpdatedAt >= block.timestamp - 3600,
-            "!cvb"
-        );
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         ibTokenA.updateRatio();
         ibTokenB.updateRatio();
         uint256 tokenAAmount = inputTokenA.balanceOf(address(this)) * ibTokenA.growingRatio() / 1e18;
         uint256 tokenBAmount = inputTokenB.balanceOf(address(this)) * ibTokenB.growingRatio() / 1e18;
 
+        // TODO: get token price from oracle
+
         // Check how much inputTokenA we have already from tokenB
-        uint256 tokenHave = (tokenBAmount *
-            market.oracles[inputTokenB].usdPrice) /
-            market.oracles[inputTokenA].usdPrice;
+        // TODO: calculate token have using oracle
+        uint256 tokenHave = 0; // tokenBAmount * tokenBprice / tokenAPrice;
 
         uint256 minOutput;
         // If we have more tokenA than we need, swap the surplus to inputTokenB
@@ -231,9 +208,10 @@ contract REXTwoWayAlluoMarket is REXMarket {
             inputTokenB.upgrade(ibTokenB.balanceOf(address(this)));
         // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
-            tokenHave =
-                (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
-                market.oracles[inputTokenB].usdPrice;
+            // TODO: Calculate token have using oracle
+            tokenHave = 0;
+                // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
+                // market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
 
             // Convert token have B to ibAlluoB amount

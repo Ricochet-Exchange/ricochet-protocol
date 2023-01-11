@@ -32,10 +32,8 @@ async function main() {
 
   await rexTwoWayAlluoMarket.initializeTwoWayMarket(
     Constants.USDCX_ADDRESS,
-    Constants.TELLOR_USDC_REQUEST_ID,
     1,
     Constants.IBALLUOUSD_ADDRESS,
-    Constants.TELLOR_USDC_REQUEST_ID,
     1,
     0, // no fee
     20000,

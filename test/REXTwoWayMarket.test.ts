@@ -5,7 +5,7 @@ import { expect, should } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
+import { REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
 import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
@@ -16,7 +16,6 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -77,7 +76,6 @@ describe('REXTwoWayMarket', () => {
         sfRegistrationKey: any,
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
-        tp: TellorPlayground,
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
@@ -193,7 +191,6 @@ describe('REXTwoWayMarket', () => {
             superTokens,
             contracts,
             constants,
-            tellor,
         } = await setup();
         console.log("============ Right after initSuperfluid() ==================");
 
@@ -206,7 +203,6 @@ describe('REXTwoWayMarket', () => {
         accountss = accounts;
         sfRegistrationKey = createSFRegistrationKey;
         constant = constants;
-        tp = tellor;
 
         // This order is established in misc/setup.ts
         adminSigner = accountss[0];
@@ -284,30 +280,10 @@ describe('REXTwoWayMarket', () => {
         );
         console.log("=========== Deployed REXTwoWayMarket ============");
 
-        // Update the oracles
-        let httpService = new HttpService();
-        // const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + Constants.COINGECKO_KEY + "&vs_currencies=usd";
-        // let response = await httpService.get(url);
-        // oraclePrice = parseInt(response.data[Constants.COINGECKO_KEY].usd) * ORACLE_PRECISION_DIGITS;
-        oraclePrice = 1925000000; // close price on block 31926750
-        console.log("oraclePrice: ", oraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-        ricOraclePrice = 1710000;
-        console.log("RIC oraclePrice: ", ricOraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        maticOraclePrice = 2680000;
-        console.log("MATIC oraclePrice: ", maticOraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_MATIC_REQUEST_ID, maticOraclePrice);
-        console.log("=========== Updated the oracles ============");
-        // IMPORTANT --> the oracles must be updated before calling initializeTwoWayMarket
-
         await twoWayMarket.initializeTwoWayMarket(
             ricochetUSDCx.address,
-            Constants.TELLOR_USDC_REQUEST_ID,
             1e7,
             ricochetETHx.address,
-            Constants.TELLOR_ETH_REQUEST_ID,
             1e9,
             20000,
             20000
@@ -560,10 +536,6 @@ describe('REXTwoWayMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
@@ -575,6 +547,7 @@ describe('REXTwoWayMarket', () => {
             let deltaOwner = await delta(adminSigner, ownerBalances);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
+            console.log(deltaAlice.usdcx, oraclePrice)
             expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * 1e6 * -1 * 0.97)
             // Expect Owner and Carl got their fee from Alice
             expect(deltaCarl.ethx / (deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx)).to.within(0.00999, 0.0100001)
@@ -721,10 +694,6 @@ describe('REXTwoWayMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
@@ -924,11 +893,6 @@ describe('REXTwoWayMarket', () => {
                 snapshot
             ]);
 
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await twoWayMarket.updateTokenPrices();
-
             // Deploy RIC-USDC Rex Market
             const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
 
@@ -943,10 +907,8 @@ describe('REXTwoWayMarket', () => {
             console.log("=========== Deployed REXTwoWayMarket ============");
             await twoWayMarket.initializeTwoWayMarket(
                 ricochetRIC.address,
-                Constants.TELLOR_RIC_REQUEST_ID,
                 1e9,
                 ricochetUSDCx.address,
-                Constants.TELLOR_USDC_REQUEST_ID,
                 1e9,
                 20000,
                 20000
@@ -1021,10 +983,6 @@ describe('REXTwoWayMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
@@ -1062,10 +1020,6 @@ describe('REXTwoWayMarket', () => {
             await takeMeasurements();
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
@@ -1099,10 +1053,6 @@ describe('REXTwoWayMarket', () => {
                 snapshot
             ]);
 
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_MATIC_REQUEST_ID, maticOraclePrice);
-
             // Deploy RIC-USDC Rex Market
             const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
 
@@ -1117,10 +1067,8 @@ describe('REXTwoWayMarket', () => {
             console.log("=========== Deployed REXTwoWayMarket ============");
             await twoWayMarket.initializeTwoWayMarket(
                 ricochetMATICx.address,
-                Constants.TELLOR_MATIC_REQUEST_ID,
                 1e9,
                 ricochetUSDCx.address,
-                Constants.TELLOR_USDC_REQUEST_ID,
                 1e9,
                 20000,
                 20000
@@ -1195,10 +1143,6 @@ describe('REXTwoWayMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_MATIC_REQUEST_ID, maticOraclePrice);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
             // Check balances again
             await takeMeasurements();
@@ -1232,10 +1176,6 @@ describe('REXTwoWayMarket', () => {
             await takeMeasurements();
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_MATIC_REQUEST_ID, maticOraclePrice);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
