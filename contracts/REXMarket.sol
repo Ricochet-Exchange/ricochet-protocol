@@ -159,21 +159,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
     }
 
-
-
-    /// @dev Set rate tolerance
-    /// @param _rate This is the new rate we need to set to
-    function setRateTolerance(uint256 _rate) external onlyOwner {
-        market.rateTolerance = _rate;
-    }
-
-    /// @dev Sets fee rate for a output pool/token
-    /// @param _index IDA index for the output pool/token
-    /// @param _feeRate Fee rate for the output pool/token
-    function setFeeRate(uint32 _index, uint128 _feeRate) external onlyOwner {
-        market.outputPools[_index].feeRate = _feeRate;
-    }
-
     /// @dev Sets emission rate for a output pool/token
     /// @param _index IDA index for the output pool/token
     /// @param _emissionRate Emission rate for the output pool/token
@@ -184,13 +169,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.outputPools[_index].emissionRate = _emissionRate;
     }
 
-    // Getters
-
-    /// @dev Get input token address
-    /// @return input token address
-    function getInputToken() external view returns (ISuperToken) {
-        return market.inputToken;
-    }
 
     /// @dev Get output token address
     /// @return output token address
@@ -206,25 +184,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     /// @return last distribution timestamp
     function getLastDistributionAt() external view returns (uint256) {
         return market.lastDistributionAt;
-    }
-
-    /// @dev Is app jailed in SuperFluid protocol
-    /// @return is app jailed in SuperFluid protocol
-    function isAppJailed() external view returns (bool) {
-        return host.isAppJailed(this);
-    }
-
-    /// @dev Get rate tolerance
-    /// @return Rate tolerance scaled to 1e6
-    function getRateTolerance() external view returns (uint256) {
-        return market.rateTolerance;
-    }
-
-    /// @dev Get fee rate for a given output pool/token
-    /// @param _index IDA index for the output pool/token
-    /// @return Fee rate for the output pool
-    function getFeeRate(uint32 _index) external view returns (uint128) {
-        return market.outputPools[_index].feeRate;
     }
 
     /// @dev Get emission rate for a given output pool/token

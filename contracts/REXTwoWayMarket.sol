@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+// import tickmath
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import "./REXMarket.sol";
 import './ISETHCustom.sol';
+import "./superswap/interfaces/ISwapRouter02.sol";
 
 contract REXTwoWayMarket is REXMarket {
     using SafeERC20 for ERC20;
@@ -20,8 +23,11 @@ contract REXTwoWayMarket is REXMarket {
     uint256 lastDistributionTokenBAt;
     address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
     ISuperToken subsidyToken;
-    IUniswapV2Router02 router =
-        IUniswapV2Router02(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+    ISwapRouter02 router;
+    IUniswapV3Pool uniswapPool;
+    uint24[] public poolFees = [500];
+    address[] public uniswapPath;
+    address poolAddress;
 
     // REX Two Way Market Contracts
     // - Swaps the accumulated input tokens for output tokens
@@ -68,47 +74,45 @@ contract REXTwoWayMarket is REXMarket {
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
-        // Approvals for sushiswap and upgrading tokens
-        address inputTokenAUnderlying = address(
-            inputTokenA.getUnderlyingToken()
-        );
-        address inputTokenBUnderlying = address(
-            inputTokenB.getUnderlyingToken()
-        );
+        address inputTokenAUnderlying = _getUnderlyingToken(inputTokenA);
+        address inputTokenBUnderlying = _getUnderlyingToken(inputTokenB);
 
-        if (inputTokenAUnderlying == address(0)) {
-            // inputTokenA is supertoken, approve swap router for it
-            inputTokenAUnderlying = address(inputTokenA);
-        } else {
-            // otherwise approve underlying for upgrade
+        if (inputTokenAUnderlying != address(inputTokenA)) {
             ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
                 address(inputTokenA),
                 2**256 - 1
             );
         }
 
-        if (inputTokenBUnderlying == address(0)) {
-            // inputTokenB is supertoken, approve swap router for it
-            inputTokenBUnderlying = address(inputTokenB);
-        } else {
-            // otherwise approve underlying for upgrade
+        if (inputTokenBUnderlying != address(inputTokenB)) {
             ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
                 address(inputTokenB),
                 2**256 - 1
             );
         }
 
-        ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
-            address(router),
-            2**256 - 1
-        );
-        ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
-            address(router),
-            2**256 - 1
-        );
-
         market.lastDistributionAt = block.timestamp;
     }
+
+    // function get the underlying tokens for token a and b, if token
+    // is a supertoken, then the underlying is the supertoken itself
+    function _getUnderlyingToken(ISuperToken _token)
+        internal
+        view
+        returns (address)
+    {
+        address underlyingToken = address(
+            _token.getUnderlyingToken()
+        );
+
+        if (underlyingToken == address(0)) {
+            underlyingToken = address(_token);
+        }
+
+        return underlyingToken;
+    }
+
+
 
     function initializeSubsidies(
         uint256 _emissionRate,
@@ -136,6 +140,29 @@ contract REXTwoWayMarket is REXMarket {
         lastDistributionTokenBAt = block.timestamp;
         // Does not need to add subsidy token to outputPoolIndicies
         // since these pools are hardcoded
+    }
+
+    function initializeUniswap(
+        ISwapRouter02 _uniswapRouter,
+        IUniswapV3Pool _uniswapPool,
+        address[] memory _uniswapPath,
+        uint24[] memory _poolFees
+    ) external onlyOwner {
+        router = _uniswapRouter;
+        uniswapPool = _uniswapPool;
+        uniswapPath = _uniswapPath;
+        poolFees = _poolFees;
+
+        // Approve Uniswap Router
+        ERC20(_getUnderlyingToken(inputTokenA)).safeIncreaseAllowance(
+            address(router),
+            2**256 - 1
+        );
+        ERC20(_getUnderlyingToken(inputTokenB)).safeIncreaseAllowance(
+            address(router),
+            2**256 - 1
+        );
+
     }
 
     function addOutputPool(
@@ -180,14 +207,14 @@ contract REXTwoWayMarket is REXMarket {
         // If we have more tokenA than we need, swap the surplus to inputTokenB
         if (tokenHave < tokenAAmount) {
             tokenHave = tokenAAmount - tokenHave;
-            _swap(inputTokenA, inputTokenB, tokenHave, block.timestamp + 3600);
+            _swap(inputTokenA, inputTokenB, tokenHave);
             // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
             tokenHave = 0;
                 // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
                 // market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
-            _swap(inputTokenB, inputTokenA, tokenHave, block.timestamp + 3600);
+            _swap(inputTokenB, inputTokenA, tokenHave);
         }
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
@@ -354,11 +381,30 @@ contract REXTwoWayMarket is REXMarket {
         _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
     }
 
+
+    // Src: Charm Finance, Unlicense
+    // https://github.com/charmfinance/alpha-vaults-contracts/blob/07db2b213315eea8182427be4ea51219003b8c1a/contracts/AlphaStrategy.sol#L136
+    // Modified to return a price in 1e6 decimals
+    /// @dev Fetches time-weighted average price in ticks from Uniswap pool.
+    /// @param _token The token to check decimals and scale the twap 
+    /// @return _price The price in 1e6 decimals
+    function getTwap(address _token) public view returns (uint _price) {
+        uint32 _twapDuration = 30; // TODO: Parameterize this
+        uint32[] memory secondsAgo = new uint32[](2);
+        secondsAgo[0] = _twapDuration;
+        secondsAgo[1] = 0;
+
+        (int56[] memory tickCumulatives, ) = uniswapPool.observe(secondsAgo);
+
+        // Converts the tick into a price (with 1e6 decimals of percision)
+        _price = 1e18 / ((uint(TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))))) / (2 ** 96)) ** 2 / 1**(18 - ERC20(_token).decimals()));
+    }
+
+
     function _swap(
         ISuperToken input,
         ISuperToken output,
-        uint256 amount,
-        uint256 deadline
+        uint256 amount
     ) internal returns (uint256) {
         address inputToken; // The underlying input token address
         address outputToken; // The underlying output token address
@@ -386,10 +432,14 @@ contract REXTwoWayMarket is REXMarket {
         }
 
         // TODO: Calculate minOutput based on oracle
-        minOutput = 0;
-            // (amount * market.oracles[input].usdPrice) /
-            // market.oracles[output].usdPrice;
-        // minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
+        uint twapPrice = getTwap(_getUnderlyingToken(input));
+
+        if (input == inputTokenA) {
+            minOutput = amount * 1e6 / twapPrice;
+        } else {
+            minOutput = amount * twapPrice / 1e6;
+        }
+        minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
 
         // Scale back from 1e18 to outputToken decimals
         // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
@@ -401,35 +451,49 @@ contract REXTwoWayMarket is REXMarket {
         path[0] = inputToken;
         path[1] = outputToken;
 
-        if (address(output) == MATICX) {
-          router.swapExactTokensForETH(
-             amount,
-             0,
-             path,
-             address(this),
-             block.timestamp + 3600
-          );
-          ISETHCustom(address(output)).upgradeByETH{value: address(this).balance}();
-        } else {
-          router.swapExactTokensForTokens(
-             amount,
-             minOutput,
-             path,
-             address(this),
-             block.timestamp + 3600
-          );
-          if (address(output) != outputToken) {
-              output.upgrade(
-                  ERC20(outputToken).balanceOf(address(this)) *
-                      (10**(18 - ERC20(outputToken).decimals()))
-              );
-          }
-        }
+        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
+            .ExactInputParams({
+                path: _getEncodedPath(uniswapPath, poolFees),
+                recipient: address(this),
+                amountIn: amount,
+                amountOutMinimum: minOutput
+            });
+
+        router.exactInput(params);
+        console.log("1", ERC20(outputToken).balanceOf(address(this)));
+
+
+        // if (address(output) != outputToken) {
+        //     output.upgrade(
+        //         ERC20(outputToken).balanceOf(address(this)) *
+        //             (10**(18 - ERC20(outputToken).decimals()))
+        //     );
+        // }
 
         // Assumes `amount` was outputToken.balanceOf(address(this))
         outputAmount = ERC20(outputToken).balanceOf(address(this));
 
         return outputAmount;
+
+    }
+
+    function _getEncodedPath(address[] memory _path, uint24[] memory _poolFees)
+        internal
+        pure
+        returns (bytes memory encodedPath)
+    {
+        for (uint256 i = 0; i < _path.length; i++) {
+            if (i == _path.length - 1) {
+                encodedPath = abi.encodePacked(encodedPath, _path[i]);
+            } else {
+                encodedPath = abi.encodePacked(
+                    encodedPath,
+                    _path[i],
+                    _poolFees[i]
+                );
+            }
+        }
+        return encodedPath;
     }
 
     function _updateShareholder(
