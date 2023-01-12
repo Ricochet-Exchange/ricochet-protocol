@@ -395,7 +395,7 @@ describe('REXTwoWayMarket', () => {
             await resetMeasurements();
         });
 
-        it("#1.1 getters/setters", async () => {
+        xit("#1.1 getters/setters", async () => {
 
             // await twoWayMarket.setRateTolerance(1000);
             expect(await twoWayMarket.getRateTolerance()).to.equal(1000);

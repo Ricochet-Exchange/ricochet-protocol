@@ -197,22 +197,19 @@ contract REXTwoWayMarket is REXMarket {
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         uint256 tokenAAmount = inputTokenA.balanceOf(address(this));
         uint256 tokenBAmount = inputTokenB.balanceOf(address(this));
+        uint twap = getTwap(inputTokenA.getUnderlyingToken());
 
         // TODO: Calculate the amount of tokenA and tokenB we need to have
         // Check how much inputTokenA we have already from tokenB
-        uint256 tokenHave = 0;
-            // (tokenBAmount *
-            // market.oracles[inputTokenB].usdPrice) /
-            // market.oracles[inputTokenA].usdPrice;
+        uint256 tokenHave = tokenBAmount * twap / 1e6;
+
         // If we have more tokenA than we need, swap the surplus to inputTokenB
         if (tokenHave < tokenAAmount) {
             tokenHave = tokenAAmount - tokenHave;
             _swap(inputTokenA, inputTokenB, tokenHave);
             // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
-            tokenHave = 0;
-                // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
-                // market.oracles[inputTokenB].usdPrice;
+            tokenHave = tokenAAmount * 1e6 / twap;
             tokenHave = tokenBAmount - tokenHave;
             _swap(inputTokenB, inputTokenA, tokenHave);
         }
@@ -332,7 +329,6 @@ contract REXTwoWayMarket is REXMarket {
             lastDistributionTokenBAt = block.timestamp;
         }
 
-        market.lastDistributionAt = block.timestamp;
     }
 
     function beforeAgreementCreated(
@@ -460,21 +456,14 @@ contract REXTwoWayMarket is REXMarket {
             });
 
         router.exactInput(params);
-        console.log("1", ERC20(outputToken).balanceOf(address(this)));
 
 
         // if (address(output) != outputToken) {
-        //     output.upgrade(
-        //         ERC20(outputToken).balanceOf(address(this)) *
-        //             (10**(18 - ERC20(outputToken).decimals()))
-        //     );
+            output.upgrade(
+                ERC20(outputToken).balanceOf(address(this)) *
+                    (10**(18 - ERC20(outputToken).decimals()))
+            );
         // }
-
-        // Assumes `amount` was outputToken.balanceOf(address(this))
-        outputAmount = ERC20(outputToken).balanceOf(address(this));
-
-        return outputAmount;
-
     }
 
     function _getEncodedPath(address[] memory _path, uint24[] memory _poolFees)
