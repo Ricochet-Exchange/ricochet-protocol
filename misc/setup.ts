@@ -77,11 +77,12 @@ export const setup = async () => {
     Constants.MATICX_SOURCE_ADDRESS,
     Constants.IBALLUOUSD_SOURCE_ADDRESS,
     Constants.IBALLUOETH_SOURCE_ADDRESS,
+    Constants.RIC_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender"];
+  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender", "ricspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -124,7 +125,10 @@ export const setup = async () => {
     // ),
     ric: await superfluid.loadSuperToken(
       Constants.RIC_TOKEN_ADDRESS
-    )
+    ),
+    rexshirt: await superfluid.loadSuperToken(
+      Constants.REXSHIRT_ADDRESS
+    ),
   };
 
 

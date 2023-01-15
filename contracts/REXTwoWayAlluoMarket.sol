@@ -46,9 +46,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
-        uint128 _inputTokenAShareScaler,
         ISuperToken _inputTokenB,
-        uint128 _inputTokenBShareScaler,
         uint128 _feeRate,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
@@ -57,22 +55,17 @@ contract REXTwoWayAlluoMarket is REXMarket {
         market.inputToken = _inputTokenA; // market.inputToken isn't used but is set bc of the REXMarket
         market.rateTolerance = _rateTolerance;
         market.feeRate = _feeRate;
-        market.affiliateFee = 500000;
-        require(
-            _inputTokenAShareScaler >= 1e6 && _inputTokenBShareScaler >= 1e6,
-            "!scaleable"
-        );
+        market.affiliateFee = 500000; // TODO: Parameterize this
+
         addOutputPool(
             inputTokenA,
             _feeRate,
-            0,
-            _inputTokenAShareScaler
+            0
         );
         addOutputPool(
             inputTokenB,
             _feeRate,
-            0,
-            _inputTokenBShareScaler
+            0
         );
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
@@ -124,14 +117,12 @@ contract REXTwoWayAlluoMarket is REXMarket {
         addOutputPool(
             _subsidyToken,
             0,
-            _emissionRate,
-            market.outputPools[OUTPUTB_INDEX].shareScaler
+            _emissionRate
         );
         addOutputPool(
             _subsidyToken,
             0,
-            _emissionRate,
-            market.outputPools[OUTPUTA_INDEX].shareScaler
+            _emissionRate
         );
         lastDistributionTokenAAt = block.timestamp;
         lastDistributionTokenBAt = block.timestamp;
@@ -142,8 +133,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
     function addOutputPool(
         ISuperToken _token,
         uint128 _feeRate,
-        uint256 _emissionRate,
-        uint128 _shareScaler
+        uint256 _emissionRate
     ) public override onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
         // where there can't be two output pools of the same token
@@ -152,8 +142,7 @@ contract REXTwoWayAlluoMarket is REXMarket {
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
-            _emissionRate,
-            _shareScaler
+            _emissionRate
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
@@ -532,27 +521,6 @@ contract REXTwoWayAlluoMarket is REXMarket {
         }
 
         return false;
-    }
-
-    function _onlyScalable(ISuperToken _superToken, int96 _flowRate)
-        internal
-        override
-    {
-        if (market.outputPoolIndicies[_superToken] == OUTPUTA_INDEX) {
-            require(
-                uint128(uint256(int256(_flowRate))) %
-                    (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) ==
-                    0,
-                "notScalable"
-            );
-        } else {
-            require(
-                uint128(uint256(int256(_flowRate))) %
-                    (market.outputPools[OUTPUTA_INDEX].shareScaler * 1e3) ==
-                    0,
-                "notScalable"
-            );
-        }
     }
 
     receive() external payable {}

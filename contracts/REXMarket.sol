@@ -48,7 +48,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         ISuperToken token;
         uint128 feeRate; // Fee taken by the DAO on each output distribution
         uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
-        uint128 shareScaler;  // The amount to scale back IDA shares of this output pool
     }
 
     struct Market {
@@ -61,6 +60,13 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         mapping(uint32 => OutputPool) outputPools; // Maps IDA indexes to their distributed Supertokens
         mapping(ISuperToken => uint32) outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
         uint8 numOutputPools; // Indexes outputPools and outputPoolFees
+        // If there is a difference in magnitude between the inputToken and outputToken, 
+        // the difference is scaled by this amount when crediting shares of the outputToken pool
+        // If USDC is 1 and ETH is 5000 USDC, that's 3 orders of magnitude, so the is set to 1e(3+1) = 1e4
+        // an addition of +1 accounts for the case when ETH increases to 50000 USDC
+        // This same math should be applied to any pairing of tokens (e.g. MATIC/ETH, RIC/ETH)
+        // TL;DR: This addresses the issue that you can't sell 1 wei of USDC to ETH, 1 wei of ETH is 5000 wei of USDC
+        uint128 shareScaler; 
     }
 
     ISuperfluid internal host; // Superfluid host contract
@@ -206,7 +212,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function initializeMarket(
         ISuperToken _inputToken,
         uint256 _rateTolerance,
-        uint256 _inputTokenRequestId,
         uint128 _affiliateFee,
         uint128 _feeRate
     ) public virtual onlyOwner {
@@ -223,8 +228,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function addOutputPool(
         ISuperToken _token,
         uint128 _feeRate,
-        uint256 _emissionRate,
-        uint128 _shareScaler
+        uint256 _emissionRate
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
@@ -232,8 +236,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
-            _emissionRate,
-            _shareScaler
+            _emissionRate
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
@@ -325,11 +328,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
      internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
     {
       (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
-      daoShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      daoShares *= market.shareScaler;
 
       if (address(0) != _shareholderUpdate.affiliate) {
         (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], _shareholderUpdate.affiliate);
-        affiliateShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+        affiliateShares *= market.shareScaler;
       }
 
       // Compute the change in flow rate, will be negative is slowing the flow rate
@@ -358,9 +361,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
 
       // Scale back shares
-      affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
-      daoShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
-      userShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      affiliateShares /= market.shareScaler;
+      daoShares /= market.shareScaler;
+      userShares /= market.shareScaler;
 
     }
 
@@ -452,6 +455,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 distToken,
                 index,
                 subscriber,
+                // All shares are scaled based on the difference in magnitude between the input token and the output token
+                // This addresses the issue that you can't sell 1 wei of USDC to ETH
                 shares,
                 new bytes(0) // placeholder ctx
             ),
@@ -563,11 +568,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
     }
 
-    function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal virtual {
-      // Enforce speed limit on flowRate
-      require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
-    }
-
     function _registerReferral(bytes memory _ctx, address _shareholder) internal {
       require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
       ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
@@ -615,8 +615,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
-        _onlyScalable(_superToken, _flowRate);
-
         _registerReferral(_ctx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
@@ -662,8 +660,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
             _agreementData, _superToken
         );
-
-        _onlyScalable(_superToken, _flowRate);
 
         int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 

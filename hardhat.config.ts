@@ -70,7 +70,7 @@ const config: HardhatUserConfig = {
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
         // REX Alluo Market Test Block
-        blockNumber: 31926750
+        // blockNumber: 31926750
         // REX Market Test Block
         // blockNumber: 22877930
  
