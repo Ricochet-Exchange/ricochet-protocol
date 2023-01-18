@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
+import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 // import tickmath
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
@@ -154,7 +156,7 @@ contract REXTwoWayMarket is REXMarket {
             return newCtx;
         }
 
-        console.log("calculate distribution");
+        console.log("calculate distribution", outputTokenAmount);
         (outputTokenAmount, ) = ida.calculateDistribution(
             outputToken,
             address(this),
@@ -162,7 +164,7 @@ contract REXTwoWayMarket is REXMarket {
             outputTokenAmount
         );
 
-        console.log("distribute");
+        console.log("distribute", outputTokenAmount);
         newCtx = _idaDistribute(
             OUTPUT_INDEX,
             uint128(outputTokenAmount),
@@ -242,17 +244,24 @@ contract REXTwoWayMarket is REXMarket {
 
     // Src: Charm Finance, Unlicense
     // https://github.com/charmfinance/alpha-vaults-contracts/blob/07db2b213315eea8182427be4ea51219003b8c1a/contracts/AlphaStrategy.sol#L136
-    // Modified to return a price in 1e6 decimals
     function getTwap() public view returns (uint _price) {
-        uint32 _twapDuration = 30; // TODO: Parameterize this
+        uint32 _twapDuration = 5; // TODO: Parameterize this
         uint32[] memory secondsAgo = new uint32[](2);
         secondsAgo[0] = _twapDuration;
         secondsAgo[1] = 0;
 
-        (int56[] memory tickCumulatives, ) = uniswapPool.observe(secondsAgo);
+        (int56[] memory tickCumulatives,  ) = uniswapPool.observe(secondsAgo);
+        
+        uint sqrtRatioX96 = TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))));
+        _price = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
 
-        // Converts the tick into a price (with 1e6 decimals of percision)
-        _price = 1e18 / ((uint(TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))))) / (2 ** 96)) ** 2 / 1**(18 - ERC20(_getUnderlyingToken(inputToken)).decimals()));
+        // TODO: This section needs some work, I can't explain this math well enough
+        // If the tickCumulatives are negative use alternative calculation:
+        if(tickCumulatives[0] < 0 ) {
+            _price = ((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18;
+        } else {
+            _price = 1e18 / (((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18);
+        }
     }
 
 
@@ -293,17 +302,21 @@ contract REXTwoWayMarket is REXMarket {
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(input).decimals()));
         console.log("scaledAmountAgain", amount);
+        console.log("input", input);
+        console.log("output", output);
+        console.log("poolfee", poolFees[0]);
 
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
-                path: abi.encodePacked(_getUnderlyingToken(inputToken), uint24(500), _getUnderlyingToken(outputToken)),
+                path: abi.encodePacked(_getUnderlyingToken(inputToken), poolFees[0], _getUnderlyingToken(outputToken)),
                 recipient: address(this),
                 amountIn: amount,
                 amountOutMinimum: minOutput
             });
         console.log("params");
         uint256 outAmount = router.exactInput(params);
+        uniswapPool.increaseObservationCardinalityNext(1);
         console.log("outAmount", outAmount);
         console.log("outTokenBal", ERC20(output).balanceOf(address(this)));
 
