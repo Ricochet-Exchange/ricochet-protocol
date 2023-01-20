@@ -67,7 +67,60 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         // This same math should be applied to any pairing of tokens (e.g. MATIC/ETH, RIC/ETH)
         // TL;DR: This addresses the issue that you can't sell 1 wei of USDC to ETH, 1 wei of ETH is 5000 wei of USDC
         uint128 shareScaler; 
+        // Keep track of the exchange rates for the last 10 distributions
     }
+
+    struct TokenExchangeRate {
+        uint256 rate;
+        uint256 timestamp;
+    }
+
+    // A list of the last several exchange rates recorded based on the swap rate
+    // Array here functions as a circular buffer so we have these constants
+    // based on these the fastest TWAP is a 3 minute twap 
+    uint public constant BUFFER_SIZE = 3; // 3 slot circular buffer
+    uint public constant BUFFER_DELAY = 60; // 60 seconds
+    TokenExchangeRate[BUFFER_SIZE] public tokenExchangeRates; 
+    // This is the index for the circular buffer
+    uint256 public tokenExchangeRateIndex;
+
+    event RecordTokenPrice(uint256 rate, uint256 timestamp);
+
+    function _recordExchangeRate(uint256 rate, uint256 timestamp) internal { 
+        // Record the exchange rate and timestamp in the circular buffer, tokenExchangeRates
+        if (block.timestamp - market.lastDistributionAt > BUFFER_DELAY) {
+            // Only record the exchange rate if the last distribution was more than 60 seconds ago
+            // This is to prevent the exchange rate from being recorded too frequently
+            // which may cause the average exchange rate to be manipulated
+            tokenExchangeRates[tokenExchangeRateIndex] = TokenExchangeRate(rate, timestamp);
+            // Increment the index, account for the circular buffer structure
+            tokenExchangeRateIndex = (tokenExchangeRateIndex + 1) % BUFFER_SIZE;
+            emit RecordTokenPrice(rate, timestamp);
+        }
+
+    }
+
+    // Function to compute a average value from tokenExchangeRates circular buffer using the tokenExchangeRateIndex
+    function getTwap() internal view returns (uint256) {
+        uint256 sum = 0;
+        uint startIndex = tokenExchangeRateIndex;
+        for (uint256 i = 0; i < BUFFER_SIZE; i++) {
+            sum += tokenExchangeRates[startIndex].rate;
+            if (startIndex == 0) {
+                startIndex = BUFFER_SIZE - 1;
+            } else {
+                startIndex -= 1;
+            }
+        }
+        if (sum == 0) {
+            return 1;   // Will be 0 for the first BUFFER_SIZE distributions
+        } else {
+
+        }
+        return sum / BUFFER_SIZE;
+    }
+
+
 
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
@@ -100,7 +153,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         cfa = _cfa;
         ida = _ida;
         referrals = _rexReferral;
-
+        
         transferOwnership(_owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;

@@ -51,6 +51,7 @@ contract REXTwoWayMarket is REXMarket {
         ISuperToken _subsidyToken,
         uint128 _shareScaler,
         uint128 _feeRate,
+        uint256 _initialTokenExchangeRate,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
         inputToken = _inputToken;
@@ -81,6 +82,15 @@ contract REXTwoWayMarket is REXMarket {
                 address(outputToken),
                 2**256 - 1
             );
+        }
+
+        // Set up tokenExchangeRates
+        for(uint i = 0; i < BUFFER_SIZE; i++) {
+            tokenExchangeRates[i] = TokenExchangeRate({
+                rate: _initialTokenExchangeRate,
+                timestamp: block.timestamp
+            });
+            console.log("tokenExchangeRates[%s] = %s", i, tokenExchangeRates[i].rate);
         }
 
         market.lastDistributionAt = block.timestamp;
@@ -131,8 +141,6 @@ contract REXTwoWayMarket is REXMarket {
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
-        console.log("token", address(_token));
-        console.log("index", market.numOutputPools);
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
     }
@@ -151,12 +159,12 @@ contract REXTwoWayMarket is REXMarket {
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         outputTokenAmount = outputToken.balanceOf(address(this));
+        _recordExchangeRate(inputTokenAmount * 1e18 / outputTokenAmount, block.timestamp);
 
         if (inputTokenAmount == 0) {
             return newCtx;
         }
 
-        console.log("calculate distribution", outputTokenAmount);
         (outputTokenAmount, ) = ida.calculateDistribution(
             outputToken,
             address(this),
@@ -164,7 +172,6 @@ contract REXTwoWayMarket is REXMarket {
             outputTokenAmount
         );
 
-        console.log("distribute", outputTokenAmount);
         newCtx = _idaDistribute(
             OUTPUT_INDEX,
             uint128(outputTokenAmount),
@@ -175,15 +182,12 @@ contract REXTwoWayMarket is REXMarket {
         uint distAmount =
             (block.timestamp - market.lastDistributionAt) *
             market.outputPools[SUBSIDY_INDEX].emissionRate;
-        console.log("distAmount", distAmount);
-        console.log("subsidyToken", subsidyToken.balanceOf(address(this)));
         if (
             distAmount > 0 && distAmount <
             subsidyToken.balanceOf(
                 address(this)
             )
         ) {
-            console.log("distribute subsidy");
             newCtx = _idaDistribute(
                 SUBSIDY_INDEX,
                 uint128(distAmount),
@@ -242,27 +246,27 @@ contract REXTwoWayMarket is REXMarket {
     }
 
 
-    // Src: Charm Finance, Unlicense
-    // https://github.com/charmfinance/alpha-vaults-contracts/blob/07db2b213315eea8182427be4ea51219003b8c1a/contracts/AlphaStrategy.sol#L136
-    function getTwap() public view returns (uint _price) {
-        uint32 _twapDuration = 5; // TODO: Parameterize this
-        uint32[] memory secondsAgo = new uint32[](2);
-        secondsAgo[0] = _twapDuration;
-        secondsAgo[1] = 0;
+    // // Src: Charm Finance, Unlicense
+    // // https://github.com/charmfinance/alpha-vaults-contracts/blob/07db2b213315eea8182427be4ea51219003b8c1a/contracts/AlphaStrategy.sol#L136
+    // function getTwap() public view returns (uint _price) {
+    //     uint32 _twapDuration = 5; // TODO: Parameterize this
+    //     uint32[] memory secondsAgo = new uint32[](2);
+    //     secondsAgo[0] = _twapDuration;
+    //     secondsAgo[1] = 0;
 
-        (int56[] memory tickCumulatives,  ) = uniswapPool.observe(secondsAgo);
+    //     (int56[] memory tickCumulatives,  ) = uniswapPool.observe(secondsAgo);
         
-        uint sqrtRatioX96 = TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))));
-        _price = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
+    //     uint sqrtRatioX96 = TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))));
+    //     _price = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
 
-        // TODO: This section needs some work, I can't explain this math well enough
-        // If the tickCumulatives are negative use alternative calculation:
-        if(tickCumulatives[0] < 0 ) {
-            _price = ((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18;
-        } else {
-            _price = 1e18 / (((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18);
-        }
-    }
+    //     // TODO: This section needs some work, I can't explain this math well enough
+    //     // If the tickCumulatives are negative use alternative calculation:
+    //     if(tickCumulatives[0] < 0 ) {
+    //         _price = ((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18;
+    //     } else {
+    //         _price = 1e18 / (((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18);
+    //     }
+    // }
 
 
     function _swap(
@@ -283,29 +287,20 @@ contract REXTwoWayMarket is REXMarket {
         
         // Calculate the amount of tokens
         amount = ERC20(input).balanceOf(address(this));
-        console.log("amount", amount);
         //Scale it to 1e18 if not (e.g. USDC, WBTC)
         amount = amount * (10**(18 - ERC20(input).decimals()));
-        console.log("scaledAmount", amount);
 
         // TODO: Calculate minOutput based on oracle
         uint twapPrice = getTwap();
-        console.log("twapPrice", twapPrice);
         
         minOutput = amount * 1e6 / twapPrice;
 
         minOutput = (minOutput * (1e6 - market.rateTolerance)) / 1e6;
-        console.log("minOutput", minOutput);
 
         // Scale back from 1e18 to outputToken decimals
         // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(input).decimals()));
-        console.log("scaledAmountAgain", amount);
-        console.log("input", input);
-        console.log("output", output);
-        console.log("poolfee", poolFees[0]);
-
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
@@ -314,11 +309,8 @@ contract REXTwoWayMarket is REXMarket {
                 amountIn: amount,
                 amountOutMinimum: minOutput
             });
-        console.log("params");
+
         uint256 outAmount = router.exactInput(params);
-        uniswapPool.increaseObservationCardinalityNext(1);
-        console.log("outAmount", outAmount);
-        console.log("outTokenBal", ERC20(output).balanceOf(address(this)));
 
         // Upgrade if this is not a supertoken
         if (output != address(outputToken)) {
@@ -327,7 +319,6 @@ contract REXTwoWayMarket is REXMarket {
                     (10**(18 - ERC20(output).decimals()))
             );
         }
-        console.log("balance of output", outputToken.balanceOf(address(this)));
     }
 
     function _getEncodedPath(address[] memory _path, uint24[] memory _poolFees)
@@ -336,7 +327,6 @@ contract REXTwoWayMarket is REXMarket {
         returns (bytes memory encodedPath)
     {
         for (uint256 i = 0; i < _path.length; i++) {
-            console.log("i", i);
             if (i == _path.length - 1) {
                 encodedPath = abi.encodePacked(encodedPath, _path[i]);
             } else {
@@ -371,9 +361,6 @@ contract REXTwoWayMarket is REXMarket {
             uint128 daoShares,
             uint128 affiliateShares
         ) = _getShareAllocations(_shareholderUpdate);
-        console.log("userShares", userShares);
-        console.log("daoShares", daoShares);
-        console.log("affiliateShares", affiliateShares);
 
         _newCtx = _ctx;
 
