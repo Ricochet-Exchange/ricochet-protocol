@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
-import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import "./uniswap/IUniswapV3Pool.sol";
+import "./uniswap/IUniswapV3Factory.sol";
+import "./uniswap/FixedPoint96.sol";
+import "./uniswap/FullMath.sol";
 
 // import tickmath
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";

@@ -101,7 +101,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     }
 
     // Function to compute a average value from tokenExchangeRates circular buffer using the tokenExchangeRateIndex
-    function getTwap() internal view returns (uint256) {
+    function getTwap() public view returns (uint256) {
         uint256 sum = 0;
         uint startIndex = tokenExchangeRateIndex;
         for (uint256 i = 0; i < BUFFER_SIZE; i++) {
@@ -153,7 +153,7 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         cfa = _cfa;
         ida = _ida;
         referrals = _rexReferral;
-        
+
         transferOwnership(_owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
