@@ -194,48 +194,6 @@ contract REXUniswapV3Market is REXMarketScaffold {
 
     }
 
-    function beforeAgreementCreated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-        _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-            return _ctx;
-        (address shareholder, ) = abi.decode(
-            _agreementData,
-            (address, address)
-        );
-    }
-
-    function beforeAgreementTerminated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-        _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-            return _ctx;
-
-        (
-            address _shareholder,
-            int96 _flowRateMain,
-            uint256 _timestamp
-        ) = _getShareholderInfo(_agreementData, _superToken);
-
-        uint256 _uinvestAmount = _calcUserUninvested(
-            _timestamp,
-            uint256(uint96(_flowRateMain)),
-            // Select the correct lastDistributionAt for this _superToken
-            market.lastDistributionAt
-        );
-        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
-    }
-
     function _swap(
         uint256 amount
     ) internal returns (uint256) {
@@ -294,7 +252,7 @@ contract REXUniswapV3Market is REXMarketScaffold {
 
     function _getEncodedPath(address[] memory _path, uint24[] memory _poolFees)
         internal
-        view
+        pure
         returns (bytes memory encodedPath)
     {
         for (uint256 i = 0; i < _path.length; i++) {
@@ -419,6 +377,170 @@ contract REXUniswapV3Market is REXMarketScaffold {
         return underlyingToken;
     }
 
+
+
+    // Superfluid Callbacks
+
+    // Agreement Created
+
+    function beforeAgreementCreated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+        (address shareholder, ) = abi.decode(
+            _agreementData,
+            (address, address)
+        );
+    }
+
+    function afterAgreementCreated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata, //_cbdata,
+        bytes calldata _ctx
+    ) external virtual override returns (bytes memory _newCtx) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        _newCtx = _ctx;
+
+        if (_shouldDistribute()) {
+            _newCtx = distribute(_newCtx);
+        }
+
+        (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+            _agreementData, _superToken
+        );
+
+        _registerReferral(_ctx, _shareholder);
+
+        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+          _shareholder, referrals.getAffiliateAddress(_shareholder), 0, _flowRate, _superToken
+        );
+        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+    }
+
+    // Agreement Updated
+
+     function beforeAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+      _onlyHost();
+      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+          return _ctx;
+
+      // Get the stakeholders current flow rate and save it in cbData
+      (, int96 _flowRate,) = _getShareholderInfo(
+          _agreementData, _superToken
+      );
+
+      _cbdata = abi.encode(_flowRate);
+    }
+
+    function afterAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _cbdata,
+        bytes calldata _ctx
+    ) external virtual override returns (bytes memory _newCtx) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        _newCtx = _ctx;
+        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
+            _agreementData, _superToken
+        );
+
+        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
+
+
+        if (_shouldDistribute()) {
+            _newCtx = distribute(_newCtx);
+        }
+
+        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, _flowRate, _superToken
+        );
+
+        // TODO: Udpate shareholder needs before and after flow rate
+        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+    }
+
+    // Agreement Terminated
+
+    function beforeAgreementTerminated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        (
+            address _shareholder,
+            int96 _flowRateMain,
+            uint256 _timestamp
+        ) = _getShareholderInfo(_agreementData, _superToken);
+
+        uint256 _uinvestAmount = _calcUserUninvested(
+            _timestamp,
+            uint256(uint96(_flowRateMain)),
+            // Select the correct lastDistributionAt for this _superToken
+            market.lastDistributionAt
+        );
+        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
+    }
+
+    function afterAgreementTerminated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _cbdata, //_cbdata,
+        bytes calldata _ctx
+    ) external virtual override returns (bytes memory _newCtx) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        _newCtx = _ctx;
+        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
+        (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
+
+        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, 0, _superToken
+        );
+
+        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+        // Refund the unswapped amount back to the person who started the stream
+        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        // solhint-disable-next-line no-empty-blocks
+        {} catch {
+        }
+    }
+
+    // Payable for X->MATICx markets to work
     receive() external payable {}
 
 }

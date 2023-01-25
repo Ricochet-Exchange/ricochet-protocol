@@ -286,7 +286,6 @@ describe('REXUniswapV3Market', () => {
             referral.address
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
-        \)
 
         await market.initializeMarket(
             ricochetUSDCx.address,
