@@ -12,6 +12,7 @@ import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 import "./REXMarket.sol";
 import './ISETHCustom.sol';
+import './matic/IWMATIC.sol';
 import "./superswap/interfaces/ISwapRouter02.sol";
 
 // REX One Way Uniswap Market
@@ -28,7 +29,7 @@ contract REXTwoWayMarket is REXMarket {
     ISuperToken subsidyToken; // e.g. RICx
     uint32 constant OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
     uint32 constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
-    address public constant MATICX = 0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3;
+    ISuperToken public constant MATICX = ISuperToken(0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3);
 
     // Uniswap Variables
     ISwapRouter02 router; // UniswapV3 Router
@@ -90,7 +91,6 @@ contract REXTwoWayMarket is REXMarket {
                 rate: _initialTokenExchangeRate,
                 timestamp: block.timestamp
             });
-            console.log("tokenExchangeRates[%s] = %s", i, tokenExchangeRates[i].rate);
         }
 
         market.lastDistributionAt = block.timestamp;
@@ -152,7 +152,6 @@ contract REXTwoWayMarket is REXMarket {
     {
         newCtx = ctx;
 
-        // At this point, we've got enough of tokenA and tokenB to perform the distribution
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
         uint256 outputTokenAmount = _swap(inputTokenAmount); // Swap inputToken for outputToken
         // TODO: log a swap event
@@ -304,21 +303,25 @@ contract REXTwoWayMarket is REXMarket {
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
-                path: abi.encodePacked(_getUnderlyingToken(inputToken), poolFees[0], _getUnderlyingToken(outputToken)),
+                path: abi.encodePacked(input, poolFees[0], output),
                 recipient: address(this),
                 amountIn: amount,
                 amountOutMinimum: minOutput
             });
 
         uint256 outAmount = router.exactInput(params);
-
         // Upgrade if this is not a supertoken
         if (output != address(outputToken)) {
-            outputToken.upgrade(
-                ERC20(output).balanceOf(address(this)) *
-                    (10**(18 - ERC20(output).decimals()))
-            );
-        }
+            if (outputToken == MATICX) {
+                IWMATIC(_getUnderlyingToken(MATICX)).withdraw(ERC20(output).balanceOf(address(this)));
+                ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}();
+            } else {
+                outputToken.upgrade(
+                    ERC20(output).balanceOf(address(this)) *
+                        (10**(18 - ERC20(output).decimals()))
+                );
+            }
+        } // else this is a native supertoken
     }
 
     function _getEncodedPath(address[] memory _path, uint24[] memory _poolFees)

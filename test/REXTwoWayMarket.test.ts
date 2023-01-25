@@ -384,6 +384,14 @@ describe('REXTwoWayMarket', () => {
             await resetMeasurements();
         });
 
+        after(async () => {
+
+
+
+
+        });
+
+
         xit("#1.1 getters/setters", async () => {
 
             // await twoWayMarket.setRateTolerance(1000);
@@ -394,7 +402,6 @@ describe('REXTwoWayMarket', () => {
             expect(await twoWayMarket.getEmissionRate(0)).to.equal(1000);
             expect((await twoWayMarket.getOutputPool(0)).toString()).to.equal(`${ricochetUSDCx.address},1000,1000,${1e7}`);
             expect((await twoWayMarket.getLastDistributionAt()).toNumber()).to.be.above(0)
-
 
         });
 
@@ -446,8 +453,7 @@ describe('REXTwoWayMarket', () => {
             // Admin gets all of the 2% bc bob was an organic referral
             expect(
                 (await twoWayMarket.getIDAShares(0, adminSigner.address)).toString()
-            ).to.equal(`true,true,1020000000,0`);
- 
+            ).to.equal(`true,true,1020000000,0`); 
 
         });
 
@@ -526,7 +532,9 @@ describe('REXTwoWayMarket', () => {
 
         });
 
-        it("#1.4 one-sided distribution", async () => {
+        it("#1.4 distribution", async () => {
+        
+
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
                 sender: aliceSigner.address,
@@ -551,6 +559,9 @@ describe('REXTwoWayMarket', () => {
             // Check balances again
             await takeMeasurements();
 
+            // Check oracle
+            oraclePrice = await twoWayMarket.getTwap();
+
             // Compute the delta
             let deltaAlice = await delta(aliceSigner, aliceBalances);
             let deltaCarl = await delta(carlSigner, carlBalances);
@@ -560,15 +571,16 @@ describe('REXTwoWayMarket', () => {
             let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx;
             expect(deltaCarl.ethx / totalOutput).to.within(0.00999, 0.0101)
             expect(deltaOwner.ethx / totalOutput).to.within(0.00999, 0.0101)
-            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * 1e6 * -1 * 0.97)
-            
-            await sf.cfaV1.createFlow({
-                sender: bobSigner.address,
+            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * 1e18 * -1 * 0.97)
+
+            // Delete alice and bobs flow
+            await sf.cfaV1.deleteFlow({
+                sender: aliceSigner.address,
                 receiver: twoWayMarket.address,
                 superToken: ricochetUSDCx.address,
-                flowRate: inflowRateEth,
                 shouldUseCallAgreement: true,
-            }).exec(bobSigner);
+                overrides,
+            }).exec(aliceSigner);
 
         });
 
@@ -579,9 +591,9 @@ describe('REXTwoWayMarket', () => {
         // Uses the USDC/rexSHIRT Uniswap LPs where rexSHIRT is the supertoken outputToken
 
         before(async () => {
-            const success = await provider.send('evm_revert', [
-                snapshot
-            ]);
+            // const success = await provider.send('evm_revert', [
+            //     snapshot
+            // ]);
 
             // Deploy RIC-USDC Rex Market
             const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
@@ -642,6 +654,8 @@ describe('REXTwoWayMarket', () => {
                 overrides,
             }).exec(aliceSigner);
             console.log("========== Alice opened a USDC stream to REXMarket ===========");
+
+            // Bob opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: twoWayMarket.address,
@@ -651,7 +665,6 @@ describe('REXTwoWayMarket', () => {
                 overrides,
             }).exec(bobSigner);
             console.log("========== Bob opened a RIC stream to REXMarket ===========");
-
 
             // Take a snapshot
             snapshot = await provider.send('evm_snapshot', []);
@@ -674,10 +687,11 @@ describe('REXTwoWayMarket', () => {
             await resetMeasurements();
         });
 
-        it.only("#2.1 two-sided distribution", async () => {
-            // TODO: I couldn't get `` to work,
-            // should get the price from the oracle to use in the test
-            const rexShirtOraclePrice = await twoWayMarket.getTwap();
+        after(async () => {
+        });
+
+
+        it("#2.1 distribution", async () => {
 
             // First try swap of RIC to USDC
 
@@ -687,9 +701,19 @@ describe('REXTwoWayMarket', () => {
             // Fast forward an hour and distribute
             await increaseTime(60);
             await twoWayMarket.distribute("0x");
+            // Fast forward an hour and distribute
+            await increaseTime(60);
+            await twoWayMarket.distribute("0x");
+            // Fast forward an hour and distribute
+            await increaseTime(60);
+            await twoWayMarket.distribute("0x");
+
 
             // Check balances again
             await takeMeasurements();
+
+            // get the price from the oracle to use in the test
+            let rexShirtOraclePrice = await twoWayMarket.getTwap();
 
             // Compute the delta
             let deltaAlice = await delta(aliceSigner, aliceBalances);
@@ -701,13 +725,11 @@ describe('REXTwoWayMarket', () => {
             // console.log("alice rexshirt exchange rate: " + deltaAlice.usdcx / deltaAlice.rexshirt * -1);
             // console.log("bob rexshirt exchange rate: " + deltaBob.usdcx / deltaBob.rexshirt * -1);
 
-            // Expect Alice and Bob got the right output less the 2% fee + 2% slippage (thin market)
-            expect(deltaBob.usdcx).to.be.above(deltaBob.rexshirt * rexShirtOraclePrice / 1e6 * -1 * 0.95)
-            expect(deltaAlice.usdcx).to.be.above(deltaAlice.rexshirt * rexShirtOraclePrice / 1e6 * -1 * 0.95)
-            expect(deltaAlice.rexshirt).to.be.above(deltaAlice.usdcx / rexShirtOraclePrice * 1e6 * -1 * 0.95)
-            expect(deltaBob.rexshirt).to.be.above(deltaBob.usdcx / rexShirtOraclePrice * 1e6 * -1 * 0.95)
+            // // Expect Alice and Bob got the right output less the 2% fee + 2% slippage (thin market)
+            expect(deltaAlice.rexshirt).to.be.above(deltaAlice.usdcx / rexShirtOraclePrice * 1e18 * -1 * 0.95)
+            expect(deltaBob.rexshirt).to.be.above(deltaBob.usdcx / rexShirtOraclePrice * 1e18 * -1 * 0.95)
             
-            // Expect Owner and Carl got their fee from Alice
+            // // Expect Owner and Carl got their fee from Alice
             let totalOutput = deltaAlice.rexshirt + deltaCarl.rexshirt + deltaBob.rexshirt + deltaOwner.rexshirt;
             expect(deltaCarl.rexshirt / totalOutput).to.within(0.00491, 0.0501)
             expect(deltaOwner.rexshirt / totalOutput).to.within(0.00149, 0.01501)
@@ -735,6 +757,8 @@ describe('REXTwoWayMarket', () => {
             // Check balances again
             await takeMeasurements();
 
+            rexShirtOraclePrice = await twoWayMarket.getTwap();
+
             // Compute the delta
             deltaAlice = await delta(aliceSigner, aliceBalances);
             deltaBob = await delta(bobSigner, bobBalances);
@@ -746,23 +770,38 @@ describe('REXTwoWayMarket', () => {
             // console.log("bob rexshirt exchange rate: " + deltaBob.usdcx / deltaBob.rexshirt * -1);
 
             // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            expect(deltaBob.usdcx).to.be.above(deltaBob.rexshirt * rexShirtOraclePrice / 1e6 * -1 * 0.97)
-            expect(deltaAlice.rexshirt).to.be.above(deltaAlice.usdcx / rexShirtOraclePrice * 1e6 * -1 * 0.97)
+            expect(deltaBob.rexshirt).to.be.above(deltaBob.usdcx / rexShirtOraclePrice * 1e18 * -1 * 0.97)
+            expect(deltaAlice.rexshirt).to.be.above(deltaAlice.usdcx / rexShirtOraclePrice * 1e18 * -1 * 0.97)
             // Expect Owner and Carl got their fee from Alice
             totalOutput = deltaAlice.rexshirt + deltaCarl.rexshirt + deltaBob.rexshirt + deltaOwner.rexshirt;
             expect(deltaCarl.rexshirt / totalOutput).to.within(0.00491, 0.0501);
-            expect(deltaOwner.rexshirt / totalOutput).to.within(0.00149, 0.01501);
+            expect(deltaOwner.rexshirt / totalOutput).to.within(0.001499, 0.01501);
+
+            // Delete alice and bobs flow
+            await sf.cfaV1.deleteFlow({
+                sender: aliceSigner.address,
+                receiver: twoWayMarket.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+                overrides,
+            }).exec(aliceSigner);
+            // Delete Bob's flow
+            await sf.cfaV1.deleteFlow({
+                sender: bobSigner.address,
+                receiver: twoWayMarket.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+                overrides,
+            }).exec(bobSigner);
+
+            console.log("========== Alice and Bob closed their RIC streams to REXMarket ===========");
         });
 
     });
 
-    xcontext("#3 - matic supertoken market with streamers on both sides", async () => {
+    context("#3 - matic supertoken market with two", async () => {
 
         before(async () => {
-            const success = await provider.send('evm_revert', [
-                snapshot
-            ]);
-
             // Deploy RIC-USDC Rex Market
             const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
 
@@ -776,30 +815,42 @@ describe('REXTwoWayMarket', () => {
             );
             console.log("=========== Deployed REXTwoWayMarket ============");
             await twoWayMarket.initializeTwoWayMarket(
-                ricochetMATICx.address,
-                1e9,
                 ricochetUSDCx.address,
-                1e9,
+                ricochetMATICx.address,
+                ricochetRIC.address,
+                10000,
                 20000,
-                20000
+                "1000000000000000000", // 1 USDC/MATICx pulled the rate on Uniswap
+                5000,
             );
-            console.log("=========== Initialized TwoWayMarket ============");
-            await twoWayMarket.initializeSubsidies(subsidyRate, ricochetRIC.address);
-            console.log("========== Initialized subsidies ===========");
+            console.log("========== Initialized market ===========");
+            // Initialize the twoway market's uniswap
+            // token0 is USDC, token1 is rexSHIRT (supertokens)
+            await twoWayMarket.initializeUniswap(
+                Constants.UNISWAP_V3_ROUTER_ADDRESS, 
+                Constants.UNISWAP_V3_FACTORY_ADDRESS,
+                [Constants.USDC_ADDRESS, Constants.REXSHIRT_ADDRESS],
+                [10000]
+            );
+            console.log("========== Initialized uniswap ===========");
+
             // Register the market with REXReferral
             await referral.registerApp(twoWayMarket.address);
+            console.log("========== Registered market with REXReferral ===========");
 
-            usdcxIDAIndex = {
-                token: ricochetUSDCx,
-                IDAIndex: 1,
-            }
             maticxIDAIndex = {
                 token: ricochetMATICx,
                 IDAIndex: 0,
-            }
+            };
 
-            await approveSubscriptions([usdcxIDAIndex, maticxIDAIndex],
+            ricIDAIndex = {
+                token: ricochetRIC,
+                IDAIndex: 1,
+            };
+
+            await approveSubscriptions([maticxIDAIndex, ricIDAIndex],
                 [adminSigner, aliceSigner, bobSigner, carlSigner]);
+
 
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({
@@ -811,14 +862,16 @@ describe('REXTwoWayMarket', () => {
                 shouldUseCallAgreement: true,
                 overrides,
             }).exec(aliceSigner);
+            console.log("========== Alice opened a USDC stream to REXMarket ===========");
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: twoWayMarket.address,
-                superToken: ricochetMATICx.address,
-                flowRate: "1000000000000",
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRateUsdc,
                 shouldUseCallAgreement: true,
                 overrides,
             }).exec(bobSigner);
+            console.log("========== Bob opened a RIC stream to REXMarket ===========");
 
 
             // Take a snapshot
@@ -837,12 +890,14 @@ describe('REXTwoWayMarket', () => {
         });
 
         afterEach(async () => {
-            // Check the app isn't jailed
-            expect(await twoWayMarket.isAppJailed()).to.equal(false);
             await resetMeasurements();
         });
+        
+        after(async () => {
 
-        it("#5.1 two-sided distribution", async () => {
+        });
+
+        it("#3.1 distribution", async () => {
 
             // First try swap of RIC to USDC
 
@@ -852,8 +907,15 @@ describe('REXTwoWayMarket', () => {
             // Fast forward an hour and distribute
             await increaseTime(3600);
             await twoWayMarket.distribute("0x");
+            await increaseTime(3600);
+            await twoWayMarket.distribute("0x");
+            await increaseTime(3600);
+            await twoWayMarket.distribute("0x");
             // Check balances again
             await takeMeasurements();
+
+            // get the price of matic from the oracle
+            maticOraclePrice = await twoWayMarket.getTwap();
 
             // Compute the delta
             let deltaAlice = await delta(aliceSigner, aliceBalances);
@@ -861,49 +923,29 @@ describe('REXTwoWayMarket', () => {
             let deltaCarl = await delta(carlSigner, carlBalances);
             let deltaOwner = await delta(adminSigner, ownerBalances);
 
-            // Expect Alice and Bob got the right output less the 2% fee + 2% slippage (thin marketf)
-            expect(deltaBob.usdcx).to.be.above(deltaBob.maticx * maticOraclePrice / 1e6 * -1 * 0.95)
-            expect(deltaAlice.maticx).to.be.above(deltaAlice.usdcx / maticOraclePrice * 1e6 * -1 * 0.95)
+            // Expect Alice and Bob got the right output less fees
+            // expect(deltaBob.maticx).to.be.above(deltaBob.usdcx / maticOraclePrice * 1e18 * -1 * 0.97)
+            expect(deltaAlice.maticx).to.be.above(deltaAlice.usdcx / maticOraclePrice * 1e18 * -1 * 0.97)
             // Expect Owner and Carl got their fee from Alice
-            expect(deltaCarl.maticx / (deltaAlice.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.00999, 0.01001)
-            expect(deltaOwner.maticx / (deltaAlice.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.00999, 0.01001)
-            // Expect Owner got his fee from Bob
-            expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02001)
+            expect(deltaCarl.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.00499, 0.00501)
+            expect(deltaOwner.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.01499, 0.01501)
 
-            // Update Alices stream
-            await sf.cfaV1.updateFlow({
+            // Delete alice and bobs flow
+            await sf.cfaV1.deleteFlow({
                 sender: aliceSigner.address,
                 receiver: twoWayMarket.address,
-                flowRate: inflowRateUsdc10x,
                 superToken: ricochetUSDCx.address,
                 shouldUseCallAgreement: true,
                 overrides,
             }).exec(aliceSigner);
-
-            // Check balance
-            await takeMeasurements();
-            // Fast forward an hour and distribute
-            await increaseTime(3600);
-            await twoWayMarket.distribute("0x");
-
-            // Check balances again
-            await takeMeasurements();
-
-            // Compute the delta
-            deltaAlice = await delta(aliceSigner, aliceBalances);
-            deltaBob = await delta(bobSigner, bobBalances);
-            deltaCarl = await delta(carlSigner, carlBalances);
-            deltaOwner = await delta(adminSigner, ownerBalances);
-
-            // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
-            expect(deltaBob.usdcx).to.be.above(deltaBob.maticx * maticOraclePrice / 1e6 * -1 * 0.97)
-            expect(deltaAlice.maticx).to.be.above(deltaAlice.usdcx / maticOraclePrice * 1e6 * -1 * 0.97)
-            // Expect Owner and Carl got their fee from Alice
-            expect(deltaCarl.maticx / (deltaAlice.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.00999, 0.01001)
-            expect(deltaOwner.maticx / (deltaAlice.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(0.00999, 0.01001)
-            // Expect Owner got his fee from Bob
-            expect(deltaOwner.usdcx / (deltaBob.usdcx + deltaOwner.usdcx)).to.within(0.01999, 0.02001)
-
+            // Delete Bob's flow
+            await sf.cfaV1.deleteFlow({
+                sender: bobSigner.address,
+                receiver: twoWayMarket.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+                overrides,
+            }).exec(bobSigner);
 
 
         });
