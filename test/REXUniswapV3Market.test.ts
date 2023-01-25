@@ -286,8 +286,9 @@ describe('REXUniswapV3Market', () => {
             referral.address
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
+        \)
 
-        await market.initializeTwoWayMarket(
+        await market.initializeMarket(
             ricochetUSDCx.address,
             ricochetETHx.address,
             ricochetRIC.address,
@@ -607,7 +608,7 @@ describe('REXUniswapV3Market', () => {
                 referral.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
-            await market.initializeTwoWayMarket(
+            await market.initializeMarket(
                 ricochetUSDCx.address,
                 ricochetRexSHIRT.address,
                 ricochetRIC.address,
@@ -814,7 +815,7 @@ describe('REXUniswapV3Market', () => {
                 referral.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
-            await market.initializeTwoWayMarket(
+            await market.initializeMarket(
                 ricochetUSDCx.address,
                 ricochetMATICx.address,
                 ricochetRIC.address,

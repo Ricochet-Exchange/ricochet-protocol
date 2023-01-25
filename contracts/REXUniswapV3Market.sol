@@ -4,13 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./uniswap/IUniswapV3Pool.sol";
 import "./uniswap/IUniswapV3Factory.sol";
-import "./uniswap/FixedPoint96.sol";
-import "./uniswap/FullMath.sol";
 
-// import tickmath
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-
-import "./REXMarket.sol";
+import "./REXMarketScaffold.sol";
 import './ISETHCustom.sol';
 import './matic/IWMATIC.sol';
 import "./superswap/interfaces/ISwapRouter02.sol";
@@ -20,7 +15,7 @@ import "./superswap/interfaces/ISwapRouter02.sol";
 // - Sources liquidity using UniswapV3 liquidity pools
 // - Uses a subsidyToken to incentivize contract interactions
 // - Uses a referral system to incentivize referrals to the contract
-contract REXUniswapV3Market is REXMarket {
+contract REXUniswapV3Market is REXMarketScaffold {
     using SafeERC20 for ERC20;
 
     // REX Market Variables
@@ -44,9 +39,9 @@ contract REXUniswapV3Market is REXMarket {
         IInstantDistributionAgreementV1 _ida,
         string memory _registrationKey,
         IREXReferral _rexReferral
-    ) REXMarket(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {}
+    ) REXMarketScaffold(_owner, _host, _cfa, _ida, _registrationKey, _rexReferral) {}
 
-    function initializeTwoWayMarket(
+    function initializeMarket(
         ISuperToken _inputToken,
         ISuperToken _outputToken,
         ISuperToken _subsidyToken,
@@ -129,10 +124,7 @@ contract REXUniswapV3Market is REXMarket {
         ISuperToken _token,
         uint128 _feeRate,
         uint256 _emissionRate
-    ) public override onlyOwner {
-        // Only Allow 4 output pools, this overrides the block in REXMarket
-        // where there can't be two output pools of the same token
-        require(market.numOutputPools < 4, "too many pools");
+    ) public onlyOwner {
 
         OutputPool memory _newPool = OutputPool(
             _token,
@@ -243,30 +235,6 @@ contract REXUniswapV3Market is REXMarket {
         );
         _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
     }
-
-
-    // // Src: Charm Finance, Unlicense
-    // // https://github.com/charmfinance/alpha-vaults-contracts/blob/07db2b213315eea8182427be4ea51219003b8c1a/contracts/AlphaStrategy.sol#L136
-    // function getTwap() public view returns (uint _price) {
-    //     uint32 _twapDuration = 5; // TODO: Parameterize this
-    //     uint32[] memory secondsAgo = new uint32[](2);
-    //     secondsAgo[0] = _twapDuration;
-    //     secondsAgo[1] = 0;
-
-    //     (int56[] memory tickCumulatives,  ) = uniswapPool.observe(secondsAgo);
-        
-    //     uint sqrtRatioX96 = TickMath.getSqrtRatioAtTick(int24((tickCumulatives[1] - tickCumulatives[0]) / int(uint(_twapDuration))));
-    //     _price = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, FixedPoint96.Q96);
-
-    //     // TODO: This section needs some work, I can't explain this math well enough
-    //     // If the tickCumulatives are negative use alternative calculation:
-    //     if(tickCumulatives[0] < 0 ) {
-    //         _price = ((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18;
-    //     } else {
-    //         _price = 1e18 / (((sqrtRatioX96 * 1e18 / (2 ** 96)) ** 2) / 1e18);
-    //     }
-    // }
-
 
     function _swap(
         uint256 amount
@@ -422,7 +390,7 @@ contract REXUniswapV3Market is REXMarket {
             address(_superToken) == address(inputToken); 
     }
 
-    function _shouldDistribute() internal override returns (bool) {
+    function _shouldDistribute() internal view override returns (bool) {
         // TODO: Might no longer be required
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
             .getIndex(
