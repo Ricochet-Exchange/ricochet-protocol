@@ -2,6 +2,7 @@ import { network, ethers } from "hardhat";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber } from "ethers";
+import { isEthersProvider } from "@superfluid-finance/sdk-core";
 
 describe("RecurringDeposits", () => {
     let deployer: SignerWithAddress;
@@ -10,7 +11,9 @@ describe("RecurringDeposits", () => {
     let mockSuperToken: any;
     let recurringDeposits: any;
     const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
+    const GELATO_NETWORK = "0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA"; // Mainnet Gelato Executor Address
     const USDC_TOKEN = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Mainnet USDC Token Address
+    const WETH_TOKEN = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; // Mainnet WETH Token Address
     const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
     const RIC_HOLDER = "0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"; // Ricochet holder
     const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet Uniswap Router Address
@@ -20,6 +23,7 @@ describe("RecurringDeposits", () => {
       // Get RIC token at contract address
       const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
       const usdcToken = await ethers.getContractAt("MockERC20", USDC_TOKEN);
+      const wethToken = await ethers.getContractAt("MockERC20", WETH_TOKEN);
       const gasToken = usdcToken;
 
       // Make a mock token for scheduled deposits
@@ -37,9 +41,10 @@ describe("RecurringDeposits", () => {
       
       const RecurringDeposits = await ethers.getContractFactory("RecurringDeposits");
       const recurringDeposits = await RecurringDeposits.deploy(
-          mockSuperToken.address, 
-          usdcToken.address,
-          UNISWAP_ROUTER,
+          mockSuperToken.address, // depositToken
+          gasToken.address, // gasToken
+          wethToken.address, // feeToken
+          UNISWAP_ROUTER, 
           period, 
           25, 
           GELATO_OPS, 

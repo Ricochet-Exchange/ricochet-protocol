@@ -16,6 +16,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
     ISuperToken public depositToken;
     ERC20 public gasToken;
+    ERC20 public feeToken;
     uint256 public period;
     uint256 public feeRate;
     uint256 public feeRateScaler;
@@ -68,6 +69,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     constructor(
         ISuperToken _depositToken,
         ERC20 _gasToken,
+        ERC20 _feeToken,
         IV3SwapRouter _uniswapRouter,
         uint256 _period,
         uint256 _feeRate,
@@ -76,6 +78,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     ) OpsTaskCreator(_ops, _taskCreator) {
         depositToken = _depositToken;
         gasToken = _gasToken;
+        feeToken = _feeToken;
         router = _uniswapRouter;
         period = _period;
         feeRate = _feeRate;
@@ -272,11 +275,12 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
         // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-                path: abi.encodePacked(address(WMATIC), fee, address(gasToken)),
-                recipient: address(this),
-                deadline: block.timestamp + 3600,
-                amountOut: amountOut,
-                amountInMaximum: 2000000
+            // Pass the swap through the feeToken LP
+            path: abi.encodePacked(address(WMATIC), fee, address(feeToken), fee, address(gasToken)),
+            recipient: address(this),
+            deadline: block.timestamp + 3600,
+            amountOut: amountOut,
+            amountInMaximum: 2000000
         });
         return router.exactOutput(params);
 
