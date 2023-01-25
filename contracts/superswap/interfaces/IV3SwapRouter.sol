@@ -43,6 +43,7 @@ interface IV3SwapRouter is IV3SwapCallback {
         address tokenOut;
         uint24 fee;
         address recipient;
+        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
         uint160 sqrtPriceLimitX96;

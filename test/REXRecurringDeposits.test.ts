@@ -138,20 +138,28 @@ describe("RecurringDeposits", () => {
       await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
 
       // Check that the deposit was scheduled correctly
-      const owner = (await recurringDeposits.depositIndices(alice.getAddress())).toString();
-      const deposit = await recurringDeposits.scheduledDeposits(owner);
+      const index = (await recurringDeposits.depositIndices(alice.getAddress())).toString();
+      const deposit = await recurringDeposits.scheduledDeposits(index);
       expect(deposit.amount.toString()).to.equal(ONE_ETH.toString(), "Incorrect deposit amount");
       expect(deposit.times.toString()).to.equal(times.toString(), "Incorrect number of times");
     });
 
     it("3.2 Anyone can perform the next scheduled deposit", async () => {
-      const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
+      const { recurringDeposits, mockSuperToken, mockERC20, gasToken } = await deploy(3600);
+
+      // Send alice some RIC tokens for a gas deposit
+      await getTokens(alice, gasToken.address, ONE_ETH.mul(2));
 
       // Schedule a recurring deposit
       const times = 1;
       const feeRateScaler = 10000;
       const feeRate = await recurringDeposits.feeRate();
       await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
+
+      // Deposit gas for alice
+      await gasToken.connect(alice).approve(recurringDeposits.address, ONE_ETH.mul(2));
+      let depositGas = await recurringDeposits.connect(alice).depositGas(ONE_ETH.mul(2));
+      
 
       // Get the token balances for alice
       const initialERC20Balance = await mockERC20.balanceOf(alice.getAddress());

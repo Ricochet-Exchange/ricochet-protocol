@@ -163,7 +163,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     }
 
     // Polled by gelato to perform the next deposit, gas tank is used to reimburse the user for gas costs
-    function performNextDeposit() public {
+    function performNextDeposit() public payable {
         uint gasUsed = gasleft(); 
         ScheduledDeposit storage deposit = scheduledDeposits[head];
         uint256 depositAmount = deposit.amount;
@@ -194,19 +194,21 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
         // Gelato transaction pays for itself
         (uint256 fee, address feeToken) = _getFeeDetails();
-        console.log("feeToken", feeToken);
 
         // If the gelato executor is paying for the transaction, pay for the gas for them
+        uint amountIn;
         if(fee > 0) {
-            _swap(fee, type(uint256).max, 500);
+            // TODO: Need to integration test
+            amountIn = _swap(fee, type(uint256).max, 500);
+            WMATIC.withdraw(amountIn);
             _transfer(fee, feeToken);
         } else {
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice;
-            _swap(fee, type(uint256).max, 500);
-
-            payable(msg.sender).transfer(fee);
+            amountIn = _swap(fee, type(uint256).max, 500);
+            WMATIC.transfer(depositor, amountIn);
         }
+
     }
 
     // Perform a deposit (upgrade) for a specific user for a specific amount
@@ -266,32 +268,29 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         uint256 amountOut,
         uint256 amountInMaximum,
         uint24 fee
-    ) internal {
+    ) internal returns (uint256) {
 
-        // Swap gasTokens for to pay Gelato 
-        console.log("amountOut", amountOut);
-        console.log("amountInMaximum", amountInMaximum);
-        console.log("fee", fee);
-        console.log("gasToken", address(gasToken));
-        console.log("WMATIC", address(WMATIC));
-   
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-                path: abi.encodePacked(address(gasToken), fee, address(WMATIC)),
-                recipient: address(this),
-                deadline: block.timestamp + 3600,
-                amountOut: amountOut,
-                amountInMaximum: amountInMaximum
+        // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
+        // IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+        //         path: abi.encodePacked(address(gasToken), fee, address(WMATIC)),
+        //         recipient: address(this),
+        //         deadline: block.timestamp + 3600,
+        //         amountOut: amountOut,
+        //         amountInMaximum: 2000000
+        // });
+        // uint amountIn = router.exactOutput(params);
+
+        IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter.ExactOutputSingleParams({
+            tokenIn: address(gasToken),
+            tokenOut: address(WMATIC),
+            fee: fee,
+            recipient: address(this),
+            deadline: block.timestamp + 3600,
+            amountOut: amountOut,
+            amountInMaximum: 2000000,
+            sqrtPriceLimitX96: 0
         });
-        // console.log("params.path", params.path);
-        console.log("params.recipient", params.recipient);
-        console.log("params.deadline", params.deadline);
-        console.log("block.timestamp", block.timestamp);
-        console.log("params.amountOut", params.amountOut);
-        console.log("params.amountInMaximum", params.amountInMaximum);
-
-        uint amountIn = router.exactOutput(params);
-
-        // Deduct the amount of gasToken used to pay for the swap
-        gasTank[msg.sender] -= amountIn;
+        
+        return router.exactOutputSingle(params);
     }
 }
