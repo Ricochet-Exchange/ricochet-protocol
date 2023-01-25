@@ -20,7 +20,7 @@ import "./superswap/interfaces/ISwapRouter02.sol";
 // - Sources liquidity using UniswapV3 liquidity pools
 // - Uses a subsidyToken to incentivize contract interactions
 // - Uses a referral system to incentivize referrals to the contract
-contract REXTwoWayMarket is REXMarket {
+contract REXUniswapV3Market is REXMarket {
     using SafeERC20 for ERC20;
 
     // REX Market Variables
