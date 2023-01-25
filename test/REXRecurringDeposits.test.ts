@@ -190,6 +190,52 @@ describe("RecurringDeposits", () => {
       expect(scheduledDeposit.times.toString()).to.equal("0", "Incorrect number of times");
     });
 
+    xit("3.2 Gelato can perform the next scheduled deposit", async () => {
+      const { recurringDeposits, mockSuperToken, mockERC20, gasToken } = await deploy(3600);
+
+      // Send alice some RIC tokens for a gas deposit
+      await getTokens(alice, gasToken.address, ONE_ETH.mul(2));
+
+      // Schedule a recurring deposit
+      const times = 1;
+      const feeRateScaler = 10000;
+      const feeRate = await recurringDeposits.feeRate();
+      await recurringDeposits.connect(alice).scheduleDeposit(ONE_ETH, times);
+
+      // Deposit gas for alice
+      await gasToken.connect(alice).approve(recurringDeposits.address, ONE_ETH.mul(2));
+      let depositGas = await recurringDeposits.connect(alice).depositGas(ONE_ETH.mul(2));
+      
+
+      // Get the token balances for alice
+      const initialERC20Balance = await mockERC20.balanceOf(alice.getAddress());
+      const initialSuperTokenBalance = await mockSuperToken.balanceOf(alice.getAddress());
+
+      // Advance the block timestamp to trigger the deposit
+      await ethers.provider.send("evm_increaseTime", [3700]);
+      await ethers.provider.send("evm_mine", []);
+
+      // Approve the contract to spend the depositor's tokens
+      await mockERC20.connect(alice).approve(recurringDeposits.address, ONE_ETH);
+
+      // Perform the next deposit
+      await recurringDeposits.performNextDeposit({ gasLimit: 1000000});
+
+      // Get the balance of the depositor after the deposit
+      const finalERC20Balance = await mockERC20.balanceOf(alice.getAddress());
+      const finalSuperTokenBalance = await mockSuperToken.balanceOf(alice.getAddress());
+
+      // Get the depolyer's balance of the deposit token
+      const deployerERC20Balance = await mockERC20.balanceOf(deployer.getAddress());
+
+      // Check that the deposit has been performed
+      expect(finalERC20Balance.sub(initialERC20Balance).toString()).to.equal(ONE_ETH.mul(-1).toString(), "Incorrect amount deposited");
+      expect(deployerERC20Balance.toString()).to.equal((ONE_ETH.mul(feeRate).div(feeRateScaler)).toString(), "Incorrect fee taken");
+      expect(finalSuperTokenBalance.sub(initialSuperTokenBalance).toString()).to.equal((ONE_ETH.mul(feeRateScaler-feeRate).div(feeRateScaler)).toString(), "Incorrect amount received");
+      const scheduledDeposit = await recurringDeposits.scheduledDeposits(0);
+      expect(scheduledDeposit.times.toString()).to.equal("0", "Incorrect number of times");
+    });
+
     it("3.3 User can cancel their scheduled deposit", async () => {
       const { recurringDeposits, mockSuperToken, mockERC20 } = await deploy(3600);
 

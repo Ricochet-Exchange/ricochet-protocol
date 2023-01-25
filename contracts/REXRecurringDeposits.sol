@@ -271,26 +271,14 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     ) internal returns (uint256) {
 
         // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
-        // IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-        //         path: abi.encodePacked(address(gasToken), fee, address(WMATIC)),
-        //         recipient: address(this),
-        //         deadline: block.timestamp + 3600,
-        //         amountOut: amountOut,
-        //         amountInMaximum: 2000000
-        // });
-        // uint amountIn = router.exactOutput(params);
-
-        IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter.ExactOutputSingleParams({
-            tokenIn: address(gasToken),
-            tokenOut: address(WMATIC),
-            fee: fee,
-            recipient: address(this),
-            deadline: block.timestamp + 3600,
-            amountOut: amountOut,
-            amountInMaximum: 2000000,
-            sqrtPriceLimitX96: 0
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+                path: abi.encodePacked(address(WMATIC), fee, address(gasToken)),
+                recipient: address(this),
+                deadline: block.timestamp + 3600,
+                amountOut: amountOut,
+                amountInMaximum: 2000000
         });
-        
-        return router.exactOutputSingle(params);
+        return router.exactOutput(params);
+
     }
 }
