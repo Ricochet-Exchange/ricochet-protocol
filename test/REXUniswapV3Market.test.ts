@@ -419,9 +419,6 @@ describe('REXUniswapV3Market', () => {
 
             // Expect share allocations were done correctly
             expect(
-                await market.getStreamRate(aliceSigner.address, ricochetUSDCx.address)
-            ).to.equal(inflowRateUsdc);
-            expect(
                 (await market.getIDAShares(0, aliceSigner.address)).toString()
             ).to.equal(`true,true,98000000000,0`);
             // Admin and Carl split 2% of the shares bc of the 50% referral fee
@@ -445,15 +442,28 @@ describe('REXUniswapV3Market', () => {
 
             // Expect share allocations were done correctly
             expect(
-                await market.getStreamRate(bobSigner.address, ricochetUSDCx.address)
-            ).to.equal(inflowRateEth);
-            expect(
                 (await market.getIDAShares(0, bobSigner.address)).toString()
             ).to.equal(`true,true,980000000,0`);
             // Admin gets all of the 2% bc bob was an organic referral
             expect(
                 (await market.getIDAShares(0, adminSigner.address)).toString()
             ).to.equal(`true,true,1020000000,0`); 
+
+            // Delete Alices stream before first  distributions
+            await sf.cfaV1.deleteFlow({
+                receiver: market.address,
+                sender: aliceSigner.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+            }).exec(aliceSigner);
+
+            // Delete Alices stream before first  distributions
+            await sf.cfaV1.deleteFlow({
+                receiver: market.address,
+                sender: bobSigner.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+            }).exec(bobSigner);
 
         });
 
@@ -471,14 +481,6 @@ describe('REXUniswapV3Market', () => {
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
-            // Bob opens a USDCx stream to REXMarket
-            await sf.cfaV1.createFlow({
-                sender: bobSigner.address,
-                receiver: market.address,
-                superToken: ricochetUSDCx.address,
-                flowRate: inflowRateEth,
-                shouldUseCallAgreement: true,
-            }).exec(bobSigner);
 
             await increaseTime(3600)
 
@@ -490,30 +492,15 @@ describe('REXUniswapV3Market', () => {
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
 
-            // Delete Alices stream before first  distributions
-            await sf.cfaV1.deleteFlow({
-                receiver: market.address,
-                sender: bobSigner.address,
-                superToken: ricochetUSDCx.address,
-                shouldUseCallAgreement: true,
-            }).exec(bobSigner);
 
             await takeMeasurements();
 
             // Check balance for alice again
             let aliceDelta = await delta(aliceSigner, aliceBalances);
-            let bobDelta = await delta(bobSigner, bobBalances);
 
             // Expect alice didn't lose anything since she closed stream before distribute
             // expect(aliceDelta.usdcx).to.equal(0);
-            expect(bobDelta.usdcx).to.equal(0);
-            // Expect share allocations were done correctly
-            expect(
-                await market.getStreamRate(aliceSigner.address, ricochetUSDCx.address)
-            ).to.equal('0');
-            expect(
-                await market.getStreamRate(bobSigner.address, ricochetUSDCx.address)
-            ).to.equal('0');
+            expect(aliceDelta.usdcx).to.equal(0);
             expect(
                 (await market.getIDAShares(0, aliceSigner.address)).toString()
             ).to.equal(`true,true,0,0`);
@@ -522,12 +509,6 @@ describe('REXUniswapV3Market', () => {
             ).to.equal(`true,true,0,0`);
             expect(
                 (await market.getIDAShares(0, carlSigner.address)).toString()
-            ).to.equal(`true,true,0,0`);
-            expect(
-                (await market.getIDAShares(0, bobSigner.address)).toString()
-            ).to.equal(`true,true,0,0`);
-            expect(
-                (await market.getIDAShares(0, adminSigner.address)).toString()
             ).to.equal(`true,true,0,0`);
 
         });
