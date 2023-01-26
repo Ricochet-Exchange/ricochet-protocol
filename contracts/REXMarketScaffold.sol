@@ -604,35 +604,7 @@ abstract contract REXMarketScaffold is Ownable, SuperAppBase, Initializable {
         require(msg.sender == address(host), "!host");
     }
 
-    function _shouldDistribute() internal virtual returns (bool) {
 
-      (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
-          .getIndex(
-              market.outputPools[PRIMARY_OUTPUT_INDEX].token,
-              address(this),
-              PRIMARY_OUTPUT_INDEX
-          );
-
-      // Check balance and account for just 1 input token
-      uint256 _balance = market.inputToken.balanceOf(
-          address(this)
-      );
-
-      return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
-    }
-
-    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
-      require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
-      ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
-      string memory affiliateId;
-      if (decompiledContext.userData.length > 0) {
-        (affiliateId) = abi.decode(decompiledContext.userData, (string));
-      } else {
-        affiliateId = "";
-      }
-
-      referrals.safeRegisterCustomer(_shareholder, affiliateId);
-    }
 
     // Superfluid Functions
 

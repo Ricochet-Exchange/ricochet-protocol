@@ -348,7 +348,7 @@ contract REXUniswapV3Market is REXMarketScaffold {
             address(_superToken) == address(inputToken); 
     }
 
-    function _shouldDistribute() internal view override returns (bool) {
+    function _shouldDistribute() internal view returns (bool) {
         // TODO: Might no longer be required
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
             .getIndex(
@@ -538,6 +538,20 @@ contract REXUniswapV3Market is REXMarketScaffold {
         // solhint-disable-next-line no-empty-blocks
         {} catch {
         }
+    }
+
+    // REX Referral Methods
+    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
+        require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
+        ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
+        string memory affiliateId;
+        if (decompiledContext.userData.length > 0) {
+            (affiliateId) = abi.decode(decompiledContext.userData, (string));
+        } else {
+            affiliateId = "";
+        }
+
+        referrals.safeRegisterCustomer(_shareholder, affiliateId);
     }
 
     // Payable for X->MATICx markets to work
