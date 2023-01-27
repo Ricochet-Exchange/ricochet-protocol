@@ -34,11 +34,7 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
 
     function initializeTwoWayMarket(
         ISuperToken _inputTokenA,
-        uint256 _inputTokenARequestId,
-        uint128 _inputTokenAShareScaler,
         ISuperToken _inputTokenB,
-        uint256 _inputTokenBRequestId,
-        uint128 _inputTokenBShareScaler,
         uint128 _feeRate,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
@@ -51,9 +47,7 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         addOutputPool(
             inputTokenB,
             _feeRate,
-            0,
-            _inputTokenBRequestId,
-            _inputTokenBShareScaler
+            0
         );
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
@@ -85,9 +79,7 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         addOutputPool(
             _subsidyToken,
             0,
-            _emissionRate,
-            77,
-            market.outputPools[OUTPUTB_INDEX].shareScaler
+            _emissionRate
         );
 
         market.lastDistributionAt = block.timestamp;
@@ -98,9 +90,7 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
     function addOutputPool(
         ISuperToken _token,
         uint128 _feeRate,
-        uint256 _emissionRate,
-        uint256 _requestId,
-        uint128 _shareScaler
+        uint256 _emissionRate
     ) public override onlyOwner {
         // Only Allow 4 output pools, this overrides the block in REXMarket
         // where there can't be two output pools of the same token
@@ -109,15 +99,12 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
-            _emissionRate,
-            _shareScaler
+            _emissionRate
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
         // updateTokenPrice(_token);
     }
 
@@ -303,20 +290,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         }
 
         return false;
-    }
-
-    function _onlyScalable(ISuperToken _superToken, int96 _flowRate)
-        internal
-        override
-    {
-        // TODO: Required?
-        require(
-            uint128(uint256(int256(_flowRate))) %
-                (market.outputPools[OUTPUTB_INDEX].shareScaler * 1e3) ==
-                0,
-            "notScalable"
-        );
-
     }
 
 }

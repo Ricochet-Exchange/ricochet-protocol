@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "./tellor/ITellor.sol";
 import "./referral/IREXReferral.sol";
 import "hardhat/console.sol";
 
@@ -45,17 +44,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       ISuperToken token;
     }
 
-    struct OracleInfo {
-        uint256 requestId;
-        uint256 usdPrice;
-        uint256 lastUpdatedAt;
-    }
-
     struct OutputPool {
         ISuperToken token;
         uint128 feeRate; // Fee taken by the DAO on each output distribution
         uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
-        uint128 shareScaler;  // The amount to scale back IDA shares of this output pool
     }
 
     struct Market {
@@ -65,16 +57,74 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         uint128 feeRate;
         uint128 affiliateFee;
         address owner; // The owner of the market (reciever of fees)
-        mapping(ISuperToken => OracleInfo) oracles; // Maps tokens to their oracle info
         mapping(uint32 => OutputPool) outputPools; // Maps IDA indexes to their distributed Supertokens
         mapping(ISuperToken => uint32) outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
         uint8 numOutputPools; // Indexes outputPools and outputPoolFees
+        // If there is a difference in magnitude between the inputToken and outputToken, 
+        // the difference is scaled by this amount when crediting shares of the outputToken pool
+        // If USDC is 1 and ETH is 5000 USDC, that's 3 orders of magnitude, so the is set to 1e(3+1) = 1e4
+        // an addition of +1 accounts for the case when ETH increases to 50000 USDC
+        // This same math should be applied to any pairing of tokens (e.g. MATIC/ETH, RIC/ETH)
+        // TL;DR: This addresses the issue that you can't sell 1 wei of USDC to ETH, 1 wei of ETH is 5000 wei of USDC
+        uint128 shareScaler; 
+        // Keep track of the exchange rates for the last 10 distributions
     }
+
+    struct TokenExchangeRate {
+        uint256 rate;
+        uint256 timestamp;
+    }
+
+    // A list of the last several exchange rates recorded based on the swap rate
+    // Array here functions as a circular buffer so we have these constants
+    // based on these the fastest TWAP is a 3 minute twap 
+    uint public constant BUFFER_SIZE = 3; // 3 slot circular buffer
+    uint public constant BUFFER_DELAY = 60; // 60 seconds
+    TokenExchangeRate[BUFFER_SIZE] public tokenExchangeRates; 
+    // This is the index for the circular buffer
+    uint256 public tokenExchangeRateIndex;
+
+    event RecordTokenPrice(uint256 rate, uint256 timestamp);
+
+    function _recordExchangeRate(uint256 rate, uint256 timestamp) internal { 
+        // Record the exchange rate and timestamp in the circular buffer, tokenExchangeRates
+        if (block.timestamp - market.lastDistributionAt > BUFFER_DELAY) {
+            // Only record the exchange rate if the last distribution was more than 60 seconds ago
+            // This is to prevent the exchange rate from being recorded too frequently
+            // which may cause the average exchange rate to be manipulated
+            tokenExchangeRates[tokenExchangeRateIndex] = TokenExchangeRate(rate, timestamp);
+            // Increment the index, account for the circular buffer structure
+            tokenExchangeRateIndex = (tokenExchangeRateIndex + 1) % BUFFER_SIZE;
+            emit RecordTokenPrice(rate, timestamp);
+        }
+
+    }
+
+    // Function to compute a average value from tokenExchangeRates circular buffer using the tokenExchangeRateIndex
+    function getTwap() public view returns (uint256) {
+        uint256 sum = 0;
+        uint startIndex = tokenExchangeRateIndex;
+        for (uint256 i = 0; i < BUFFER_SIZE; i++) {
+            sum += tokenExchangeRates[startIndex].rate;
+            if (startIndex == 0) {
+                startIndex = BUFFER_SIZE - 1;
+            } else {
+                startIndex -= 1;
+            }
+        }
+        if (sum == 0) {
+            return 1;   // Will be 0 for the first BUFFER_SIZE distributions
+        } else {
+
+        }
+        return sum / BUFFER_SIZE;
+    }
+
+
 
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    ITellor public oracle; // Address of deployed simple oracle for input//output token
     Market internal market;
     uint32 internal constant PRIMARY_OUTPUT_INDEX = 0;
     uint8 internal constant MAX_OUTPUT_POOLS = 5;
@@ -168,21 +218,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         );
     }
 
-
-
-    /// @dev Set rate tolerance
-    /// @param _rate This is the new rate we need to set to
-    function setRateTolerance(uint256 _rate) external onlyOwner {
-        market.rateTolerance = _rate;
-    }
-
-    /// @dev Sets fee rate for a output pool/token
-    /// @param _index IDA index for the output pool/token
-    /// @param _feeRate Fee rate for the output pool/token
-    function setFeeRate(uint32 _index, uint128 _feeRate) external onlyOwner {
-        market.outputPools[_index].feeRate = _feeRate;
-    }
-
     /// @dev Sets emission rate for a output pool/token
     /// @param _index IDA index for the output pool/token
     /// @param _emissionRate Emission rate for the output pool/token
@@ -193,13 +228,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.outputPools[_index].emissionRate = _emissionRate;
     }
 
-    // Getters
-
-    /// @dev Get input token address
-    /// @return input token address
-    function getInputToken() external view returns (ISuperToken) {
-        return market.inputToken;
-    }
 
     /// @dev Get output token address
     /// @return output token address
@@ -211,39 +239,10 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         return market.outputPools[_index];
     }
 
-    /// @dev Get output token address
-    /// @return output token address
-    function getOracleInfo(ISuperToken token)
-        external
-        view
-        returns (OracleInfo memory)
-    {
-        return market.oracles[token];
-    }
-
     /// @dev Get last distribution timestamp
     /// @return last distribution timestamp
     function getLastDistributionAt() external view returns (uint256) {
         return market.lastDistributionAt;
-    }
-
-    /// @dev Is app jailed in SuperFluid protocol
-    /// @return is app jailed in SuperFluid protocol
-    function isAppJailed() external view returns (bool) {
-        return host.isAppJailed(this);
-    }
-
-    /// @dev Get rate tolerance
-    /// @return Rate tolerance scaled to 1e6
-    function getRateTolerance() external view returns (uint256) {
-        return market.rateTolerance;
-    }
-
-    /// @dev Get fee rate for a given output pool/token
-    /// @param _index IDA index for the output pool/token
-    /// @return Fee rate for the output pool
-    function getFeeRate(uint32 _index) external view returns (uint128) {
-        return market.outputPools[_index].feeRate;
     }
 
     /// @dev Get emission rate for a given output pool/token
@@ -266,8 +265,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
     function initializeMarket(
         ISuperToken _inputToken,
         uint256 _rateTolerance,
-        ITellor _tellor,
-        uint256 _inputTokenRequestId,
         uint128 _affiliateFee,
         uint128 _feeRate
     ) public virtual onlyOwner {
@@ -279,82 +276,25 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         market.rateTolerance = _rateTolerance;
         market.affiliateFee = _affiliateFee;
         market. feeRate = _feeRate;
-        oracle = _tellor;
-        OracleInfo memory _newOracle = OracleInfo(_inputTokenRequestId, 0, 0);
-        market.oracles[market.inputToken] = _newOracle;
-        updateTokenPrice(_inputToken);
     }
 
     function addOutputPool(
         ISuperToken _token,
         uint128 _feeRate,
-        uint256 _emissionRate,
-        uint256 _requestId,
-        uint128 _shareScaler
+        uint256 _emissionRate
     ) public virtual onlyOwner {
         // NOTE: Careful how many output pools, theres a loop over these pools
-        require(_requestId != 0, "!validReqId");
-        require(market.oracles[_token].requestId == 0, "!unique");
         require(market.numOutputPools < MAX_OUTPUT_POOLS, "Too many pools");
 
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
-            _emissionRate,
-            _shareScaler
+            _emissionRate
         );
         market.outputPools[market.numOutputPools] = _newPool;
         market.outputPoolIndicies[_token] = market.numOutputPools;
         _createIndex(market.numOutputPools, _token);
         market.numOutputPools++;
-        OracleInfo memory _newOracle = OracleInfo(_requestId, 0, 0);
-        market.oracles[_token] = _newOracle;
-        updateTokenPrice(_token);
-    }
-
-    // Standardized functionality for all REX Markets
-
-    // Oracle Functions
-
-    function updateTokenPrices() public {
-      updateTokenPrice(market.inputToken);
-      for (uint32 index = 0; index < market.numOutputPools; index++) {
-          updateTokenPrice(market.outputPools[index].token);
-      }
-    }
-
-    function updateTokenPrice(ISuperToken _token) public {
-        (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        ) = getCurrentValue(market.oracles[_token].requestId);
-
-        require(_ifRetrieve, "!getCurrentValue");
-        require(_timestampRetrieved >= block.timestamp - 3600, "!currentValue");
-
-        market.oracles[_token].usdPrice = _value;
-        market.oracles[_token].lastUpdatedAt = _timestampRetrieved;
-    }
-
-    function getCurrentValue(uint256 _requestId)
-        public
-        view
-        returns (
-            bool _ifRetrieve,
-            uint256 _value,
-            uint256 _timestampRetrieved
-        )
-    {
-        uint256 _count = oracle.getNewValueCountbyRequestId(_requestId);
-        _timestampRetrieved = oracle.getTimestampbyRequestIDandIndex(
-            _requestId,
-            _count - 1
-        );
-        _value = oracle.retrieveData(_requestId, _timestampRetrieved);
-
-        if (_value > 0) return (true, _value, _timestampRetrieved);
-        return (false, 0, _timestampRetrieved);
     }
 
     /// @dev Get flow rate for `_streamer`
@@ -441,11 +381,11 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
      internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
     {
       (,,daoShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], owner());
-      daoShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      daoShares *= market.shareScaler;
 
       if (address(0) != _shareholderUpdate.affiliate) {
         (,,affiliateShares,) = getIDAShares(market.outputPoolIndicies[_shareholderUpdate.token], _shareholderUpdate.affiliate);
-        affiliateShares *= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+        affiliateShares *= market.shareScaler;
       }
 
       // Compute the change in flow rate, will be negative is slowing the flow rate
@@ -474,9 +414,9 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - market.feeRate) / 1e6;
 
       // Scale back shares
-      affiliateShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
-      daoShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
-      userShares /= market.outputPools[market.outputPoolIndicies[_shareholderUpdate.token]].shareScaler;
+      affiliateShares /= market.shareScaler;
+      daoShares /= market.shareScaler;
+      userShares /= market.shareScaler;
 
     }
 
@@ -568,6 +508,8 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
                 distToken,
                 index,
                 subscriber,
+                // All shares are scaled based on the difference in magnitude between the input token and the output token
+                // This addresses the issue that you can't sell 1 wei of USDC to ETH
                 shares,
                 new bytes(0) // placeholder ctx
             ),
@@ -679,11 +621,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
       return _totalUnitsApproved + _totalUnitsPending > 0 && _balance > 0;
     }
 
-    function _onlyScalable(ISuperToken _superToken, int96 _flowRate) internal virtual {
-      // Enforce speed limit on flowRate
-      require(uint128(uint(int(_flowRate))) % (market.outputPools[market.outputPoolIndicies[_superToken]].shareScaler * 1e3) == 0, "notScalable");
-    }
-
     function _registerReferral(bytes memory _ctx, address _shareholder) internal {
       require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
       ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
@@ -731,8 +668,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
             _agreementData, _superToken
         );
 
-        _onlyScalable(_superToken, _flowRate);
-
         _registerReferral(_ctx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
@@ -778,8 +713,6 @@ abstract contract REXMarket is Ownable, SuperAppBase, Initializable {
         (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
             _agreementData, _superToken
         );
-
-        _onlyScalable(_superToken, _flowRate);
 
         int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 

@@ -210,7 +210,7 @@ export const common = async () => {
                     registrationKey,
                 ]
             )
-        );
+        ); 
         const governance: string = await host.getGovernance();
         const sfGovernanceRO = await ethers.getContractAt(
             SuperfluidGovernanceBase.abi,

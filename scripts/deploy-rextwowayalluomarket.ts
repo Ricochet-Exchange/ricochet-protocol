@@ -32,12 +32,8 @@ async function main() {
 
   await rexTwoWayAlluoMarket.initializeTwoWayMarket(
     Constants.IBALLUOUSD_ADDRESS,
-    Constants.TELLOR_USDC_REQUEST_ID,
     1e6,
-    // Constants.IBALLUOETH_ADDRESS,
-    // Constants.TELLOR_ETH_REQUEST_ID,
     Constants.IBALLUOBTC_ADDRESS,
-    Constants.TELLOR_WBTC_REQUEST_ID,
     1e9,
     5000,
     20000,

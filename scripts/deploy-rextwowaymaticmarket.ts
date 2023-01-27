@@ -17,13 +17,10 @@ async function main() {
   const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
   const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
   const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
-  const TELLOR_ORACLE_ADDRESS = Constants.TELLOR_ORACLE_ADDRESS;
 
   const DAIX_ADDRESS = "0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2";
   const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-  const TELLOR_USDC_REQUEST_ID = Constants.TELLOR_USDC_REQUEST_ID;
   const MATICX_ADDRESS = "0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3";
-  const TELLOR_MATIC_REQUEST_ID = Constants.TELLOR_MATIC_REQUEST_ID;
 
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await deployer.getBalance()).toString());
@@ -46,10 +43,8 @@ async function main() {
 
   await rexTwoWayMarket.initializeTwoWayMarket(
     USDCX_ADDRESS,
-    TELLOR_USDC_REQUEST_ID,
     1e9,
     MATICX_ADDRESS,
-    TELLOR_MATIC_REQUEST_ID,
     1e9,
     20000,
     20000,
