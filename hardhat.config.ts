@@ -89,6 +89,11 @@ const config: HardhatUserConfig = {
       blockGasLimit: 20000000,
       gasPrice: 55000000000 // 35 Gwei
     },
+    maticmum: { // Mumbai Testnet, network name returned when using Infura 
+      url: process.env.MUMBAI_NODE_URL,
+      accounts: process.env.MUMBAI_PRIVATE_KEY !== undefined ? [process.env.MUMBAI_PRIVATE_KEY] : [],
+      blockGasLimit: 20000000,
+    },
     localhost: {
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       url: 'http://127.0.0.1:8545/'
