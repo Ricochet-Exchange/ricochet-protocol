@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber } from "ethers";
 import { isEthersProvider } from "@superfluid-finance/sdk-core";
+import { impersonateAndSetBalance } from "./../misc/helpers";
 
 describe("RecurringDeposits", () => {
     let deployer: SignerWithAddress;
@@ -15,7 +16,7 @@ describe("RecurringDeposits", () => {
     const USDC_TOKEN = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Mainnet USDC Token Address
     const WETH_TOKEN = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; // Mainnet WETH Token Address
     const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
-    const RIC_HOLDER = "0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"; // Ricochet holder
+    const USDC_HOLDER = "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F"; // Ricochet holder
     const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet Uniswap Router Address
     const ONE_ETH = BigNumber.from("1000000");
 
@@ -69,12 +70,8 @@ describe("RecurringDeposits", () => {
       const token = await ethers.getContractAt("MockERC20", tokenAddress);
 
       // Impersonate a large RIC token holder and transfer RIC to alice and bob
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        // Ricochet holder
-        params: ["0x14aD7D958ab2930863B68E7D98a7FDE6Ae4Cd12f"],
-      });
-      const ricHolder = await ethers.getSigner(RIC_HOLDER);
+      await impersonateAndSetBalance(USDC_HOLDER);
+      const ricHolder = await ethers.getSigner(USDC_HOLDER);
 
       // Transfer amount to account
       await token.connect(ricHolder).transfer(account.getAddress(), amount);
