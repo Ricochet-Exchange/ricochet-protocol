@@ -104,13 +104,11 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         require(taskId == bytes32(""), "Already started task");
         bytes memory execData = abi.encodeCall(this.performNextDeposit, ());
         ModuleData memory moduleData = ModuleData({
-            modules: new Module[](2),
-            args: new bytes[](2)
+            modules: new Module[](1),
+            args: new bytes[](1)
         });
         moduleData.modules[0] = Module.TIME;
-        moduleData.modules[1] = Module.PROXY;
         moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
-        moduleData.args[1] = _proxyModuleArg();
         bytes32 id = _createTask(address(this), execData, moduleData, ETH);
         taskId = id;
         emit ProcessNextDepositTaskCreated(id);
@@ -203,7 +201,8 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         if(fee > 0) {
             // TODO: Need to integration test
             amountIn = _swap(fee, type(uint256).max, 500);
-            WMATIC.withdraw(amountIn);
+            require(amountIn <= gasTank[depositor], "Not enough gas in the tank");
+            WMATIC.withdraw(WMATIC.balanceOf(address(this)));
             _transfer(fee, feeToken);
         } else {
             gasUsed = gasUsed - gasleft();
