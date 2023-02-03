@@ -46,22 +46,16 @@ const config: HardhatUserConfig = {
   // About the gas reporter options ---> https://github.com/cgewecke/eth-gas-reporter/blob/master/README.md
   gasReporter: {
     currency: "USD",
-    // gasPrice: 100,
     gasPrice: 100,
     token: "MATIC",
     coinmarketcap: process.env.COINMARKETCAP_API_KEY || undefined,
     gasPriceApi:
       "https://api.polygonscan.com/api?module=proxy&action=eth_gasPrice",
-    // onlyCalledMethods: false,
-    // noColors: true,
     rst: true,      // Output with a reStructured text code-block directive
     rstTitle: true, // "Gas Usage",
     showTimeSpent: true,
     excludeContracts: ["CollateralToken", "DebtToken"],
-    // proxyResolver: "EtherRouter",   // Custom method to resolve identity of methods managed by a proxy contract.
-    // codechecks: true,
-    // showMethodSig: true   // Display complete method signatures. Useful when you have overloaded methods you can't tell apart.
-    // enabled: process.env.REPORT_GAS ? true : false,
+
   },
   networks: {
     hardhat: {
@@ -69,25 +63,12 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
-        // REX Alluo Market Test Block
-        // blockNumber: 31926750
-        // REX Market Test Block
-        // blockNumber: 22877930
- 
       },
-      // blockGasLimit: 20000000,
-      // gasPrice: 30000000000,
-      // accounts: [{
-      //   privateKey: `${process.env.POLYGON_PRIVATE_KEY}`,
-      //   balance: ethers.utils.parseUnits("10000", 18).toString()
-      // }],
-      // saveDeployments: false
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
-      blockGasLimit: 20000000,
-      gasPrice: 55000000000 // 35 Gwei
+      gasPrice: 150000000000
     },
     maticmum: { // Mumbai Testnet, network name returned when using Infura 
       url: process.env.MUMBAI_NODE_URL,
@@ -112,18 +93,6 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     disambiguatePaths: false,
   },
-
-  // Configuration from the old Rex-Bank repository
-  // networks: {
-  //   hardhat: {
-  // forking: {
-  //   url: `https://green-nameless-water.matic.quiknode.pro/${process.env.QUICKNODE_ENDPOINT}/`,
-  // accounts: [process.env.MATIC_PRIVATE_KEY],
-  // blockNumber: parseInt(`${process.env.FORK_BLOCK_NUMBER}`),
-  // gasPrice: 50000000000,
-  // network_id: 137,
-  //   },
-  // }
 };
 
 export default config;

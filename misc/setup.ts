@@ -31,8 +31,11 @@ export interface ISuperToken {
   daix: SuperToken;
   ric: SuperToken;
   maticx: SuperToken;
-  ibAlluoUSD: SuperToken;
-  ibAlluoETH: SuperToken;
+  // ibAlluoUSD: SuperToken;
+  // ibAlluoETH: SuperToken;
+  stIbAlluoUSD: SuperToken;
+  stIbAlluoETH: SuperToken;
+  rexshirt: SuperToken;
 }
 
 export interface IUser {
@@ -45,49 +48,52 @@ export interface IUser {
 export const REX_REFERRAL_ADDRESS = process.env.REX_REFERRAL_ADDRESS !== undefined ? process.env.REX_REFERRAL_ADDRESS : "";
 
 export const setup = async () => {
+
+  // TODO: Should be set dynamically based on the network we're on
+  let _constants = Constants.matic;
+
   const users: { [key: string]: IUser } = {};
   let tokens: { [key: string]: any } = {};  // TypesOfTokens
   // tokens.ric = new ERC20();
 
   const contracts: any = {};
   const constants: { [key: string]: string } = {
-    "OWNER_ADDRESS": Constants.OWNER_ADDRESS,
-    "ALICE_ADDRESS": Constants.ALICE_ADDRESS,
-    "CARL_ADDRESS": Constants.CARL_ADDRESS,
-    "BOB_ADDRESS": Constants.BOB_ADDRESS,
-    "RIC_TOKEN_ADDRESS": Constants.RIC_TOKEN_ADDRESS,
-    "SF_RESOLVER": Constants.SF_RESOLVER,
-    "USDCX_SOURCE_ADDRESS": Constants.USDCX_SOURCE_ADDRESS,
-    "MATICX_SOURCE_ADDRESS": Constants.MATICX_SOURCE_ADDRESS,
-    "IBALLUOUSD_SOURCE_ADDRESS": Constants.IBALLUOUSD_SOURCE_ADDRESS,
-    "IBALLUOETH_SOURCE_ADDRESS": Constants.IBALLUOETH_SOURCE_ADDRESS,
-    "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
-    "IDA_SUPERFLUID_ADDRESS": Constants.IDA_SUPERFLUID_ADDRESS,
-    "CFA_SUPERFLUID_ADDRESS": Constants.CFA_SUPERFLUID_ADDRESS,
+    "OWNER_ADDRESS": _constants.OWNER_ADDRESS,
+    "ALICE_ADDRESS": _constants.ALICE_ADDRESS,
+    "CARL_ADDRESS": _constants.CARL_ADDRESS,
+    "BOB_ADDRESS": _constants.BOB_ADDRESS,
+    "RIC_TOKEN_ADDRESS": _constants.RIC_TOKEN_ADDRESS,
+    "SF_RESOLVER": _constants.SF_RESOLVER,
+    "USDCX_SOURCE_ADDRESS": _constants.USDCX_SOURCE_ADDRESS,
+    "MATICX_SOURCE_ADDRESS": _constants.MATICX_SOURCE_ADDRESS,
+    "IBALLUOUSD_SOURCE_ADDRESS": _constants.IBALLUOUSD_SOURCE_ADDRESS,
+    "IBALLUOETH_SOURCE_ADDRESS": _constants.IBALLUOETH_SOURCE_ADDRESS,
+    "SUSHISWAP_ROUTER_ADDRESS": _constants.SUSHISWAP_ROUTER_ADDRESS,
+    "IDA_SUPERFLUID_ADDRESS": _constants.IDA_SUPERFLUID_ADDRESS,
+    "CFA_SUPERFLUID_ADDRESS": _constants.CFA_SUPERFLUID_ADDRESS,
   };
 
   const accountAddrs = [
-    Constants.OWNER_ADDRESS,
-    Constants.ALICE_ADDRESS,
-    Constants.BOB_ADDRESS,
-    Constants.CARL_ADDRESS,
-    Constants.KAREN_ADDRESS,
-    Constants.USDCX_SOURCE_ADDRESS,
-    Constants.ETHX_SOURCE_ADDRESS,
-    Constants.MATICX_SOURCE_ADDRESS,
-    Constants.IBALLUOUSD_SOURCE_ADDRESS,
-    Constants.IBALLUOETH_SOURCE_ADDRESS,
-    Constants.RIC_SOURCE_ADDRESS,
-    Constants.SF_RESOLVER,
+    _constants.OWNER_ADDRESS,
+    _constants.ALICE_ADDRESS,
+    _constants.BOB_ADDRESS,
+    _constants.CARL_ADDRESS,
+    _constants.KAREN_ADDRESS,
+    _constants.USDCX_SOURCE_ADDRESS,
+    _constants.ETHX_SOURCE_ADDRESS,
+    _constants.MATICX_SOURCE_ADDRESS,
+    _constants.IBALLUOUSD_SOURCE_ADDRESS,
+    _constants.IBALLUOETH_SOURCE_ADDRESS,
+    _constants.RIC_SOURCE_ADDRESS,
+    _constants.SF_RESOLVER,
   ];
-
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
   const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender", "ricspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
     provider: ethers.provider,  //   PROVIDER,  // ethers.getDefaultProvider(),
-    resolverAddress: Constants.SF_RESOLVER,
+    resolverAddress: _constants.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
     protocolReleaseVersion: "v1",
@@ -117,17 +123,13 @@ export const setup = async () => {
     stIbAlluoETH: await superfluid.loadSuperToken(
       "0x2D4Dc956FBd0044a4EBA945e8bbaf98a14025C2d"
     ),
-    // ibAlluoUSD: await ethers.getContractAt(
-    //   "IbAlluo", "0xC2DbaAEA2EfA47EBda3E572aa0e55B742E408BF6"
-    // ),
-    // ibAlluoETH: await ethers.getContractAt(
-    //   "IbAlluo", "0xc677B0918a96ad258A68785C2a3955428DeA7e50"
-    // ),
+    // ibAlluoUSD: await superfluid.loadSuperToken(_constants.IBALLUOUSD_ADDRESS),
+    // ibAlluoETH: await superfluid.loadSuperToken(_constants.IBALLUOETH_ADDRESS),
     ric: await superfluid.loadSuperToken(
-      Constants.RIC_TOKEN_ADDRESS
+      _constants.RIC_TOKEN_ADDRESS
     ),
     rexshirt: await superfluid.loadSuperToken(
-      Constants.REXSHIRT_ADDRESS
+      _constants.REXSHIRT_ADDRESS
     ),
   };
 
@@ -144,7 +146,7 @@ export const setup = async () => {
   // console.log(superTokens.ethx)
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
-    "ERC20", Constants.RIC_TOKEN_ADDRESS
+    "ERC20", _constants.RIC_TOKEN_ADDRESS
   );
   // tokens.weth = await ethers.getContractAt(
   //   "ERC20",

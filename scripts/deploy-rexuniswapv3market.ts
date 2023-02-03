@@ -7,7 +7,7 @@ async function main() {
   let constants: any;
   const network = await ethers.provider.getNetwork();
   console.log("network", network.name);
-  constants = Constants[network.name];
+  constants = Constants["matic"];
   console.log("Constants", constants);
 
   function sleep(ms: number) {
@@ -56,9 +56,9 @@ async function main() {
     constants.USDCX_ADDRESS,
     constants.WBTCX_ADDRESS,
     constants.RIC_ADDRESS,
-    10000, 
+    100000, // BTC is scaled 1e(4+1) 
     20000,
-    "1000000000000000000", // Initial price pulled from coingecko manually
+    "23000000000000000000000", // Initial price pulled from coingecko manually
     20000,
     { gasLimit: 2000000 }
   );
