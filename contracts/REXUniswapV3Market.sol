@@ -100,6 +100,13 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     address[] uniswapPath; // The path between inputToken and outputToken
     uint24[] poolFees; // The pool fee to use in the path between inputToken and outputToken 
 
+    // Gelato task variables
+    uint256 public count;
+    uint256 public lastExecuted;
+    bytes32 public taskId;
+    uint256 public constant MAX_COUNT = 5;
+    uint256 public constant INTERVAL = 1 minutes;
+
     // Internal Oracle Variables
     struct TokenExchangeRate {
         uint256 rate;
@@ -141,6 +148,23 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         } else {
             host.registerApp(_configWord);
         }
+    }
+
+    // Creates the distribute task on Gelato Network
+    function createTask() external payable onlyOwner {
+        require(taskId == bytes32(""), "Already started task");
+        
+        bytes memory execData = abi.encodeCall(this.distribute, ("0x"));
+        ModuleData memory moduleData = ModuleData({
+            modules: new Module[](1),
+            args: new bytes[](1)
+        });
+
+        moduleData.modules[0] = Module.TIME;
+        moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
+
+        bytes32 id = _createTask(address(this), execData, moduleData, ETH);
+        taskId = id;
     }
 
     // Initializer Methods
