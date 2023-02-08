@@ -18,6 +18,18 @@ const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
 
+// Constants for Gelato
+const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
+const GELATO_NETWORK = "0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA"; // Mainnet Gelato Executor Address
+const USDC_TOKEN = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Mainnet USDC Token Address
+const WETH_TOKEN = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; // Mainnet WETH Token Address
+const RIC_TOKEN = "0x263026E7e53DBFDce5ae55Ade22493f828922965"; // Mainnet RIC Token Address
+const USDC_HOLDER = "0x1a13F4Ca1d028320A707D99520AbFefca3998b7F"; // Ricochet holder
+const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet Uniswap Router Address
+const ONE_USDC = ethers.BigNumber.from("1000000");
+const GELATO_FEE = ethers.BigNumber.from("100000"); // 100k wei
+
+
 export interface superTokenIDAIndex {
     token: SuperToken;
     IDAIndex: number;
@@ -283,7 +295,9 @@ describe('REXUniswapV3Market', () => {
             Constants.CFA_SUPERFLUID_ADDRESS,
             Constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
-            referral.address
+            referral.address,
+            GELATO_OPS,
+            adminSigner.address
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
 
@@ -585,7 +599,9 @@ describe('REXUniswapV3Market', () => {
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,
-                referral.address
+                referral.address,
+                GELATO_OPS,
+                adminSigner.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
             await market.initializeMarket(
@@ -792,7 +808,9 @@ describe('REXUniswapV3Market', () => {
                 Constants.CFA_SUPERFLUID_ADDRESS,
                 Constants.IDA_SUPERFLUID_ADDRESS,
                 registrationKey,
-                referral.address
+                referral.address,
+                GELATO_OPS,
+                adminSigner.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
             await market.initializeMarket(

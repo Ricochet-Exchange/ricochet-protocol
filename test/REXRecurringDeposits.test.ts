@@ -11,6 +11,8 @@ describe("RecurringDeposits", () => {
     let bob: SignerWithAddress;
     let mockSuperToken: any;
     let recurringDeposits: any;
+
+    // TODO: Move to constants file
     const GELATO_OPS = "0x527a819db1eb0e34426297b03bae11F2f8B3A19E"; // Mainnet Gelato Ops Address
     const GELATO_NETWORK = "0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA"; // Mainnet Gelato Executor Address
     const USDC_TOKEN = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Mainnet USDC Token Address

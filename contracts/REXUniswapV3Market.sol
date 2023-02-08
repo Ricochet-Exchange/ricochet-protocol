@@ -17,6 +17,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./uniswap/IUniswapV3Pool.sol";
 import "./uniswap/IUniswapV3Factory.sol";
 
+// Gelato Imports
+import "./gelato/OpsTaskCreator.sol";
+
 // REX Imports
 import './ISETHCustom.sol';
 import './matic/IWMATIC.sol';
@@ -24,7 +27,7 @@ import "./superswap/interfaces/ISwapRouter02.sol";
 import "./referral/IREXReferral.sol";
 
 
-contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable{
+contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCreator {
     using SafeERC20 for ERC20;
 
     // Structures 
@@ -119,8 +122,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable{
         IConstantFlowAgreementV1 _cfa,
         IInstantDistributionAgreementV1 _ida,
         string memory _registrationKey,
-        IREXReferral _rexReferral
-    )  {
+        IREXReferral _rexReferral,
+        address payable _ops,
+        address _taskCreator
+    ) OpsTaskCreator(_ops, _taskCreator) {
         
         host = _host;
         cfa = _cfa;
