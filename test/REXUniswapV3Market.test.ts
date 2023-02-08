@@ -301,6 +301,10 @@ describe('REXUniswapV3Market', () => {
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
 
+        await market.createTask();
+
+        console.log("========== Created Task ===========");
+
         await market.initializeMarket(
             ricochetUSDCx.address,
             ricochetETHx.address,
@@ -614,6 +618,8 @@ describe('REXUniswapV3Market', () => {
                 5000,
             );
             console.log("========== Initialized market ===========");
+            await market.createTask();
+            console.log("========== Created gelato task ===========");
             // Initialize the twoway market's uniswap
             // token0 is USDC, token1 is rexSHIRT (supertokens)
             await market.initializeUniswap(
@@ -813,6 +819,8 @@ describe('REXUniswapV3Market', () => {
                 adminSigner.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
+            await market.createTask();
+            console.log("=========== Created Gelato Task ============");
             await market.initializeMarket(
                 ricochetUSDCx.address,
                 ricochetMATICx.address,
