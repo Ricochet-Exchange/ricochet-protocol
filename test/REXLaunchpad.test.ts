@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1, RicochetLaunchpad } from "../typechain";
+import { REXTwoWayMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1, RicochetLaunchpad } from "../typechain";
 import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
@@ -16,7 +16,6 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -77,7 +76,6 @@ describe('REXLaunchpad', () => {
         sfRegistrationKey: any,
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
-        tp: TellorPlayground,
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
@@ -193,7 +191,6 @@ describe('REXLaunchpad', () => {
             superTokens,
             contracts,
             constants,
-            tellor,
         } = await setup();
         console.log("============ Right after initSuperfluid() ==================");
 
@@ -206,7 +203,6 @@ describe('REXLaunchpad', () => {
         accountss = accounts;
         sfRegistrationKey = createSFRegistrationKey;
         constant = constants;
-        tp = tellor;
 
         // This order is established in misc/setup.ts
         adminSigner = accountss[0];
@@ -289,24 +285,6 @@ describe('REXLaunchpad', () => {
             referral.address
         );
         console.log("=========== Deployed RicochetLaunchpad ============");
-
-        // Update the oracles
-        let httpService = new HttpService();
-        // const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + Constants.COINGECKO_KEY + "&vs_currencies=usd";
-        // let response = await httpService.get(url);
-        // oraclePrice = parseInt(response.data[Constants.COINGECKO_KEY].usd) * ORACLE_PRECISION_DIGITS;
-        oraclePrice = 4110000000; // close price on block 22877930
-        console.log("oraclePrice: ", oraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-        ricOraclePrice = 1710000;
-        console.log("RIC oraclePrice: ", ricOraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ricOraclePrice);
-        maticOraclePrice = 2680000;
-        console.log("MATIC oraclePrice: ", maticOraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_MATIC_REQUEST_ID, maticOraclePrice);
-        console.log("=========== Updated the oracles ============");
-        // IMPORTANT --> the oracles must be updated before calling initializeTwoWayMarket
 
         await launchpad.initialize(
           ricochetUSDCx.address,

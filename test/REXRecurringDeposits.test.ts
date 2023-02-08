@@ -21,6 +21,7 @@ describe("RecurringDeposits", () => {
     const ONE_USDC = BigNumber.from("1000000");
     const GELATO_FEE = BigNumber.from("100000"); // 100k wei
 
+
     const deploy = async (period: number) => {
       // Get RIC token at contract address
       const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
@@ -35,6 +36,7 @@ describe("RecurringDeposits", () => {
       // Mint alice and bob some tokens
       await mockERC20.mint(alice.getAddress(), ONE_USDC);
       await mockERC20.mint(bob.getAddress(), ONE_USDC);
+
 
 
       // Make a corresponding mock super token for mockERC20

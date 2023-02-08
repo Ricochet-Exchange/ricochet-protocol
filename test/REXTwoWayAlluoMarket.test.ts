@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayAlluoMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
+import { REXTwoWayAlluoMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
 import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
@@ -16,7 +16,6 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -69,7 +68,6 @@ describe('REXTwoWayAlluoMarket', () => {
         sfRegistrationKey: any,
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
-        tp: TellorPlayground,
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
@@ -178,7 +176,6 @@ describe('REXTwoWayAlluoMarket', () => {
             superTokens,
             contracts,
             constants,
-            tellor,
         } = await setup();
         console.log("============ Right after initSuperfluid() ==================");
 
@@ -191,7 +188,6 @@ describe('REXTwoWayAlluoMarket', () => {
         accountss = accounts;
         sfRegistrationKey = createSFRegistrationKey;
         constant = constants;
-        tp = tellor;
 
         // This order is established in misc/setup.ts
         adminSigner = accountss[0];
@@ -273,24 +269,11 @@ describe('REXTwoWayAlluoMarket', () => {
         );
         console.log("=========== Deployed REXTwoWayAlluoMarket ============");
 
-        // Update the oracles
-        let httpService = new HttpService();
-        // const url = "https://api.coingecko.com/api/v3/simple/price?ids=" + Constants.COINGECKO_KEY + "&vs_currencies=usd";
-        // let response = await httpService.get(url);
-        // oraclePrice = parseInt(response.data[Constants.COINGECKO_KEY].usd) * ORACLE_PRECISION_DIGITS;
-        oraclePrice = 1950000000; // Should be the price of stIbAlluoUSD/stIbAlluoETH
-        console.log("oraclePrice: ", oraclePrice.toString());
-        await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-        await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-        console.log("=========== Updated the oracles ============");
-        // IMPORTANT --> the oracles must be updated before calling initializeTwoWayMarket
         console.log("initializeTwoWayMarket", stIbAlluoUSD.address, stIbAlluoETH.address);
         await twoWayMarket.initializeTwoWayMarket(
             stIbAlluoUSD.address,
-            Constants.TELLOR_USDC_REQUEST_ID,
             1e7,
             stIbAlluoETH.address,
-            Constants.TELLOR_ETH_REQUEST_ID,
             1e9,
             5000,
             20000
@@ -549,10 +532,6 @@ describe('REXTwoWayAlluoMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again
@@ -720,10 +699,6 @@ describe('REXTwoWayAlluoMarket', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(3600);
-            await tp.submitValue(Constants.TELLOR_ETH_REQUEST_ID, oraclePrice);
-            await tp.submitValue(Constants.TELLOR_USDC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await tp.submitValue(Constants.TELLOR_RIC_REQUEST_ID, ORACLE_PRECISION_DIGITS);
-            await twoWayMarket.updateTokenPrices();
             await twoWayMarket.distribute("0x");
 
             // Check balances again

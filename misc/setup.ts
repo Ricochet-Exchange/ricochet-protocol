@@ -7,8 +7,6 @@ import * as dotenv from "dotenv";
 
 const { provider, loadFixture } = waffle;
 
-import TellorPlayground from "usingtellor/artifacts/contracts/TellorPlayground.sol/TellorPlayground.json";
-
 // import RexMarket from 'path to rexmarket ABI';
 // import RexOneWayMarket from 'path to rex one way market ABI';
 // import RexSushiMarket from 'path to sushi market ABI';
@@ -63,10 +61,7 @@ export const setup = async () => {
     "MATICX_SOURCE_ADDRESS": Constants.MATICX_SOURCE_ADDRESS,
     "IBALLUOUSD_SOURCE_ADDRESS": Constants.IBALLUOUSD_SOURCE_ADDRESS,
     "IBALLUOETH_SOURCE_ADDRESS": Constants.IBALLUOETH_SOURCE_ADDRESS,
-    "TELLOR_ORACLE_ADDRESS": Constants.TELLOR_ORACLE_ADDRESS,
     "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
-    "TELLOR_ETH_REQUEST_ID": Constants.TELLOR_ETH_REQUEST_ID.toString(),
-    "TELLOR_USDC_REQUEST_ID": Constants.TELLOR_USDC_REQUEST_ID.toString(),
     "IDA_SUPERFLUID_ADDRESS": Constants.IDA_SUPERFLUID_ADDRESS,
     "CFA_SUPERFLUID_ADDRESS": Constants.CFA_SUPERFLUID_ADDRESS,
   };
@@ -82,11 +77,12 @@ export const setup = async () => {
     Constants.MATICX_SOURCE_ADDRESS,
     Constants.IBALLUOUSD_SOURCE_ADDRESS,
     Constants.IBALLUOETH_SOURCE_ADDRESS,
+    Constants.RIC_SOURCE_ADDRESS,
     Constants.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
-  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender"];
+  const names = ["admin", "alice", "bob", "carl", "karen", "usdcxspender", "ethxspender", "maticxspender", "ibAlluoUSDspender", "ibAlluoETHspender", "ricspender"];
 
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
@@ -129,7 +125,10 @@ export const setup = async () => {
     // ),
     ric: await superfluid.loadSuperToken(
       Constants.RIC_TOKEN_ADDRESS
-    )
+    ),
+    rexshirt: await superfluid.loadSuperToken(
+      Constants.REXSHIRT_ADDRESS
+    ),
   };
 
 
@@ -175,10 +174,6 @@ export const setup = async () => {
   let var2:string = tokens.usdc;
   tokens.ric = tokens.ric.connect(accounts[0]);
 
-  // Trellor Protocol to determine the price
-  const TellorPlayground = await ethers.getContractFactory('TellorPlayground');
-  let tellor = await TellorPlayground.attach(Constants.TELLOR_ORACLE_ADDRESS);
-  tellor = tellor.connect(accounts[0]);
 
   return {
     superfluid,
@@ -188,6 +183,5 @@ export const setup = async () => {
     superTokens,
     contracts,
     constants,
-    tellor,
   };
 };

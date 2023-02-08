@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { HttpService } from "./../misc/HttpService";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground, REXTwoWayAlluoUsdcxMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
+import { REXTwoWayAlluoUsdcxMarket, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
 import { increaseTime, impersonateAndSetBalance } from "./../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
@@ -16,7 +16,6 @@ const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
 const USDCX_SUBSCRIPTION_INDEX = 0;
 const IBALLUOUSD_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
-const ORACLE_PRECISION_DIGITS = 1000000;    // A six-digit precision is required by the Tellor oracle
 
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
@@ -69,7 +68,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         sfRegistrationKey: any,
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
-        tp: TellorPlayground,
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
@@ -175,7 +173,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
             superTokens,
             contracts,
             constants,
-            tellor,
         } = await setup();
         console.log("============ Right after initSuperfluid() ==================");
 
@@ -188,7 +185,6 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         accountss = accounts;
         sfRegistrationKey = createSFRegistrationKey;
         constant = constants;
-        tp = tellor;
 
         // This order is established in misc/setup.ts
         adminSigner = accountss[0];
@@ -261,10 +257,8 @@ describe('REXTwoWayAlluoUsdcxMarket', () => {
         console.log("initializeTwoWayMarket", stIbAlluoUSD.address, ricochetUSDCx.address);
         await twoWayMarket.initializeTwoWayMarket(
             ricochetUSDCx.address,
-            Constants.TELLOR_USDC_REQUEST_ID,
             1,
             stIbAlluoUSD.address,
-            Constants.TELLOR_USDC_REQUEST_ID,
             1,
             0,
             20000

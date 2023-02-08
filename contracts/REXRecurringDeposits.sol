@@ -102,13 +102,16 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     // Creates the performNextDeposit task on Gelato Network
     function createTask() external payable onlyOwner {
         require(taskId == bytes32(""), "Already started task");
+        
         bytes memory execData = abi.encodeCall(this.performNextDeposit, ());
         ModuleData memory moduleData = ModuleData({
             modules: new Module[](1),
             args: new bytes[](1)
         });
+
         moduleData.modules[0] = Module.TIME;
         moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
+
         bytes32 id = _createTask(address(this), execData, moduleData, ETH);
         taskId = id;
         emit ProcessNextDepositTaskCreated(id);
@@ -199,7 +202,6 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         // If the gelato executor is paying for the transaction, pay for the gas for them
         uint amountIn;
         if(fee > 0) {
-            // TODO: Need to integration test
             amountIn = _swap(fee, type(uint256).max, 500);
             require(amountIn <= gasTank[depositor], "Not enough gas in the tank");
             WMATIC.withdraw(WMATIC.balanceOf(address(this)));

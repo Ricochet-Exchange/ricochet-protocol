@@ -5,7 +5,6 @@ import { expect } from "chai";
 import axios from "axios";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { TellorPlayground } from "../typechain";
 import { Constants } from "../misc/Constants";
 
 
@@ -49,7 +48,6 @@ describe('REXSuperSwap', () => {
         sfRegistrationKey: any,
         accountss: SignerWithAddress[],
         constant: { [key: string]: string },
-        tp: TellorPlayground,
         ERC20: any;
 
     // ************** All the supertokens used in Ricochet are declared **********************
@@ -125,7 +123,6 @@ describe('REXSuperSwap', () => {
         superTokens,
         contracts,
         constants,
-        tellor,
     } = await setup();
     console.log("============ Right after initSuperfluid() ==================");
 
@@ -138,7 +135,6 @@ describe('REXSuperSwap', () => {
     accountss = accounts;
     sfRegistrationKey = createSFRegistrationKey;
     constant = constants;
-    tp = tellor;
 
     // This order is established in misc/setup.ts
     adminSigner = accountss[0];
