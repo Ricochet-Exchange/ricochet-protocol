@@ -10,6 +10,7 @@ import { increaseTime, impersonateAndSetBalance } from "../misc/helpers";
 import { Constants } from "../misc/Constants";
 import { AbiCoder, parseUnits } from "ethers/lib/utils";
 import { time } from "console";
+import { takeMeasurements, resetMeasurements, approveSubscriptions, checkBalance, delta } from "./helpers";
 
 const { provider, loadFixture } = waffle;
 const TEST_TRAVEL_TIME = 3600 * 2; // 2 hours
@@ -96,100 +97,7 @@ describe('REXUniswapV3Market', () => {
     let maticxIDAIndex: superTokenIDAIndex;
 
     // ***************************************************************************************
-
-    async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
-
-        // TODO: Please 
-        appBalances.ethx.push((await superT.ethx.balanceOf({ account: market.address, providerOrSigner: provider })).toString());
-        ownerBalances.ethx.push((await superT.ethx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.ethx.push((await superT.ethx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.ethx.push((await superT.ethx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        bobBalances.ethx.push((await superT.ethx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
-
-        appBalances.usdcx.push((await superT.usdcx.balanceOf({ account: market.address, providerOrSigner: provider })).toString());
-        ownerBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        bobBalances.usdcx.push((await superT.usdcx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
-
-        appBalances.ric.push((await superT.ric.balanceOf({ account: market.address, providerOrSigner: provider })).toString());
-        ownerBalances.ric.push((await superT.ric.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.ric.push((await superT.ric.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.ric.push((await superT.ric.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        bobBalances.ric.push((await superT.ric.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
-
-        appBalances.rexshirt.push((await superT.rexshirt.balanceOf({ account: market.address, providerOrSigner: provider })).toString());
-        ownerBalances.rexshirt.push((await superT.rexshirt.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.rexshirt.push((await superT.rexshirt.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.rexshirt.push((await superT.rexshirt.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        bobBalances.rexshirt.push((await superT.rexshirt.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
-
-        appBalances.maticx.push((await superT.maticx.balanceOf({ account: market.address, providerOrSigner: provider })).toString());
-        ownerBalances.maticx.push((await superT.maticx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString());
-        aliceBalances.maticx.push((await superT.maticx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString());
-        carlBalances.maticx.push((await superT.maticx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString());
-        bobBalances.maticx.push((await superT.maticx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString());
-    }
-
-    async function resetMeasurements(): Promise<void> {
-        appBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-        ownerBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-        aliceBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-        bobBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-        carlBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-        karenBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] };
-    }
-
-    async function approveSubscriptions(tokensAndIDAIndexes: superTokenIDAIndex[], signers: SignerWithAddress[]) {
-        console.log("  ======== Inside approveSubscriptions ===========");
-        let tokenIndex: number;
-        for (let i = 0; i < signers.length; i++) {
-            for (let j = 0; j < tokensAndIDAIndexes.length; j++) {
-                tokenIndex = tokensAndIDAIndexes[j].IDAIndex;
-                await sf.idaV1
-                    .approveSubscription({
-                        indexId: tokenIndex.toString(),
-                        superToken: tokensAndIDAIndexes[j].token.address,
-                        publisher: market.address,
-                        userData: "0x",
-                    })
-                    .exec(signers[i]);
-                console.log("====== ", i, " subscription to token ", j, " approved =======");
-            }
-        }
-    }
-
-    async function checkBalance(user: SignerWithAddress, name: string) {
-        console.log(" checkBalance START ======== Balance of ", name, " with address: ", user.address, " ============= ");
-        let balanceEthx = await ricochetETHx.balanceOf({
-            account: user.address, providerOrSigner: provider
-        });
-        let balanceUsdcx = await ricochetUSDCx.balanceOf({
-            account: user.address, providerOrSigner: provider
-        });
-        let balanceRic = await ricochetRIC.balanceOf({
-            account: user.address, providerOrSigner: provider
-        });
-        let balanceMatic = await ricochetMATICx.balanceOf({
-            account: user.address, providerOrSigner: provider
-        });
-        console.log("Balance in ETHX: ", balanceEthx);
-        console.log("Balance in USDCX: ", balanceUsdcx);
-        console.log("Balance in RIC: ", balanceRic);
-        console.log("Balance in MATICx: ", balanceMatic);
-        console.log(" checkBalance END ====================================================== ");
-    }
-
-    async function delta(account: SignerWithAddress, balances: any) {
-        const len = balances.ethx.length;
-        return {
-            ethx: balances.ethx[len - 1] - balances.ethx[len - 2],
-            usdcx: balances.usdcx[len - 1] - balances.usdcx[len - 2],
-            ric: balances.ric[len - 1] - balances.ric[len - 2],
-            maticx: balances.maticx[len - 1] - balances.maticx[len - 2],
-            rexshirt: balances.rexshirt[len - 1] - balances.rexshirt[len - 2]
-        }
-    }
+    
 
     before(async () => {
         const {
@@ -934,3 +842,5 @@ describe('REXUniswapV3Market', () => {
     });
 
 });
+
+
