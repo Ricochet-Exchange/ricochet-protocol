@@ -382,8 +382,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint amountIn;
         if(fee > 0) {
             amountIn = _swapForReimbursement(fee, type(uint256).max, 3000);
+            console.log("amountIn: %s", amountIn);
             WMATIC.withdraw(WMATIC.balanceOf(address(this)));
+            console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
             _transfer(fee, feeToken);
+            console.log("feeToken balance: %s", ERC20(feeToken).balanceOf(address(this)));
         } else {
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice; // TODO: add a threshold?
@@ -398,29 +401,50 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 amountOut,
         uint256 amountInMaximum,
         uint24 fee
-    ) internal returns (uint256) {
+    ) internal returns (uint256 input) {
         console.log("Swapping for reimbursement");
-        console.log("Subsidy token: %s", address(subsidyToken));
-        console.log("WMATIC: %s", address(WMATIC));
-        console.log("Fee: %s", fee);
-        console.log("amountInMaximum", amountInMaximum);
-        console.log("amountOut", amountOut);
+        console.log("amountOut: %s", amountOut);
+        console.log("amountInMaximum: %s", amountInMaximum);
+        console.log("fee: %s", fee);
 
-        // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            // Pass the swap through the RIC LPs 
-            path: abi.encodePacked(address(WMATIC), fee, address(subsidyToken)),
+        // Log balance of _getUnderlyingToken(inputToken)
+        console.log("balance of inputToken: %s", ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this)));
+
+        IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter.ExactOutputSingleParams({
+            tokenIn: address(_getUnderlyingToken(inputToken)),
+            tokenOut: address(WMATIC),
+            fee: 500,
             recipient: address(this),
             deadline: block.timestamp + 3600,
             amountOut: amountOut,
-            amountInMaximum: amountInMaximum
+            amountInMaximum: ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this)),
+            sqrtPriceLimitX96: uint160(0)
         });
+        console.log("params.tokenIn: %s", params.tokenIn);
+        console.log("params.tokenOut: %s", params.tokenOut);
+        console.log("params.fee: %s", params.fee);
+        console.log("params.recipient: %s", params.recipient);
+        console.log("params.deadline: %s", params.deadline);
+        console.log("params.amountOut: %s", params.amountOut);
+        console.log("params.amountInMaximum: %s", params.amountInMaximum);
+        console.log("params.sqrtPriceLimitX96: %s", params.sqrtPriceLimitX96);
 
-        uint output = router.exactOutput(params);
-        console.log("Swapped for reimbursement");
-        return output;
+        uint input = router.exactOutputSingle(params);
+        console.log("input: %s", input);
 
+        // console.log("amountOut", amountOut);
+        // // IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
+        // //     .ExactInputParams({
+        // //         path: abi.encodePacked(address(subsidyToken), uint24(3000), address(WMATIC)),
+        // //         recipient: address(this),
+        // //         amountIn: amountOut * 1000,
+        // //         amountOutMinimum: amountOut
+        // //     });
+        
 
+        // uint256 outAmount = router.exactInput(params);
+        // console.log("outAmount: %s", outAmount);
+        // console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
     }
 
     function _swap(
@@ -457,6 +481,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(input).decimals()));
+
+        // Reserve some for the reimbursement
+        amount = amount * 90 / 100;
 
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
