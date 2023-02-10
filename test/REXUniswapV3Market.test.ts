@@ -360,6 +360,12 @@ describe('REXUniswapV3Market', () => {
                 amount: '1000000000000000000000',
             }).exec(ricWhaleSigner);
         console.log("====== Transferred RIC to bob =======");
+        await ricochetRIC
+            .transfer({
+                receiver: market.address,
+                amount: '1000000000000000000000',
+            }).exec(ricWhaleSigner);
+        console.log("====== Transferred RIC to app =======");
         await ricochetMATICx
             .transfer({
                 receiver: bobSigner.address,
@@ -384,7 +390,7 @@ describe('REXUniswapV3Market', () => {
 
     });
 
-    context("#1 - new rexmarket with no streamers", async () => {
+    context.only("#1 - new rexmarket with no streamers", async () => {
 
         beforeEach(async () => {
             // Revert to the point REXMarket was just deployed
@@ -404,9 +410,6 @@ describe('REXUniswapV3Market', () => {
 
         after(async () => {
 
-
-
-
         });
 
 
@@ -423,9 +426,10 @@ describe('REXUniswapV3Market', () => {
 
         });
 
-        it("#1.2 before/afterAgreementCreated callbacks", async () => {
+        it.only("#1.2 before/afterAgreementCreated callbacks", async () => {
 
             // Alice opens a USDC stream to REXMarket
+            console.log("========== Alice opens a USDC stream to REXMarket ===========");
             await sf.cfaV1.createFlow({
                 sender: aliceSigner.address,
                 receiver: market.address,
@@ -450,6 +454,7 @@ describe('REXUniswapV3Market', () => {
             await increaseTime(3600);
 
             // Bob opens a ETH stream to REXMarket
+            console.log("========== Bob opens a USDC stream to REXMarket ===========");
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: market.address,
@@ -468,6 +473,7 @@ describe('REXUniswapV3Market', () => {
             ).to.equal(`true,true,1020000000,0`); 
 
             // Delete Alices stream before first  distributions
+            console.log("========== Delete Alices stream ===========")
             await sf.cfaV1.deleteFlow({
                 receiver: market.address,
                 sender: aliceSigner.address,
@@ -476,6 +482,7 @@ describe('REXUniswapV3Market', () => {
             }).exec(aliceSigner);
 
             // Delete Alices stream before first  distributions
+            console.log("========== Delete Bobs stream ===========")
             await sf.cfaV1.deleteFlow({
                 receiver: market.address,
                 sender: bobSigner.address,

@@ -93,6 +93,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
    
    
     ISuperToken public constant MATICX = ISuperToken(0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3);
+    IWMATIC public constant WMATIC = IWMATIC(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+
 
     // Uniswap Variables
     ISwapRouter02 router; // UniswapV3 Router
@@ -239,8 +241,30 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             )
         );
 
+        // Subsidy token is used to pay gas
+        // Require there exists a pool for WMATIC and subsidyToken
+        console.log("pool", factory.getPool(
+                address(subsidyToken),
+                address(WMATIC),
+                3000
+            ));
+        require(
+            factory.getPool(
+                address(subsidyToken),
+                address(WMATIC),
+                3000
+            ) != address(0),
+            "No pool for subsidyToken"
+        );
+
         // Approve Uniswap Router to spend
         ERC20(_getUnderlyingToken(inputToken)).safeIncreaseAllowance(
+            address(router),
+            2**256 - 1
+        );
+
+        // Approve Uniswap Router to spend subsidyToken
+        ERC20(_getUnderlyingToken(subsidyToken)).safeIncreaseAllowance(
             address(router),
             2**256 - 1
         );
@@ -291,17 +315,24 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     function distribute(bytes memory ctx)
         public
+        payable 
         returns (bytes memory newCtx)
     {
+        console.log("Distribute called");
+        uint gasUsed = gasleft(); // Track gas used in this function
+
         newCtx = ctx;
 
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
+        console.log("inputTokenAmount: %s", inputTokenAmount);
         uint256 outputTokenAmount = _swap(inputTokenAmount); // Swap inputToken for outputToken
-        // TODO: log a swap event
+        console.log("outputTokenAmount: %s", outputTokenAmount);
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         outputTokenAmount = outputToken.balanceOf(address(this));
+        console.log("outputTokenAmount: %s", outputTokenAmount);
         _recordExchangeRate(inputTokenAmount * 1e18 / outputTokenAmount, block.timestamp);
+        console.log("Recorded exchange rate", inputTokenAmount * 1e18 / outputTokenAmount);
 
         if (inputTokenAmount == 0) {
             return newCtx;
@@ -314,6 +345,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             outputTokenAmount
         );
 
+        console.log("outputTokenAmount: %s", outputTokenAmount);
         newCtx = _idaDistribute(
             OUTPUT_INDEX,
             uint128(outputTokenAmount),
@@ -330,6 +362,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 address(this)
             )
         ) {
+            console.log("Distributing subsidy tokens");
             newCtx = _idaDistribute(
                 SUBSIDY_INDEX,
                 uint128(distAmount),
@@ -341,13 +374,59 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         market.lastDistributionAt = block.timestamp;
         // TODO: Emit Distribution event
 
-        
+        // Pay the keeper
+         // Gelato transaction pays for itself
+        (uint256 fee, address feeToken) = _getFeeDetails();
+
+        // If the gelato executor is paying for the transaction, pay for the gas for them
+        uint amountIn;
+        if(fee > 0) {
+            amountIn = _swapForReimbursement(fee, type(uint256).max, 3000);
+            WMATIC.withdraw(WMATIC.balanceOf(address(this)));
+            _transfer(fee, feeToken);
+        } else {
+            gasUsed = gasUsed - gasleft();
+            fee = gasUsed * tx.gasprice; // TODO: add a threshold?
+            amountIn = _swapForReimbursement(fee, type(uint256).max, 3000);
+            WMATIC.transfer(msg.sender, fee);
+        }
+    }
+
+    // Function that swaps a fee for WMATIC on uniswap
+    // Swaps deposit tokens and repays the gas
+    function _swapForReimbursement(
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        uint24 fee
+    ) internal returns (uint256) {
+        console.log("Swapping for reimbursement");
+        console.log("Subsidy token: %s", address(subsidyToken));
+        console.log("WMATIC: %s", address(WMATIC));
+        console.log("Fee: %s", fee);
+        console.log("amountInMaximum", amountInMaximum);
+        console.log("amountOut", amountOut);
+
+        // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+            // Pass the swap through the RIC LPs 
+            path: abi.encodePacked(address(WMATIC), fee, address(subsidyToken)),
+            recipient: address(this),
+            deadline: block.timestamp + 3600,
+            amountOut: amountOut,
+            amountInMaximum: amountInMaximum
+        });
+
+        uint output = router.exactOutput(params);
+        console.log("Swapped for reimbursement");
+        return output;
+
 
     }
 
     function _swap(
         uint256 amount
     ) internal returns (uint256) {
+        console.log("Swapping tokens");
         address input; // The underlying input token address
         address output; // The underlying output token address
         uint256 minOutput; // The minimum amount of output tokens based on oracle
@@ -368,6 +447,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // TODO: Calculate minOutput based on oracle
         uint twapPrice = getTwap();
+        console.log("twapPrice: %s", twapPrice);
         
         minOutput = amount * 1e6 / twapPrice;
 
