@@ -452,7 +452,7 @@ describe('REXUniswapV3Market', () => {
             //     (await market.getIDAShares(0, carlSigner.address)).toString()
             // ).to.equal(`true,true,1000000000,0`);
 
-            await increaseTime(3600);
+            await increaseTime(36000);
             await market.distribute("0x");
 
             // Bob opens a ETH stream to REXMarket

@@ -29,7 +29,7 @@ describe("RecurringDeposits", () => {
       const ricToken = await ethers.getContractAt("MockERC20", RIC_TOKEN);
       const usdcToken = await ethers.getContractAt("MockERC20", USDC_TOKEN);
       const wethToken = await ethers.getContractAt("MockERC20", WETH_TOKEN);
-      const gasToken = usdcToken;
+      const gasToken = ricToken;
 
       // Make a mock token for scheduled deposits
       const MockERC20 = await ethers.getContractFactory("MockERC20");
