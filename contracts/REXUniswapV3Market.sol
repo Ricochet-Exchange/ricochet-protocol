@@ -377,122 +377,70 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // TODO: Emit Distribution event
 
         // Pay the keeper
-         // Gelato transaction pays for itself
-        (uint256 fee, address feeToken) = _getFeeDetails();
+        // Gelato transaction pays for itself
+        // (uint256 fee, address feeToken) = _getFeeDetails();
 
-        // If the gelato executor is paying for the transaction, pay for the gas for them
-        uint amountIn;
-        if(fee > 0) {
-            console.log("swap for gas gelato");
-            amountIn = _swapForGas(fee, type(uint256).max, 500);
-            console.log("amountIn: %s", amountIn);
-            WMATIC.withdraw(WMATIC.balanceOf(address(this)));
-            console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
-            _transfer(fee, feeToken);
-            console.log("feeToken balance: %s", ERC20(feeToken).balanceOf(address(this)));
-        } else {
-            console.log("Swap for gas msg.sender");
-            gasUsed = gasUsed - gasleft();
-            console.log("gasUsed: %s", gasUsed);
-            fee = gasUsed * tx.gasprice; // TODO: add a threshold?
-            console.log("fee: %s", fee);
-            amountIn = _swapForGas(fee, type(uint256).max, 500);
-            console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
-            WMATIC.transfer(msg.sender, fee);
-            _transfer(fee, feeToken);
-        }
+        // // If the gelato executor is paying for the transaction, pay for the gas for them
+        // uint amountIn;
+        // if(fee > 0) {
+        //     console.log("swap for gas gelato");
+        //     amountIn = _swapForGas(fee, type(uint256).max, 500);
+        //     console.log("amountIn: %s", amountIn);
+        //     WMATIC.withdraw(WMATIC.balanceOf(address(this)));
+        //     console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
+        //     _transfer(fee, feeToken);
+        //     console.log("feeToken balance: %s", ERC20(feeToken).balanceOf(address(this)));
+        // } else {
+        //     console.log("Swap for gas msg.sender");
+        //     gasUsed = gasUsed - gasleft();
+        //     console.log("gasUsed: %s", gasUsed);
+        //     fee = gasUsed * tx.gasprice; // TODO: add a threshold?
+        //     console.log("fee: %s", fee);
+        //     amountIn = _swapForGas(fee, type(uint256).max, 500);
+        //     console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
+        //     WMATIC.transfer(msg.sender, fee);
+        //     _transfer(fee, feeToken);
+        // }
     }
 
-    function _swapForGas(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint24 fee
-    ) internal returns (uint256) {
-
-        // Approve the router to spend the gasToken
-        ERC20(_getUnderlyingToken(inputToken)).approve(address(router), type(uint256).max);
-
-        // Whats the balance of the underlying input token
-        uint256 inputTokenBalance = ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this));
-        console.log("inputTokenBalance: %s", inputTokenBalance);
-
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            // Pass the swap through the feeToken LP
-            path: abi.encodePacked(address(WMATIC), fee, _getUnderlyingToken(inputToken)),
-            recipient: address(this),
-            deadline: block.timestamp + 3600,
-            amountOut: amountOut,
-            amountInMaximum: amountInMaximum
-        });
-
-        // console.log("params.path: %s", params.path);
-        console.log("address(WMATIC): %s", address(WMATIC));
-        console.log("fee: %s", fee);
-        console.log("address(inputToken): %s", _getUnderlyingToken(inputToken));
-        console.log("params.recipient: %s", params.recipient);
-        console.log("params.deadline: %s", params.deadline);
-        console.log("params.amountOut: %s", params.amountOut);
-        console.log("params.amountInMaximum: %s", params.amountInMaximum);
-
-        return router.exactOutput(params);
-
-    }
-
-    // // Function that swaps a fee for WMATIC on uniswap
-    // // Swaps deposit tokens and repays the gas
-    // function _swapForReimbursement(
+    // function _swapForGas(
     //     uint256 amountOut,
     //     uint256 amountInMaximum,
     //     uint24 fee
-    // ) internal returns (uint256 input) {
-    //     console.log("Swapping for reimbursement");
-    //     console.log("amountOut: %s", amountOut);
-    //     console.log("amountInMaximum: %s", amountInMaximum);
-    //     console.log("fee: %s", fee);
+    // ) internal returns (uint256) {
 
-    //     // Log balance of _getUnderlyingToken(inputToken)
-    //     console.log("balance of inputToken: %s", ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this)));
+    //     // Approve the router to spend the gasToken
+    //     ERC20(_getUnderlyingToken(inputToken)).approve(address(router), type(uint256).max);
 
-    //     IV3SwapRouter.ExactOutputSingleParams memory params = IV3SwapRouter.ExactOutputSingleParams({
-    //         tokenIn: address(_getUnderlyingToken(inputToken)),
-    //         tokenOut: address(WMATIC),
-    //         fee: 500,
+    //     // Whats the balance of the underlying input token
+    //     uint256 inputTokenBalance = ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this));
+    //     console.log("inputTokenBalance: %s", inputTokenBalance);
+
+    //     IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
+    //         // Pass the swap through the feeToken LP
+    //         path: abi.encodePacked(address(WMATIC), fee, _getUnderlyingToken(inputToken)),
     //         recipient: address(this),
     //         deadline: block.timestamp + 3600,
     //         amountOut: amountOut,
-    //         amountInMaximum: ERC20(_getUnderlyingToken(inputToken)).balanceOf(address(this)),
-    //         sqrtPriceLimitX96: uint160(0)
+    //         amountInMaximum: amountInMaximum
     //     });
-    //     console.log("params.tokenIn: %s", params.tokenIn);
-    //     console.log("params.tokenOut: %s", params.tokenOut);
-    //     console.log("params.fee: %s", params.fee);
+
+    //     // console.log("params.path: %s", params.path);
+    //     console.log("address(WMATIC): %s", address(WMATIC));
+    //     console.log("fee: %s", fee);
+    //     console.log("address(inputToken): %s", _getUnderlyingToken(inputToken));
     //     console.log("params.recipient: %s", params.recipient);
     //     console.log("params.deadline: %s", params.deadline);
     //     console.log("params.amountOut: %s", params.amountOut);
     //     console.log("params.amountInMaximum: %s", params.amountInMaximum);
-    //     console.log("params.sqrtPriceLimitX96: %s", params.sqrtPriceLimitX96);
 
-    //     uint input = router.exactOutputSingle(params);
-    //     console.log("input: %s", input);
+    //     return router.exactOutput(params);
 
-    //     // console.log("amountOut", amountOut);
-    //     // // IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
-    //     // //     .ExactInputParams({
-    //     // //         path: abi.encodePacked(address(subsidyToken), uint24(3000), address(WMATIC)),
-    //     // //         recipient: address(this),
-    //     // //         amountIn: amountOut * 1000,
-    //     // //         amountOutMinimum: amountOut
-    //     // //     });
-        
-
-    //     // uint256 outAmount = router.exactInput(params);
-    //     // console.log("outAmount: %s", outAmount);
-    //     // console.log("WMATIC balance: %s", WMATIC.balanceOf(address(this)));
     // }
 
     function _swap(
         uint256 amount
-    ) internal returns (uint256) {
+    ) internal returns (uint256 outAmount) {
         console.log("Swapping tokens");
         address input; // The underlying input token address
         address output; // The underlying output token address
@@ -525,9 +473,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(input).decimals()));
 
-        // Reserve some for the reimbursement
-        amount = amount * 90 / 100;
-
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
                 path: abi.encodePacked(input, poolFees[0], output),
@@ -536,7 +481,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 amountOutMinimum: minOutput
             });
 
-        uint256 outAmount = router.exactInput(params);
+        outAmount = router.exactInput(params);
         // Upgrade if this is not a supertoken
         if (output != address(outputToken)) {
             if (outputToken == MATICX) {
