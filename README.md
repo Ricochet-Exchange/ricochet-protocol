@@ -16,16 +16,17 @@ Ricochet puts power in the hands of passive investors
 cp env.example .env
 vi .env
 ```
-2. Run a contract `REXTwoWayMarket.test.js`
+2. Run a contract `REXUniswapV3Market.test.js`
 ```
-npx hardhat test test/REXTwoWayMarket.test.js
+npx hardhat test test/REXUniswapV3Market.test.js
 ```
 The test uses mainnet forking to test against the current Polygon mainnet state. This can take a while depending on your RPC provider.
-3. If tests pass, use `scripts/deploy-rextwowaymarket.js` to deploy:
+3. If tests pass, use `scripts/deploy-uniswapv3market.js` to deploy:
 ```
-npx hardhat run scripts/deploy-rextwowaymarket.js --network polygon
+npx hardhat run scripts/deploy-uniswapv3market.js --network polygon
 ```
-Edit the inputs in `scripts/deploy-rextwowaymarket.js` based on the type of REX Market you want to deploy.
+Edit the inputs in `scripts/deploy-uniswapv3market.js` based on the type of REX Market you want to deploy.
 4. Verify the contract on Polygonscan:
 ```
-npx hardhat verify 0xAAAA....AAAA --network polygon --constructor-args scripts/arguments.js
+npx hardhat verify 0xAAAA....AAAA --network polygon --constructor-args scripts/uniswapv3market-arguments.js
+```
