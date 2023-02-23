@@ -1,4 +1,4 @@
-import * as dotenv from "dotenv";
+  import dotenv from "dotenv";
 
 import { HardhatUserConfig, task } from "hardhat/config";
 // This adds support for typescript paths mappings
@@ -25,6 +25,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
 
   for (const account of accounts) {
+   
     console.log(account.address);
   }
 });
@@ -66,7 +67,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.POLYGON_NODE_URL || "",
+        url: process.env.POLYGON_NODE_URL || "https://polygon-mainnet.infura.io/v3/c7e9422b175d4e439de28f9b080c098e",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true,
         // REX Alluo Market Test Block

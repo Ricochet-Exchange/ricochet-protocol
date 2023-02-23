@@ -6,6 +6,8 @@ import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { REXUniswapV3Market, REXReferral, ERC20, REXReferral__factory, IConstantFlowAgreementV1 } from "../typechain";
 import { setup, IUser, ISuperToken } from "../misc/setup";
+import { Constants } from "../misc/Constants";
+import { expect, should } from "chai";
 
 
 export const getBigNumber = (num: any) => ethers.BigNumber.from(num);
