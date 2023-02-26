@@ -50,6 +50,7 @@ const config: HardhatUserConfig = {
         url: process.env.POLYGON_NODE_URL || "",
         accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
         enabled: true, 
+        chainId: 10,
       },
     },
     polygon: {
@@ -62,7 +63,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8545/'
     },
     tenderly: {
-      chainId: 137,
+      chainId: 10,
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       url: process.env.TENDERLY_NODE_URL,
     },
@@ -82,7 +83,7 @@ const config: HardhatUserConfig = {
   },
   tenderly: {
     username: process.env.TENDERLY_USERNAME, 
-    project: "ricochet-local",
+    project: "ricochet",
     forkNetwork: "137", 
     privateVerification: false,
   },

@@ -146,6 +146,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
 
         if (bytes(_registrationKey).length > 0) {
+            console.log("Registering with key: %s", _registrationKey);
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
             host.registerApp(_configWord);

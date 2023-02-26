@@ -40,7 +40,8 @@ async function main() {
     REG_KEY,
     Constants.REX_REFERRAL_ADDRESS,
     Constants.GELATO_OPS,
-    deployer.address
+    deployer.address,
+    {gasLimit: 10000000}
   );
   console.log("=========== Deployed REXUniswapV3Market ============");
 
@@ -56,6 +57,7 @@ async function main() {
     20000,
     "1500000000000000000000", // Initial price pulled from coingecko manually
     20000,
+    {gasLimit: 10000000}
   );
   console.log("=========== Initialized TwoWayMarket ============");
 
@@ -64,7 +66,8 @@ async function main() {
     Constants.UNISWAP_V3_ROUTER_ADDRESS, 
     Constants.UNISWAP_V3_FACTORY_ADDRESS,
     [Constants.USDC_ADDRESS, Constants.ETH_ADDRESS],
-    [500]
+    [500],
+    {gasLimit: 10000000}
   );
   console.log("========== Initialized Uniswap ===========");
 
