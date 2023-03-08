@@ -17,7 +17,6 @@ import "solidity-coverage";
 require("hardhat-tracer");
 dotenv.config();
 
-require('hardhat-deploy');
 import * as tdly from "@tenderly/hardhat-tenderly";
 tdly.setup();
 
@@ -63,7 +62,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8545/'
     },
     tenderly: {
-      chainId: 10,
+      chainId: 137,
       accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
       url: process.env.TENDERLY_NODE_URL,
     },

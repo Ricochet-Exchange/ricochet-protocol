@@ -62,7 +62,7 @@ describe('REXUniswapV3Market', () => {
     let ricWhaleSigner: SignerWithAddress;
     let karenSigner: SignerWithAddress;
 
-    let oraclePrice = 1550000000;
+    let oraclePrice = 1550;
     let ricOraclePrice = 30000000;
     let maticOraclePrice: number;
 
@@ -108,6 +108,8 @@ describe('REXUniswapV3Market', () => {
     let maticxIDAIndex: superTokenIDAIndex;
 
     // ***************************************************************************************
+
+    let gelatoBlock;
 
     async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
 
@@ -255,23 +257,6 @@ describe('REXUniswapV3Market', () => {
         // ==============================================================================
         const registrationKey = await sfRegistrationKey(sf, adminSigner.address);
         console.log("============ Right after sfRegistrationKey() ==================");
-
-        console.log("======******** List of addresses =======");
-        for (let i = 0; i < accountss.length; i++) {
-            console.log("Address number ", i, ": ", accountss[i].address);
-        }
-        console.log("++++++++++++++ alice address number: ", aliceSigner.address);
-        console.log("++++++++++++++ bob address number: ", bobSigner.address);
-        console.log("++++++++++++++ carl address number: ", carlSigner.address);
-
-        console.log("======******** List of TOKENS addresses =======");
-        console.log("======** usdc's address: ", ricochetUSDCx.address);
-        // ==============================================================================
-        let whaleEthxBalance = await ricochetETHx.balanceOf({
-            account: Constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
-        });
-        console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
-
         // ==============================================================================
 
         // Deploy REXReferral
@@ -302,7 +287,7 @@ describe('REXUniswapV3Market', () => {
         console.log("=========== Deployed REXUniswapV3Market ============");
 
         await market.createTask();
-
+        gelatoBlock = await ethers.provider.getBlock("latest");
         console.log("========== Created Task ===========");
 
         await market.initializeMarket(
@@ -311,7 +296,7 @@ describe('REXUniswapV3Market', () => {
             ricochetRIC.address,
             10000, 
             20000,
-            "1550000000000000000000", // Initial price pulled from coingecko manually
+            oraclePrice.toString() + "000000000000000000",
             20000,
         );
         console.log("=========== Initialized TwoWayMarket ============");
@@ -381,8 +366,8 @@ describe('REXUniswapV3Market', () => {
 
         // Do all the approvals
         // TODO: Redo how indexes are setup
-        // await approveSubscriptions([ethxIDAIndex, ricIDAIndex],
-        //     [adminSigner, aliceSigner, bobSigner, carlSigner]); // , karenSigner, carlSigner]);
+        await approveSubscriptions([ethxIDAIndex, ricIDAIndex],
+            [adminSigner, aliceSigner, bobSigner, carlSigner]); // , karenSigner, carlSigner]);
 
 
         // Take a snapshot to avoid redoing the setup
@@ -426,7 +411,7 @@ describe('REXUniswapV3Market', () => {
 
         });
 
-        it.only("#1.2 before/afterAgreementCreated callbacks", async () => {
+        it("#1.2 before/afterAgreementCreated callbacks", async () => {
 
             // Alice opens a USDC stream to REXMarket
             console.log("========== Alice opens a USDC stream to REXMarket ===========");
@@ -542,7 +527,7 @@ describe('REXUniswapV3Market', () => {
 
         });
 
-        it("#1.4 distribution", async () => {
+        it.only("#1.4 manual distribution", async () => {
         
 
             // Alice opens a USDC stream to REXMarket
@@ -559,12 +544,120 @@ describe('REXUniswapV3Market', () => {
             await takeMeasurements();
 
             // Fast forward an hour and distribute
-            await increaseTime(60);
+            await increaseTime(6000);
             await market.distribute("0x");
-            await increaseTime(60);
+            await increaseTime(6000);
             await market.distribute("0x");
-            await increaseTime(60);
+            await increaseTime(6000);
             await market.distribute("0x");
+
+            // Check balances again
+            await takeMeasurements();
+
+            // Check oracle
+            oraclePrice = await market.getTwap();
+
+            // Compute the delta
+            let deltaAlice = await delta(aliceSigner, aliceBalances);
+            let deltaCarl = await delta(carlSigner, carlBalances);
+            let deltaOwner = await delta(adminSigner, ownerBalances);
+
+            // Expect Owner and Carl got their fee from Alice
+            let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx;
+            expect(deltaCarl.ethx / totalOutput).to.within(0.00999, 0.0101)
+            expect(deltaOwner.ethx / totalOutput).to.within(0.00999, 0.0101)
+            console.log("Alice exchange rate:", deltaAlice.usdcx / deltaAlice.ethx)
+            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * -1 * 0.97)
+
+            // Delete alice and bobs flow
+            await sf.cfaV1.deleteFlow({
+                sender: aliceSigner.address,
+                receiver: market.address,
+                superToken: ricochetUSDCx.address,
+                shouldUseCallAgreement: true,
+                overrides,
+            }).exec(aliceSigner);
+
+        });
+
+        it("#1.5 gelato distribution", async () => {
+        
+            // Impersonate gelato network and set balance
+            await impersonateAndSetBalance(Constants.GELATO_NETWORK);
+            const gelatoNetwork = await ethers.provider.getSigner(Constants.GELATO_NETWORK);
+            const ops = await ethers.getContractAt("Ops", Constants.GELATO_OPS);
+
+            // Setup gelato executor exec and module data
+            let encodedArgs = ethers.utils.defaultAbiCoder.encode(
+                ["uint128", "uint128"],
+                [gelatoBlock.timestamp, 60]
+            );
+            let execData = market.interface.encodeFunctionData("distribute", ["0x"]);
+            let moduleData = {
+                modules: [1],
+                args: [encodedArgs],
+            };
+
+            // Alice opens a USDC stream to REXMarket
+            await sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: market.address,
+                superToken: ricochetUSDCx.address,
+                flowRate: inflowRateUsdc,
+                userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
+                shouldUseCallAgreement: true,
+            }).exec(aliceSigner);
+
+            await takeMeasurements();
+            await increaseTime(TEST_TRAVEL_TIME);
+
+            // Submit task to gelato
+            await ops
+            .connect(gelatoNetwork)
+            .exec(
+                market.address,
+                market.address,
+                execData,
+                moduleData,
+                GELATO_FEE,
+                "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", 
+                false, // true if payed with treasury
+                true
+            ); 
+            console.log("Submitted task to gelato");
+            await increaseTime(TEST_TRAVEL_TIME);
+           
+            // Submit task to gelato
+            await ops
+            .connect(gelatoNetwork)
+            .exec(
+                market.address,
+                market.address,
+                execData,
+                moduleData,
+                GELATO_FEE,
+                "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", 
+                false, // true if payed with treasury
+                true
+            ); 
+            console.log("Submitted task to gelato");
+
+            await increaseTime(TEST_TRAVEL_TIME);
+
+            // Submit task to gelato
+            await ops
+            .connect(gelatoNetwork)
+            .exec(
+                market.address,
+                market.address,
+                execData,
+                moduleData,
+                GELATO_FEE,
+                "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", 
+                false, // true if payed with treasury
+                true,
+                {gasLimit: 1000000}
+            ); 
 
             // Check balances again
             await takeMeasurements();
@@ -630,6 +723,7 @@ describe('REXUniswapV3Market', () => {
             );
             console.log("========== Initialized market ===========");
             await market.createTask();
+            gelatoBlock = await ethers.provider.getBlock("latest");
             console.log("========== Created gelato task ===========");
             // Initialize the twoway market's uniswap
             // token0 is USDC, token1 is rexSHIRT (supertokens)
@@ -705,7 +799,7 @@ describe('REXUniswapV3Market', () => {
         });
 
 
-        it("#2.1 distribution", async () => {
+        it("#2.1 manual distribution", async () => {
 
             // First try swap of RIC to USDC
 

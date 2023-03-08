@@ -43,6 +43,7 @@ async function main() {
     deployer.address,
     {gasLimit: 10000000}
   );
+  await market.deployed();
   console.log("=========== Deployed REXUniswapV3Market ============");
 
   await market.createTask();
