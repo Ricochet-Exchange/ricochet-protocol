@@ -47,23 +47,28 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: process.env.POLYGON_NODE_URL || "",
-        accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
+        accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
         enabled: true, 
         chainId: 10,
       },
     },
     polygon: {
       url: process.env.POLYGON_NODE_URL,
-      accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      blockGasLimit: 20000000,
+    },
+    maticmum: {
+      url: process.env.MUMBAI_NODE_URL,
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
     },
     localhost: {
-      accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       url: 'http://127.0.0.1:8545/'
     },
     tenderly: {
       chainId: 137,
-      accounts: process.env.POLYGON_PRIVATE_KEY !== undefined ? [process.env.POLYGON_PRIVATE_KEY] : [],
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       url: process.env.TENDERLY_NODE_URL,
     },
   },
