@@ -140,7 +140,7 @@ Superfluid specific Functions
 export async function initSuperfluid(): Promise<Framework> {
     const sf = await Framework.create({
         provider: PROVIDER,
-        resolverAddress: Constants.SF_RESOLVER,
+        resolverAddress: Constants['polygon'].SF_RESOLVER,
         networkName: "hardhat",
         dataMode: "WEB3_ONLY",
         protocolReleaseVersion: "test" // "v1"

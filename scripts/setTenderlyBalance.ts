@@ -8,7 +8,7 @@ async function main() {
     const result = await ethers.provider.send("tenderly_setBalance", [
         WALLETS,
         //amount in wei will be set for all wallets
-        ethers.utils.hexValue(ethers.utils.parseUnits("10", "ether").toHexString()),
+        ethers.utils.hexValue(ethers.utils.parseUnits("10000", "ether").toHexString()),
     ]);
 
     console.log("Result:", result);

@@ -29,6 +29,9 @@ const UNISWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Mainnet 
 const ONE_USDC = ethers.BigNumber.from("1000000");
 const GELATO_FEE = ethers.BigNumber.from("100000"); // 100k wei
 
+// Forking polygon network, use polygon network contstants
+const constants = Constants['polygon'];
+console.log("Using constants for polygon: ", constants);
 
 export interface superTokenIDAIndex {
     token: SuperToken;
@@ -274,14 +277,30 @@ describe('REXUniswapV3Market', () => {
             "REXUniswapV3Market",
             adminSigner
         );
-        market = await REXMarketFactory.deploy(
+
+
+        // Log the arguments for the deploy method before calling it
+        console.log(
+            "Arguments for REXUniswapV3Market deploy:",
             adminSigner.address,
-            sf.settings.config.hostAddress,
-            Constants.CFA_SUPERFLUID_ADDRESS,
-            Constants.IDA_SUPERFLUID_ADDRESS,
+            constants.HOST_SUPERFLUID_ADDRESS,
+            constants.CFA_SUPERFLUID_ADDRESS,
+            constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address,
-            GELATO_OPS,
+            constants.GELATO_OPS,
+            adminSigner.address
+        );
+
+
+        market = await REXMarketFactory.deploy(
+            adminSigner.address,
+            constants.HOST_SUPERFLUID_ADDRESS,
+            constants.CFA_SUPERFLUID_ADDRESS,
+            constants.IDA_SUPERFLUID_ADDRESS,
+            registrationKey,
+            referral.address,
+            constants.GELATO_OPS,
             adminSigner.address
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
@@ -303,10 +322,10 @@ describe('REXUniswapV3Market', () => {
 
         console.log("========== Initializing Uniswap ===========");
         await market.initializeUniswap(
-            Constants.UNISWAP_V3_ROUTER_ADDRESS, 
-            Constants.UNISWAP_V3_FACTORY_ADDRESS,
-            [Constants.USDC_ADDRESS, Constants.ETH_ADDRESS],
-            [500]
+            constants.UNISWAP_V3_ROUTER_ADDRESS, 
+            constants.UNISWAP_V3_FACTORY_ADDRESS,
+            [constants.USDC_ADDRESS, constants.ETH_ADDRESS],
+            500
         );
         console.log("========== Initialized Uniswap ===========");
 
@@ -603,7 +622,7 @@ describe('REXUniswapV3Market', () => {
                 sender: aliceSigner.address,
                 receiver: market.address,
                 superToken: ricochetUSDCx.address,
-                flowRate: inflowRateUsdc,
+                flowRate: inflowRateUsdc10x, // Increase rate 10x to make sure gelato can be paid
                 userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
                 shouldUseCallAgreement: true,
             }).exec(aliceSigner);
@@ -642,6 +661,7 @@ describe('REXUniswapV3Market', () => {
             ); 
             console.log("Submitted task to gelato");
 
+            await increaseTime(TEST_TRAVEL_TIME);
             await increaseTime(TEST_TRAVEL_TIME);
 
             // Submit task to gelato
@@ -749,7 +769,7 @@ describe('REXUniswapV3Market', () => {
             }
 
             await approveSubscriptions([rexshirtIDAIndex, ricIDAIndex],
-                [adminSigner, aliceSigner, bobSigner, carlSigner]);
+                [adminSigner, aliceSigner, carlSigner]); // bobSigner
 
             // Alice opens a USDC stream to REXMarket
             await sf.cfaV1.createFlow({

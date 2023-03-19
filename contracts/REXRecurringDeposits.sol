@@ -279,7 +279,6 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
             // Pass the swap through the feeToken LP
             path: abi.encodePacked(address(WMATIC), fee, address(feeToken), fee, address(gasToken)),
             recipient: address(this),
-            deadline: block.timestamp + 3600,
             amountOut: amountOut,
             amountInMaximum: 2000000
         });

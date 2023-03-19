@@ -14,7 +14,7 @@ async function main() {
   // Register the market with REXReferral
   console.log("Registering with RexReferral system...")
   const REXReferral = await ethers.getContractFactory("REXReferral");
-  const referral = await REXReferral.attach(REX_REFERRAL_ADDRESS);
+  const referral = await REXReferral.attach("0xA0eC9E1542485700110688b3e6FbebBDf23cd901");
   // await referral.registerApp(rexTwoWayMarket.address);
   // console.log("Registered:", rexTwoWayMarket.address);
 
@@ -22,7 +22,7 @@ async function main() {
   // referral = await referral.connect(carl);
   // await referral.applyForAffiliate("carl", "carl");
   // referral = await referral.connect(owner);
-  let tx = await referral.verifyAffiliate("mikeghen");
+  let tx = await referral.verifyAffiliate("biosensei");
   console.log("Approve mikeghen as affiliate");
 
 
