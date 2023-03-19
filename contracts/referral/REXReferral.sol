@@ -94,16 +94,8 @@ contract REXReferral is AccessControlEnumerable {
         affiliates.push(affliate);
         addressToAffiliate[msg.sender] = affiliates.length - 1;
         affiliateIdToAffiliate[affiliateId] = affiliates.length - 1;
-        emit AffiliateApplied(name, affiliateId);
-    }
-
-    // Enable a affiliate to refer customers
-    function verifyAffiliate(string memory affiliateId)
-        public
-        onlyAdmin
-        validAffiliate(affiliateId)
-    {
         affiliates[affiliateIdToAffiliate[affiliateId]].enabled = true;
+        emit AffiliateApplied(name, affiliateId);
     }
 
     // Disable affiliate to refer customers
