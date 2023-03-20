@@ -17,6 +17,7 @@ const USDCX_SUBSCRIPTION_INDEX = 0;
 const ETHX_SUBSCRIPTION_INDEX = 1;
 const RIC_SUBSCRIPTION_INDEX = 2;
 
+
 export interface superTokenAndItsIDAIndex {
     token: SuperToken;
     IDAIndex: number;
@@ -249,7 +250,7 @@ describe('REXLaunchpad', () => {
         console.log("======** usdc's address: ", ricochetUSDCx.address);
         // ==============================================================================
         let whaleEthxBalance = await ricochetETHx.balanceOf({
-            account: Constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
+            account: constants.ETHX_SOURCE_ADDRESS, providerOrSigner: provider
         });
         console.log("WHALE's Balance in ETHX: ", whaleEthxBalance);
 
@@ -279,8 +280,8 @@ describe('REXLaunchpad', () => {
 
         launchpad = await RicochetLaunchpad.deploy(
             sf.host.contract.address,
-            Constants.CFA_SUPERFLUID_ADDRESS,
-            Constants.IDA_SUPERFLUID_ADDRESS,
+            constants.CFA_SUPERFLUID_ADDRESS,
+            constants.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address
         );
@@ -296,12 +297,7 @@ describe('REXLaunchpad', () => {
         )
         console.log("=========== Initialized Launchpad ============");
 
-        // await twoWayMarket.initializeSubsidies(subsidyRate, ricochetRIC.address);
-        // console.log("========== Initialized subsidies ===========");
-
-        await checkBalance(ethxWhaleSigner, "the ETHX whale");
-        await checkBalance(maticxWhaleSigner, "the MATICx whale");
-        // send the contract some RIC
+        // Send the contract some RIC
         try {
             await ricochetRIC.transfer({
                 receiver: launchpad.address,
@@ -310,25 +306,20 @@ describe('REXLaunchpad', () => {
         } catch (err: any) {
             console.log("Ricochet - ERROR transferring RICs to the contract: ", err);
         }
-        console.log("============ RICs have been sent to the contract =============");
         await checkBalance(adminSigner, "the contract");
 
         // Register the market with REXReferral
         await referral.registerApp(launchpad.address);
         referral = await referral.connect(bobSigner);
         await referral.applyForAffiliate("bob", "bob");
-        referral = await referral.connect(adminSigner);
-        await referral.verifyAffiliate("bob");
-        console.log("                      ============ The affiliate has been veryfied =============");
-        console.log("=======================================================================");
-        console.log("================ End of \"before\" block ==============================");
-        console.log("=======================================================================");
-
 
         // Do all the approvals
         // TODO: Redo how indexes are setup
         // await approveSubscriptions([usdcxAndItsIDAIndex, ethxAndItsIDAIndex, ricAndItsIDAIndex],
         //     [adminSigner, aliceSigner, bobSigner, karenSigner, carlSigner]);
+
+        // Log the balance of maticxWhaleSigner
+        await checkBalance(adminSigner, "maticxWhaleSigner");
 
         // Give Alice, Bob, Karen some tokens
         const initialAmount = ethers.utils.parseUnits("1000", 18).toString();
@@ -343,19 +334,19 @@ describe('REXLaunchpad', () => {
                 receiver: bobSigner.address,
                 amount: ethers.utils.parseUnits("0.5", 18).toString(),
             }).exec(ethxWhaleSigner);
-            console.log("ETH")
+        console.log("ETH")
         await ricochetRIC
             .transfer({
                 receiver: bobSigner.address,
-                amount: '1000000000000000000000',
+                amount: '100000000000000000000',
             }).exec(adminSigner);
-            console.log("RIC")
+        console.log("RIC")
         await ricochetMATICx
             .transfer({
                 receiver: bobSigner.address,
                 amount: '1754897259852523432',
             }).exec(maticxWhaleSigner);
-            console.log("MATIC")
+        console.log("MATIC")
         console.log("====== Transferred to bob =======");
         await ricochetUSDCx
             .transfer({
@@ -558,130 +549,6 @@ describe('REXLaunchpad', () => {
             expect(
                 (await launchpad.getIDAShares(ETHX_SUBSCRIPTION_INDEX, aliceSigner.address)).toString()
             ).to.equal(`true,false,0,0`);
-        });
-    });
-
-    // No longer possible to jail apps
-    xcontext("#4 - rex launchpad is jailed", async () => {
-        before(async () => {
-            const success = await provider.send('evm_revert', [
-                snapshot
-            ]);
-
-            await takeMeasurements();
- 
-           await sf.cfaV1.createFlow({
-                sender: aliceSigner.address,
-                receiver: launchpad.address,
-                superToken: ricochetUSDCx.address,
-                flowRate: inflowRateUsdc,
-                shouldUseCallAgreement: true,
-            }).exec(aliceSigner);
-            
-
-            await increaseTime(3600);
-
-            // Jail the app
-            await impersonateAndSetBalance(Constants.CFA_SUPERFLUID_ADDRESS);
-            let cfaSigner = await ethers.getSigner(Constants.CFA_SUPERFLUID_ADDRESS)
-            await sf.host.contract.connect(cfaSigner).jailApp('0x', launchpad.address, 0) //.exec(cfaSigner);
-
-
-            // Take a snapshot
-            snapshot = await provider.send('evm_snapshot', []);
-
-        });
-
-        beforeEach(async () => {
-            // Revert to the point REXMarket was just deployed
-            const success = await provider.send('evm_revert', [
-                snapshot
-            ]);
-            // Take another snapshot to be able to revert again next time
-            snapshot = await provider.send('evm_snapshot', []);
-            expect(success).to.equal(true);
-        });
-
-        afterEach(async () => {
-            // Check the app isn't jailed
-            // expect(await launchpad.isAppJailed()).to.equal(false);
-            // await resetMeasurements();
-        });
-
-        it("#4.1 app is jailed", async () => {
-            expect(await launchpad.isAppJailed()).to.equal(true);   
-        });
-
-        it("#4.2 emergencyCloseStream", async () => {
-            await launchpad.emergencyCloseStream(aliceSigner.address);
-            
-            expect(
-                await launchpad.getStreamRate(aliceSigner.address)
-            ).to.equal(0);
-        });
-
-        it("#4.3 should correctly emergency drain", async () => {
-
-            await expect(
-                launchpad.emergencyDrain(),
-            ).to.be.revertedWith('!zeroStreamers');
-
-            // Delete Alices stream
-            await sf.cfaV1.deleteFlow({
-                receiver: launchpad.address,
-                sender: aliceSigner.address,
-                superToken: ricochetUSDCx.address,
-                shouldUseCallAgreement: true,
-            }).exec(aliceSigner);
-
-            await launchpad.emergencyDrain();
-
-            expect((await ricochetUSDCx.balanceOf({
-                account: launchpad.address, providerOrSigner: provider
-            })).toString()).to.equal('0');
-
-            await takeMeasurements();
-
-            // Check the owner recovers the funds sent in afterwards
-            let appDelta = await delta(launchpad, appBalances);
-            let ownerDelta = await delta(adminSigner, ownerBalances);
-            let aliceDelta = await delta(aliceSigner, aliceBalances);
-    
-            // Expect the owner can recover the locked funds
-            expect(ownerDelta.usdcx).to.be.within(-1 * aliceDelta.usdcx * 0.99999, -1 * aliceDelta.usdcx * 1.00001);
-            // Recover the RIC subsidies
-            expect(ownerDelta.ric).to.be.within(-1 * appDelta.ric * 0.99999, -1 * appDelta.ric * 1.00001);
-
-        });
-
-        it("4.4 closeStream", async () => {
-
-            let aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
-                account: aliceSigner.address, providerOrSigner: provider
-            });
-            aliceBalanceUsdcx = ethers.BigNumber.from(aliceBalanceUsdcx.toString())
-            // When user create stream, SF locks 4 hour deposit called initial deposit
-            const initialDeposit = aliceBalanceUsdcx.div(ethers.BigNumber.from('13')).mul(ethers.BigNumber.from('4'));
-            const inflowRate = aliceBalanceUsdcx.sub(initialDeposit).div(ethers.BigNumber.from(9 * 3600)).toString();
-            // Initialize a streamer with 9 hours of balance
-            await sf.cfaV1.updateFlow({
-                sender: aliceSigner.address,
-                receiver: launchpad.address,
-                superToken: ricochetUSDCx.address,
-                flowRate: inflowRate.toString(),
-                shouldUseCallAgreement: true,
-            }).exec(aliceSigner);
-            // Verfiy closing attempts revert
-            await expect(launchpad.closeStream(aliceSigner.address)).to.revertedWith('!closable');
-            // Advance time 2 hours
-            await increaseTime(2 * 3600);
-            // Verify closing the stream works
-            aliceBalanceUsdcx = await ricochetUSDCx.balanceOf({
-                account: aliceSigner.address, providerOrSigner: provider
-            });
-            await launchpad.closeStream(aliceSigner.address);
-            expect(await launchpad.getStreamRate(aliceSigner.address)).to.equal('0');
-
         });
     });
 
