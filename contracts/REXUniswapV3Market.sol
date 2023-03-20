@@ -74,12 +74,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     ISuperToken public subsidyToken; // e.g. RICx
     address public underlyingInputToken; // e.g. USDC
     address public underlyingOutputToken; // e.g. WETH
+    IWMATIC public wmatic;
+    ISuperToken public maticx;
     uint32 constant OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
     uint32 constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
-   
-    // Network Specific Variables 
-    ISuperToken public constant MATICX = ISuperToken(0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3);
-    IWMATIC public constant WMATIC = IWMATIC(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
 
 
     // Uniswap Variables
@@ -177,6 +175,18 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         taskId = id;
     }
 
+    /// @dev Initializer for wmatic and maticx
+    /// @param _wmatic is the WMATIC token
+    /// @param _maticx is the MATICx token
+    function initializeMATIC(
+        IWMATIC _wmatic,
+        ISuperToken _maticx
+    ) public onlyOwner {
+        require(address(wmatic) == address(0), "A");
+        wmatic = _wmatic;
+        maticx = _maticx;
+    }
+
     /// @dev Initilalize the REX Market contract
     /// @param _inputToken is the input supertoken for the market
     /// @param _outputToken is the output supertoken for the market
@@ -254,6 +264,30 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // Get the pool from the Uniswap V3 Factory
         IUniswapV3Factory factory = IUniswapV3Factory(_uniswapFactory);
+
+        // Require that the pool for i/o swaps exists
+        require(
+            factory.getPool(
+                address(underlyingInputToken),
+                address(underlyingOutputToken),
+                poolFee
+            ) != address(0),
+            "PDNE1"
+        );
+
+        // Require that the pool for gas reimbursements exists
+        // Log get pool params
+        console.log("underlyingInputToken", address(underlyingInputToken));
+        console.log("wmatic", address(wmatic));
+        console.log("poolFee", poolFee);
+        require(
+            factory.getPool(
+                address(underlyingInputToken),
+                address(wmatic),
+                poolFee
+            ) != address(0),
+            "PDNE2"
+        );
 
         // Use the pool for the underlying tokens for the input/output supertokens 
         uniswapPool = IUniswapV3Pool(
@@ -381,14 +415,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         if(fee > 0) {
             _swapForGas(fee);
             // Log the balances of the tokens
-            WMATIC.withdraw(WMATIC.balanceOf(address(this)));
+            wmatic.withdraw(wmatic.balanceOf(address(this)));
             _transfer(fee, feeToken);
         } else {
             // Otherwise, reimburse the gas to the msg.sender
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice; // TODO: add a threshold?
             _swapForGas(fee);
-            WMATIC.transfer(msg.sender, fee);
+            wmatic.transfer(msg.sender, fee);
         }
     }
 
@@ -402,8 +436,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 inputTokenBalance = ERC20(underlyingInputToken).balanceOf(address(this));
 
         // Use this amount to swap for enough WMATIC to cover the gas fee
+        console.log("inputTokenBalance: %s", inputTokenBalance);
+        console.log("amountOut: %s", amountOut);
+        console.log("underlyingInputToken: %s", underlyingInputToken);
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            path: abi.encodePacked(address(WMATIC), poolFee, underlyingInputToken),
+            path: abi.encodePacked(address(wmatic), poolFee, underlyingInputToken),
             recipient: address(this),
             amountOut: amountOut,
             // This is a swap for the gas fee reimbursement and will not be frontrun
@@ -461,8 +498,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
         if (underlyingOutputToken != address(outputToken)) {
-            if (outputToken == MATICX) {
-                IWMATIC(_getUnderlyingToken(MATICX)).withdraw(ERC20(underlyingOutputToken).balanceOf(address(this)));
+            if (outputToken == maticx) {
+                wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this)));
                 ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}();
             } else {
                 outputToken.upgrade(

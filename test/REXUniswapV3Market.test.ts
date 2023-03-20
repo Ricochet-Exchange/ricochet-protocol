@@ -300,6 +300,13 @@ describe('REXUniswapV3Market', () => {
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
 
+        // Initialize MATIC
+        console.log("config.WMATIC_ADDRESS", config.WMATIC_ADDRESS)
+        console.log("config.MATICX_ADDRESS", config.MATICX_ADDRESS)
+        await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS);
+        console.log("=========== Initialized MATIC ============");
+        
+
         await market.createTask();
         gelatoBlock = await ethers.provider.getBlock("latest");
         console.log("========== Created Task ===========");
@@ -728,6 +735,13 @@ describe('REXUniswapV3Market', () => {
                 adminSigner.address
             );
             console.log("=========== Deployed REXUniswapV3Market ============");
+
+            // Initialize MATIC
+            console.log("config.WMATIC_ADDRESS", config.WMATIC_ADDRESS)
+            console.log("config.MATICX_ADDRESS", config.MATICX_ADDRESS)
+            await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS);
+            console.log("=========== Initialized MATIC ============");
+
             await market.initializeMarket(
                 ricochetUSDCx.address,
                 ricochetRexSHIRT.address,
