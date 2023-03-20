@@ -59,10 +59,10 @@ async function main() {
     outputTokenAddress = config.REXMATICX_ADDRESS;
     outputTokenUnderlyingAddress = config.MATIC_ADDRESS;
   } else if (network.name == "maticmum") {
-    inputTokenAddress = config.USDCX_ADDRESS;
-    inputTokenUnderlyingAddress = config.USDC_ADDRESS;
-    outputTokenAddress = config.DAIX_ADDRESS;
-    outputTokenUnderlyingAddress = config.DAI_ADDRESS;
+    inputTokenAddress = config.DAIX_ADDRESS;
+    inputTokenUnderlyingAddress = config.DAI_ADDRESS;
+    outputTokenAddress = config.USDCX_ADDRESS;
+    outputTokenUnderlyingAddress = config.USDC_ADDRESS;
   }
 
   await market.initializeMarket(
