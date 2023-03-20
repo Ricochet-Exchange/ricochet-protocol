@@ -1,13 +1,20 @@
 import { Constants } from "../misc/Constants"
-const CONSTANTS = Constants['polygon'];
+
+// Get the current network from hardhat
+const network = await ethers.provider.getNetwork();
+// Get the right constants for the network
+const config = Constants[network.name];
+console.log("Using this for config:", config);
+
+  // Get the deployer for this deployment, first hardhat signer
+  const [deployer] = await ethers.getSigners();
 
 module.exports = [
-  OWNER_ADDRESS,
-  CONSTANTS.HOST_SUPERFLUID_ADDRESS,
-  CONSTANTS.CFA_SUPERFLUID_ADDRESS,
-  CONSTANTS.IDA_SUPERFLUID_ADDRESS,
-  CONSTANTS.RIC_TOKEN_ADDRESS,
-  CONSTANTS.SF_REG_KEY,
-  CONSTANTS.REX_REFERRAL_ADDRESS
-
+  deployer.address,
+  config.HOST_SUPERFLUID_ADDRESS,
+  config.CFA_SUPERFLUID_ADDRESS,
+  config.IDA_SUPERFLUID_ADDRESS,
+  config.RIC_TOKEN_ADDRESS,
+  config.SF_REG_KEY,
+  config.REX_REFERRAL_ADDRESS
 ];

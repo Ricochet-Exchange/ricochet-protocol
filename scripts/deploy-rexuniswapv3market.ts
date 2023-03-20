@@ -40,7 +40,7 @@ async function main() {
 
   // Create the Gelato task that will be used to execute the market
   await market.createTask();
-  console.log("Created Gelato task:", await market.taskId());
+  console.log("Created Gelato task");
 
   // Get the input and output token based on the network, or use these defaults
   let inputTokenAddress = config.USDCX_ADDRESS;
@@ -59,6 +59,7 @@ async function main() {
     outputTokenAddress = config.DAIX_ADDRESS;
     outputTokenUnderlyingAddress = config.DAI_ADDRESS;
   }
+
 
   await market.initializeMarket(
     inputTokenAddress,

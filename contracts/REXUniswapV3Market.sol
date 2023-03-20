@@ -166,7 +166,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         require(taskId == bytes32(""), "Already started task");
         
         // Create a timed interval task with Gelato Network
-        bytes memory execData = abi.encodeCall(this.distribute, ("0x"));
+        bytes memory execData = abi.encodeCall(this.distribute, ("0x", false));
         ModuleData memory moduleData = ModuleData({
             modules: new Module[](1),
             args: new bytes[](1)
@@ -264,17 +264,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             )
         );
 
-        // Subsidy token is used to pay gas
-        // Require there exists a pool for WMATIC and subsidyToken
-        require(
-            factory.getPool(
-                address(subsidyToken),
-                address(WMATIC),
-                3000
-            ) != address(0),
-            "No pool for subsidyToken"
-        );
-
         // Approve Uniswap Router to spend
         ERC20(underlyingInputToken).safeIncreaseAllowance(
             address(router),
@@ -318,7 +307,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         return lastDistributedAt;
     }
 
-    function distribute(bytes memory ctx)
+    function distribute(bytes memory ctx, bool ignoreGasReimbursement) 
         public
         payable 
         returns (bytes memory newCtx)
@@ -354,6 +343,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             newCtx
         );
 
+        // TODO: Emit Distribution event
+
         // Distribute subsidyToken
         uint distAmount =
             (block.timestamp - lastDistributedAt) *
@@ -372,99 +363,55 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             );
             // TODO: Emit SubsidyDistribution event
         }
+
+        // Record when the last distribution happened for other calculations
         lastDistributedAt = block.timestamp;
-        // TODO: Emit Distribution event
 
-
-        // // Pay the keeper
-        // // Gelato transaction pays for itself
+        // Check if we should override the gas reimbursement feature
+        // i.e. this is a distribution for a stream update
+        if (ignoreGasReimbursement) {
+            return newCtx;
+        }
+        // Otherwise, calculate the gas reimbursement for Gelato or for the msg.sender
+        
+        // Get the fee details from Gelato Ops
         (uint256 fee, address feeToken) = _getFeeDetails();
 
-        // If the gelato executor is paying for the transaction, pay for the gas for them
-        uint amountIn;
+        // If the fee is greater than 0, reimburse the fee to the Gelato Ops
         if(fee > 0) {
-            amountIn = _swapForGas(fee, type(uint256).max, 500);
+            _swapForGas(fee);
             // Log the balances of the tokens
             WMATIC.withdraw(WMATIC.balanceOf(address(this)));
             _transfer(fee, feeToken);
         } else {
+            // Otherwise, reimburse the gas to the msg.sender
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice; // TODO: add a threshold?
-            amountIn = _swapForGas(fee, type(uint256).max, 500);
+            _swapForGas(fee);
             WMATIC.transfer(msg.sender, fee);
         }
     }
 
-    function _swapForGas(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        uint24 fee
-    ) internal returns (uint256) {
-        // This is a reimbursement for the gas used by the keeper
-        // the amountInMaximum is set to type(uint256).max because 
-        // .this swap amount will be smaller than the txn fee to frontrun it
+    // Uniswap V3 Swap Methods
 
-        // By now the underlying token should be in the contract
+    function _swapForGas(
+        uint256 amountOut
+    ) internal returns (uint256) {
+        
+        // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
         uint256 inputTokenBalance = ERC20(underlyingInputToken).balanceOf(address(this));
 
+        // Use this amount to swap for enough WMATIC to cover the gas fee
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            path: abi.encodePacked(address(WMATIC), fee, underlyingInputToken),
+            path: abi.encodePacked(address(WMATIC), poolFee, underlyingInputToken),
             recipient: address(this),
             amountOut: amountOut,
+            // This is a swap for the gas fee reimbursement and will not be frontrun
             amountInMaximum: type(uint256).max
         });
 
         return router.exactOutput(params);
     }
-
-    // Uniswap V3 Swap Methods
-
-    // // @dev Swap exact input for output on uniswap
-    // // @param amountIn Amount of inputToken to swap
-    // // @param amountOutMinimum Minimum amount of outputToken to receive
-    // // @param fee Fee for the swap
-    // // @return amountOut Amount of outputToken received
-    // function _swapExactInput(
-    //     address input,
-    //     address output,
-    //     uint256 amountIn,
-    //     uint256 amountOutMinimum,
-    //     uint24 poolFee
-    // ) internal returns (uint256 amountOut) {
-    //     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
-    //         .ExactInputParams({
-    //             path: abi.encodePacked(input, poolFee, output),
-    //             recipient: address(this),
-    //             amountIn: amountIn,
-    //             amountOutMinimum: amountOutMinimum
-    //         });
-    //     amountOut = router.exactInput(params);
-    // }
-
-    // // @dev Swap exact output from input on uniswap
-    // // @param input Input token address
-    // // @param output Output token address
-    // // @param amountOut Amount of outputToken to swap
-    // // @param amountInMaximum Maximum amount of inputToken to spend
-    // // @param fee Fee for the swap
-    // // @return amountIn Amount of inputToken spent
-    // function _swapExactOutput(
-    //     address input,
-    //     address output,
-    //     uint256 amountOut,
-    //     uint256 amountInMaximum,
-    //     uint24 poolFee
-    // ) internal returns (uint256 amountIn) {
-    //     IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
-    //         .ExactOutputParams({
-    //             path: abi.encodePacked(input, poolFee, output),
-    //             recipient: address(this),
-    //             amountOut: amountOut,
-    //             amountInMaximum: amountInMaximum
-    //         });
-    //     amountIn = router.exactOutput(params);
-    // }
-    
 
     // @notice Swap input token for output token
     // @param amount Amount of inputToken to swap
@@ -601,7 +548,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         _newCtx = _ctx;
 
         if (_shouldDistribute()) {
-            _newCtx = distribute(_newCtx);
+            _newCtx = distribute(_newCtx, true);
         }
 
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
@@ -773,7 +720,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
 
         if (_shouldDistribute()) {
-            _newCtx = distribute(_newCtx);
+            _newCtx = distribute(_newCtx, true);
         }
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(

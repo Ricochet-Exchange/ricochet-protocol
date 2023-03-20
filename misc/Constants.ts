@@ -1,3 +1,5 @@
+import { REX_REFERRAL_ADDRESS } from "./setup";
+
 export const Constants : {[key: string]: any} = {
     optimism: {
         SF_RESOLVER: "0x743B5f46BC86caF41bE4956d9275721E0531B186",
@@ -102,7 +104,7 @@ export const Constants : {[key: string]: any} = {
         CFA_SUPERFLUID_ADDRESS: "0x49e565Ed1bdc17F3d220f72DF0857C26FA83F873",
 
         // Tokens
-        RIC_TOKEN: "0x263026E7e53DBFDce5ae55Ade22493f828922965",
+        RIC_ADDRESS: "0xDCf9273075A29F0070d5cB4632814367CE4350aE", // Deployed on Mumbai
         USDCX_ADDRESS: "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7",
         USDC_ADDRESS: "0xbe49ac1EadAc65dccf204D4Df81d650B50122aB2",
         DAIX_ADDRESS: "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f", // fDAIx on mumbai
@@ -116,7 +118,7 @@ export const Constants : {[key: string]: any} = {
         // Deployment constants for UniswapV3 market
         SHARE_SCALER: 10000,
         FEE_RATE: 5000,
-        INITIAL_PRICE: '1550000000000000000000',
+        INITIAL_PRICE: '1000000000000000000',
         RATE_TOLERANCE: 20000,
 
         // Gelato
@@ -124,7 +126,8 @@ export const Constants : {[key: string]: any} = {
         GELATO_NETWORK: "0x25aD59adbe00C2d80c86d01e2E05e1294DA84823",
 
         // Polygon DAO Gnosis
-        GNOSIS_SAFE_ADDRESS: "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89",
-        SF_REG_KEY: ""
+        DAO_ADDRESS: "0x9d7254F07b4De4643B409B5971eE2888E279417F", // Metamask Wallet, no Gnosis on Mumbai
+        SF_REG_KEY: "",
+        REX_REFERRAL_ADDRESS: "0x24239b083143759C8920Ba56d76Be36CD70DE490", // Deployed on Mumbai
     }
 } as const;
