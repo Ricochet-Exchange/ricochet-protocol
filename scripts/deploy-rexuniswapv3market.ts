@@ -38,6 +38,10 @@ async function main() {
   await market.deployed();
   console.log("REXUniswapV3Market deployed to:", market.address);
 
+  // Initialize WMATIC and MATICx
+  await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS);
+  console.log("Initialized WMATIC and MATICx");
+
   // Create the Gelato task that will be used to execute the market
   await market.createTask();
   console.log("Created Gelato task");
@@ -46,8 +50,8 @@ async function main() {
   let inputTokenAddress = config.USDCX_ADDRESS;
   let inputTokenUnderlyingAddress = config.USDC_ADDRESS;
   
-  let outputTokenAddress = config.REXMATICX_ADDRESS;
-  let outputTokenUnderlyingAddress = config.MATIC_ADDRESS;
+  let outputTokenAddress = config.ETHX_ADDRESS;
+  let outputTokenUnderlyingAddress = config.ETH_ADDRESS;
 
   if (network.name == "polygon") {
     inputTokenAddress = config.USDCX_ADDRESS;
@@ -60,7 +64,6 @@ async function main() {
     outputTokenAddress = config.DAIX_ADDRESS;
     outputTokenUnderlyingAddress = config.DAI_ADDRESS;
   }
-
 
   await market.initializeMarket(
     inputTokenAddress,

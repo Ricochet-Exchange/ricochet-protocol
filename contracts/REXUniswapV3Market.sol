@@ -164,7 +164,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         require(taskId == bytes32(""), "Already started task");
         
         // Create a timed interval task with Gelato Network
-        bytes memory execData = abi.encodeCall(this.distribute, ("0x", false));
+        bytes memory execData = abi.encodeCall(this.distribute, ('', false));
         ModuleData memory moduleData = ModuleData({
             modules: new Module[](1),
             args: new bytes[](1)
@@ -436,9 +436,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 inputTokenBalance = ERC20(underlyingInputToken).balanceOf(address(this));
 
         // Use this amount to swap for enough WMATIC to cover the gas fee
-        console.log("inputTokenBalance: %s", inputTokenBalance);
-        console.log("amountOut: %s", amountOut);
-        console.log("underlyingInputToken: %s", underlyingInputToken);
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
             path: abi.encodePacked(address(wmatic), poolFee, underlyingInputToken),
             recipient: address(this),
