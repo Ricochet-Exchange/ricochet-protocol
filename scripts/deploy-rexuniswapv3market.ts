@@ -45,6 +45,7 @@ async function main() {
   // Get the input and output token based on the network, or use these defaults
   let inputTokenAddress = config.USDCX_ADDRESS;
   let inputTokenUnderlyingAddress = config.USDC_ADDRESS;
+  
   let outputTokenAddress = config.REXMATICX_ADDRESS;
   let outputTokenUnderlyingAddress = config.MATIC_ADDRESS;
 
@@ -64,7 +65,7 @@ async function main() {
   await market.initializeMarket(
     inputTokenAddress,
     outputTokenAddress,
-    config.RIC_TOKEN_ADDRESS,
+    config.RIC_ADDRESS,
     config.SHARE_SCALER,
     config.FEE_RATE,
     config.INITIAL_PRICE,

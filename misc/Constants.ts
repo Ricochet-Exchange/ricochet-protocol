@@ -116,6 +116,7 @@ export const Constants : {[key: string]: any} = {
         UNISWAP_POOL_FEE: 500,
 
         // Deployment constants for UniswapV3 market
+        REX_DEPLOYER_ADDRESS: "0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA",
         SHARE_SCALER: 10000,
         FEE_RATE: 5000,
         INITIAL_PRICE: '1000000000000000000',
