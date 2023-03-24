@@ -93,8 +93,9 @@ export const Constants : {[key: string]: any} = {
         // Deployment constants for UniswapV3 market
         SHARE_SCALER: 10000,
         FEE_RATE: 5000,
+        AFFILAITE_FEE: 500000,
         INITIAL_PRICE: '1550000000000000000000',
-        RATE_TOLERANCE: 20000,
+        RATE_TOLERANCE: 150,
         UNISWAP_POOL_FEE: 3000,
 
     },
@@ -123,8 +124,9 @@ export const Constants : {[key: string]: any} = {
         REX_DEPLOYER_ADDRESS: "0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA",
         SHARE_SCALER: 10000,
         FEE_RATE: 5000,
+        AFFILAITE_FEE: 500000,
         INITIAL_PRICE: '1000000000000000000',
-        RATE_TOLERANCE: 20000,
+        RATE_TOLERANCE: 150,
 
         // Gelato
         GELATO_OPS: "0xB3f5503f93d5Ef84b06993a1975B9D21B962892F",

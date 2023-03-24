@@ -208,6 +208,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         ISuperToken _subsidyToken,
         uint128 _shareScaler,
         uint128 _feeRate,
+        uint128 _affiliateFee,
         uint256 _initialTokenExchangeRate,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
@@ -217,7 +218,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         shareScaler = _shareScaler;
         rateTolerance = _rateTolerance;
         feeRate = _feeRate;
-        affiliateFee = 500000;
+        affiliateFee = _affiliateFee;
     
         // Create a OutputPool for the outputToken
         addOutputPool(
@@ -342,13 +343,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         numOutputPools++;
     }
 
-    // TODO: Remove this in favor of
-    /// @dev Get last distribution timestamp
-    /// @return last distribution timestamp
-    function getLastDistributionAt() external view returns (uint256) {
-        return lastDistributedAt;
-    }
-
     /// @dev Distribute tokens to streamers
     /// @param ctx is the context for the distribution
     /// @param ignoreGasReimbursement is whether to ignore gas reimbursements (i.e. Gelato)
@@ -362,7 +356,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         uint gasUsed = gasleft(); // Track gas used in this function
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
-        console.log("inputTokenAmount", inputTokenAmount);
         
         // If there is no inputToken to distribute, then return
         if (inputTokenAmount == 0) {
@@ -489,10 +482,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint twapPrice = getTwap();
-        console.log("twapPrice", twapPrice);
         minOutput = amount * 1e18 / twapPrice;
         minOutput = (minOutput * (1e5 - rateTolerance)) / 1e5;
-        console.log("minOutput", minOutput);
 
         // Scale back from 1e18 to outputToken decimals
         // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
@@ -510,7 +501,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 amountOutMinimum: minOutput
             });
         outAmount = router.exactInput(params);
-        console.log("outAmount", outAmount);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method

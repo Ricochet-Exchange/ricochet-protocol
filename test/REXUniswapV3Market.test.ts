@@ -106,6 +106,7 @@ describe('REXUniswapV3Market', () => {
     // ***************************************************************************************
 
     let gelatoBlock;
+    let intializeMarketBlock;
 
     async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
 
@@ -283,24 +284,24 @@ describe('REXUniswapV3Market', () => {
         console.log(
             "Arguments for REXUniswapV3Market deploy:",
             adminSigner.address,
-            constants.HOST_SUPERFLUID_ADDRESS,
-            constants.CFA_SUPERFLUID_ADDRESS,
-            constants.IDA_SUPERFLUID_ADDRESS,
+            config.HOST_SUPERFLUID_ADDRESS,
+            config.CFA_SUPERFLUID_ADDRESS,
+            config.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address,
-            constants.GELATO_OPS,
+            config.GELATO_OPS,
             adminSigner.address
         );
 
 
         market = await REXMarketFactory.deploy(
             adminSigner.address,
-            constants.HOST_SUPERFLUID_ADDRESS,
-            constants.CFA_SUPERFLUID_ADDRESS,
-            constants.IDA_SUPERFLUID_ADDRESS,
+            config.HOST_SUPERFLUID_ADDRESS,
+            config.CFA_SUPERFLUID_ADDRESS,
+            config.IDA_SUPERFLUID_ADDRESS,
             registrationKey,
             referral.address,
-            constants.GELATO_OPS,
+            config.GELATO_OPS,
             adminSigner.address
         );
         console.log("=========== Deployed REXUniswapV3Market ============");
@@ -320,19 +321,24 @@ describe('REXUniswapV3Market', () => {
             ricochetUSDCx.address,
             ricochetETHx.address,
             ricochetRIC.address,
-            10000, 
-            20000,
-            oraclePrice.toString() + "000000000000000000",
-            150,
+            config.SHARE_SCALER, 
+            config.FEE_RATE,
+            config.AFFILAITE_FEE,
+            oraclePrice.toString() + "000000000000000000", // "0" * 18
+            config.RATE_TOLERANCE,
         );
 
+        // Save this block number for expectations below
+        intializeMarketBlock = await ethers.provider.getBlock("latest");
+
         await market.initializeUniswap(
-            constants.UNISWAP_V3_ROUTER_ADDRESS, 
-            constants.UNISWAP_V3_FACTORY_ADDRESS,
-            [constants.USDC_ADDRESS, constants.ETH_ADDRESS],
+            config.UNISWAP_V3_ROUTER_ADDRESS, 
+            config.UNISWAP_V3_FACTORY_ADDRESS,
+            [config.USDC_ADDRESS, config.ETH_ADDRESS],
             500
         );
 
+        // Send the market some RIC for subsidies
         await ricochetRIC.transfer({
             receiver: market.address,
             amount: "1000000000000000000"
@@ -347,36 +353,42 @@ describe('REXUniswapV3Market', () => {
         // Give Alice, Bob, Karen some tokens
         const initialAmount = ethers.utils.parseUnits("1000", 18).toString();
 
-        // Transfer USDCx to alice and
+        // USDCx for Alice
         await ricochetUSDCx
             .transfer({
                 receiver: aliceSigner.address,
                 amount: initialAmount,
             }).exec(usdcxWhaleSigner);
 
+        // USDCx for Bob 
         await ricochetUSDCx
             .transfer({
                 receiver: bobSigner.address,
                 amount: initialAmount,
             }).exec(usdcxWhaleSigner);
+
+        // RIC for Bob
         await ricochetRIC
             .transfer({
                 receiver: bobSigner.address,
                 amount: '1000000000000000000000',
             }).exec(ricWhaleSigner);
-        console.log("====== Transferred RIC to bob =======");
+
+        // RIC for market
         await ricochetRIC
             .transfer({
                 receiver: market.address,
                 amount: '1000000000000000000000',
             }).exec(ricWhaleSigner);
-        console.log("====== Transferred RIC to app =======");
+        
+        // MATICx for Bob
         await ricochetMATICx
             .transfer({
                 receiver: bobSigner.address,
                 amount: '1754897259852523432',
             }).exec(maticxWhaleSigner);
-        console.log("====== Transferred MATICx to bob =======");
+        
+        // USDCx for Karen
         await ricochetUSDCx
             .transfer({
                 receiver: karenSigner.address,
@@ -385,12 +397,11 @@ describe('REXUniswapV3Market', () => {
         console.log("====== Transferred USDCx to karen =======");
 
         // Do all the approvals
-        // TODO: Redo how indexes are setup
         await approveSubscriptions([ethxIDAIndex, ricIDAIndex],
-            [adminSigner, aliceSigner, bobSigner, carlSigner]); // , karenSigner, carlSigner]);
+            [adminSigner, aliceSigner, bobSigner, carlSigner]); // karenSigner
 
 
-        // Take a snapshot to avoid redoing the setup
+        // Take a snapshot to avoid redoing the setup, this saves some time later in the testing scripts
         snapshot = await provider.send('evm_snapshot', []);
 
        
@@ -418,17 +429,23 @@ describe('REXUniswapV3Market', () => {
 
         });
 
-        xit("#1.1 getters/setters", async () => {
 
-            // await market.setRateTolerance(1000);
-            expect(await market.getRateTolerance()).to.equal(1000);
-            await market.setFeeRate(0, 1000);
-            expect(await market.getFeeRate(0)).to.equal(1000);
-            await market.setEmissionRate(0, 1000);
-            expect(await market.getEmissionRate(0)).to.equal(1000);
-            expect((await market.getOutputPool(0)).toString()).to.equal(`${ricochetUSDCx.address},1000,1000,${1e7}`);
-            expect((await market.getLastDistributionAt()).toNumber()).to.be.above(0)
+        it("#1.1 contract variables were set correctly", async () => {
 
+            expect(await market.owner()).to.equal(adminSigner.address);
+            expect(await market.numOutputPools()).to.equal(2);
+            expect(await market.lastDistributedAt()).to.equal(intializeMarketBlock.timestamp);   
+            expect(await market.rateTolerance()).to.equal(config.RATE_TOLERANCE);
+            expect(await market.feeRate()).to.equal(config.FEE_RATE);
+            expect(await market.affiliateFee()).to.equal(config.AFFILAITE_FEE);
+            expect(await market.shareScaler()).to.equal(config.SHARE_SCALER);
+            expect(await market.inputToken()).to.equal(ricochetUSDCx.address);
+            expect(await market.outputToken()).to.equal(ricochetETHx.address);
+            expect(await market.subsidyToken()).to.equal(ricochetRIC.address);
+            expect(await market.underlyingInputToken()).to.equal(config.USDC_ADDRESS);
+            expect(await market.underlyingOutputToken()).to.equal(config.ETH_ADDRESS);
+            expect(await market.wmatic()).to.equal(config.WMATIC_ADDRESS);
+            expect(await market.maticx()).to.equal(config.MATICX_ADDRESS);
         });
 
         it("#1.2 before/afterAgreementCreated callbacks", async () => {
@@ -448,17 +465,17 @@ describe('REXUniswapV3Market', () => {
             // Expect share allocations were done correctly
             expect(
                 (await market.getIDAShares(0, aliceSigner.address)).toString()
-            ).to.equal(`true,true,98000000000,0`);
+            ).to.equal(`true,true,99500000000,0`);
             // Admin and Carl split 2% of the shares bc of the 50% referral fee
             expect(
                 (await market.getIDAShares(0, adminSigner.address)).toString()
-            ).to.equal(`true,true,1000000000,0`);
+            ).to.equal(`true,true,250000000,0`);
             expect(
                 (await market.getIDAShares(0, carlSigner.address)).toString()
-            ).to.equal(`true,true,1000000000,0`);
+            ).to.equal(`true,true,250000000,0`);
 
             // Give it a minute...
-            await increaseTime(600);
+            await increaseTime(TEST_TRAVEL_TIME);
 
             // Bob opens a ETH stream to REXMarket
             console.log("========== Bob opens a USDC stream to REXMarket ===========");
@@ -474,11 +491,12 @@ describe('REXUniswapV3Market', () => {
             // Expect share allocations were done correctly
             expect(
                 (await market.getIDAShares(0, bobSigner.address)).toString()
-            ).to.equal(`true,true,980000000,0`);
-            // Admin gets all of the 2% bc bob was an organic referral
+            ).to.equal(`true,true,995000000,0`);
+
+            // Admin gets all of the 0.5% fee bc Bob was an organic referral
             expect(
                 (await market.getIDAShares(0, adminSigner.address)).toString()
-            ).to.equal(`true,true,1020000000,0`); 
+            ).to.equal(`true,true,255000000,0`); 
 
             // Delete Alices stream before first  distributions
             console.log("========== Delete Alices stream ===========")
@@ -585,10 +603,10 @@ describe('REXUniswapV3Market', () => {
 
             // Expect Owner and Carl got their fee from Alice
             let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx;
-            expect(deltaCarl.ethx / totalOutput).to.within(0.00999, 0.0101)
-            expect(deltaOwner.ethx / totalOutput).to.within(0.00999, 0.0101)
+            expect(deltaCarl.ethx / totalOutput).to.equal(0.0025)
+            expect(deltaOwner.ethx / totalOutput).to.equal(0.0025)
             console.log("Alice exchange rate:", deltaAlice.usdcx / deltaAlice.ethx)
-            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * -1 * 0.97)
+            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * -1 * 0.985)
 
             // Delete alice and bobs flow
             await sf.cfaV1.deleteFlow({
@@ -602,12 +620,12 @@ describe('REXUniswapV3Market', () => {
         });
 
         it("#1.5 gelato distribution", async () => {
-            const constants = Constants['polygon'];
+            const config = Constants['polygon'];
 
             // Impersonate gelato network and set balance
-            await impersonateAndSetBalance(constants.GELATO_NETWORK);
-            const gelatoNetwork = await ethers.provider.getSigner(constants.GELATO_NETWORK);
-            const ops = await ethers.getContractAt("Ops", constants.GELATO_OPS);
+            await impersonateAndSetBalance(config.GELATO_NETWORK);
+            const gelatoNetwork = await ethers.provider.getSigner(config.GELATO_NETWORK);
+            const ops = await ethers.getContractAt("Ops", config.GELATO_OPS);
 
             // Setup gelato executor exec and module data
             let encodedArgs = ethers.utils.defaultAbiCoder.encode(
@@ -666,7 +684,6 @@ describe('REXUniswapV3Market', () => {
 
             // TODO: Not sure why the 3rd gelato execute fails
             // await increaseTime(TEST_TRAVEL_TIME);
-
             // // Submit task to gelato
             // await ops
             // .connect(gelatoNetwork)
@@ -695,10 +712,10 @@ describe('REXUniswapV3Market', () => {
 
             // Expect Owner and Carl got their fee from Alice
             let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx;
-            expect(deltaCarl.ethx / totalOutput).to.within(0.00999, 0.0101)
-            expect(deltaOwner.ethx / totalOutput).to.within(0.00999, 0.0101)
+            expect(deltaCarl.ethx / totalOutput).to.equal(0.0025)
+            expect(deltaOwner.ethx / totalOutput).to.equal(0.0025)
             console.log("Alice exchange rate:", deltaAlice.usdcx / deltaAlice.ethx)
-            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * -1 * 0.97)
+            expect(deltaAlice.ethx).to.be.above(deltaAlice.usdcx / oraclePrice * -1 * 0.985)
 
             // Delete alice and bobs flow
             await sf.cfaV1.deleteFlow({
