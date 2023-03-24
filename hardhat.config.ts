@@ -91,6 +91,7 @@ const config: HardhatUserConfig = {
     forkNetwork: "137", 
     privateVerification: false,
   },
+  plugins: ["solidity-coverage"],
   namedAccounts: {
     deployer: {
         default: "0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA", // here this will by default take the first account as deployer

@@ -26,11 +26,16 @@ import './matic/IWMATIC.sol';
 import "./superswap/interfaces/ISwapRouter02.sol";
 import "./referral/IREXReferral.sol";
 
+// Hardhat console
+import "hardhat/console.sol";
+
 
 contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCreator {
     using SafeERC20 for ERC20;
 
-    // REX Market Structures 
+    // REX Market Structures
+
+    // Parameters needed to perform a shareholder update (i.e. a flow rate update) 
     struct ShareholderUpdate {
       address shareholder; // The shareholder to update
       address affiliate; // The affiliate to update
@@ -65,7 +70,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     mapping(ISuperToken => uint32) public outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
     uint32 public numOutputPools; // The number of output pools
     uint public lastDistributedAt; // The timestamp of the last distribution
-    uint public rateTolerance; // The percentage to deviate from the oracle scaled to 1e6
+    uint public rateTolerance; // The percentage to deviate from the oracle (basis points)
     uint128 public feeRate; // Fee taken by the protocol on each distribution (basis points)
     uint128 public affiliateFee; // Fee taken by the affilaite on each distribution (basis points)
     uint128 public shareScaler; // The scaler to apply to the share of the outputToken pool
@@ -115,6 +120,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 feeCollected,
         address token
     );
+
+    error InvalidAgreement();
 
     /// @dev Shareholder update event. Emitted on each shareholder update operation.
     /// @param shareholder is the shareholder address
@@ -252,6 +259,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         lastDistributedAt = block.timestamp;
     }
 
+    /// @dev Initialize the Uniswap V3 Router and Factory and do approvals
+    /// @param _uniswapRouter is the Uniswap V3 Router
+    /// @param _uniswapFactory is the Uniswap V3 Factory
+    /// @param _uniswapPath is the Uniswap V3 path
+    /// @param _poolFee is the Uniswap V3 pool fee
     function initializeUniswap(
         ISwapRouter02 _uniswapRouter,
         IUniswapV3Factory _uniswapFactory,
@@ -265,7 +277,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Get the pool from the Uniswap V3 Factory
         IUniswapV3Factory factory = IUniswapV3Factory(_uniswapFactory);
 
-        // Require that the pool for i/o swaps exists
+        // Require that the pool for input/output swaps exists
         require(
             factory.getPool(
                 address(underlyingInputToken),
@@ -276,10 +288,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
 
         // Require that the pool for gas reimbursements exists
-        // Log get pool params
-        console.log("underlyingInputToken", address(underlyingInputToken));
-        console.log("wmatic", address(wmatic));
-        console.log("poolFee", poolFee);
         require(
             factory.getPool(
                 address(underlyingInputToken),
@@ -341,6 +349,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         return lastDistributedAt;
     }
 
+    /// @dev Distribute tokens to streamers
+    /// @param ctx is the context for the distribution
+    /// @param ignoreGasReimbursement is whether to ignore gas reimbursements (i.e. Gelato)
     function distribute(bytes memory ctx, bool ignoreGasReimbursement) 
         public
         payable 
@@ -351,14 +362,22 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         uint gasUsed = gasleft(); // Track gas used in this function
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
-        uint256 outputTokenAmount = _swap(inputTokenAmount); // Swap inputToken for outputToken
+        console.log("inputTokenAmount", inputTokenAmount);
+        
+        // If there is no inputToken to distribute, then return
+        if (inputTokenAmount == 0) {
+            return newCtx;
+        }
+
+        // Swap inputToken for outputToken
+        _swap(inputTokenAmount); 
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
-        outputTokenAmount = outputToken.balanceOf(address(this));
+        uint256 outputTokenAmount = outputToken.balanceOf(address(this));
         _recordExchangeRate(inputTokenAmount * 1e18 / outputTokenAmount, block.timestamp);
 
-        // If there is no outputToken, return
-        if (inputTokenAmount == 0) {
+        // If there is no outputToken to distribute, then return
+        if (outputTokenAmount == 0) {
             return newCtx;
         }
 
@@ -428,13 +447,12 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // Uniswap V3 Swap Methods
 
+    /// @dev Swap input token for WMATIC
     function _swapForGas(
         uint256 amountOut
     ) internal returns (uint256) {
-        
-        // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
-        uint256 inputTokenBalance = ERC20(underlyingInputToken).balanceOf(address(this));
 
+        // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
         // Use this amount to swap for enough WMATIC to cover the gas fee
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
             path: abi.encodePacked(address(wmatic), poolFee, underlyingInputToken),
@@ -445,6 +463,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         });
 
         return router.exactOutput(params);
+
     }
 
     // @notice Swap input token for output token
@@ -463,25 +482,26 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
+
         // Scale it to 1e18 if not (e.g. USDC, WBTC)
         amount = amount * (10**(18 - ERC20(underlyingInputToken).decimals()));
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint twapPrice = getTwap();
-        
-        minOutput = amount * 1e6 / twapPrice;
-
-        minOutput = (minOutput * (1e6 - rateTolerance)) / 1e6;
+        console.log("twapPrice", twapPrice);
+        minOutput = amount * 1e18 / twapPrice;
+        minOutput = (minOutput * (1e5 - rateTolerance)) / 1e5;
+        console.log("minOutput", minOutput);
 
         // Scale back from 1e18 to outputToken decimals
         // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
         // Scale it back to inputToken decimals
         amount = amount / (10**(18 - ERC20(underlyingInputToken).decimals()));
-        amount = amount / 10000 * (10000 - gelatoFeeShare);
+        amount = amount / 1e5 * (1e5 - gelatoFeeShare);
         // The left over input tokne amount is for the gelato fee
 
-        // This is the code for the swap
+        // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
@@ -489,8 +509,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 amountIn: amount,
                 amountOutMinimum: minOutput
             });
-        
         outAmount = router.exactInput(params);
+        console.log("outAmount", outAmount);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
@@ -549,22 +569,17 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // Superfluid Callbacks
 
-    // Agreement Created
-
     function beforeAgreementCreated(
         ISuperToken _superToken,
         address _agreementClass,
         bytes32, //_agreementId,
-        bytes calldata _agreementData,
+        bytes calldata, // _agreementData,
         bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-        (address shareholder, ) = abi.decode(
-            _agreementData,
-            (address, address)
-        );
+
     }
 
     function afterAgreementCreated(
@@ -598,7 +613,158 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     }
 
-    // Superfluid Agreement Management Methods
+    /// @dev Called before an agreement is updated
+    /// @param _superToken The agreement SuperToken for this update
+    /// @param _agreementClass The agreement class for this update
+    /// @param _agreementData Agreement data associated with this update
+    /// @param _ctx Superfluid context data
+    /// @return _cbdata Callback data
+    function beforeAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+        // Only allow the Superfluid host to call this function
+        _onlyHost();
+
+        // If the agreement is not a CFAv1 agreement, then return the context
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        // Get the stakeholders current flow rate and save it in cbData
+        (, int96 _flowRate,) = _getShareholderInfo(
+            _agreementData, _superToken
+        );
+
+        // Encode the rate for use in afterAgreementUpdated
+        _cbdata = abi.encode(_flowRate);
+    }
+
+    /// @dev Called after an agreement is updated
+    /// @param _superToken The agreement SuperToken for this update
+    /// @param _agreementClass The agreement class for this update
+    /// @param _agreementData Agreement data associated with this update
+    /// @param _cbdata Callback data associated with this update
+    /// @param _ctx SuperFluid context data
+    /// @return _newCtx updated SuperFluid context data
+    function afterAgreementUpdated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _cbdata,
+        bytes calldata _ctx
+    ) external virtual override returns (bytes memory _newCtx) {
+        _onlyHost();
+
+        // If the agreement is not a CFAv1 agreement, return the context
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+        
+        // Copy the argment context to a new context return variable
+        _newCtx = _ctx;
+
+        // Get the caller's address and current flow rate from the agreement data
+        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
+            _agreementData, _superToken
+        );
+
+        // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementUpdated
+        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
+
+        // Before updating the shares, check if the distribution should be triggered
+        // Trigger the distribution flushes the system before changing share allocations
+        // This may no longer be needed
+        if (_shouldDistribute()) {
+            _newCtx = distribute(_newCtx, true);
+        }
+
+        // Build the shareholder update parameters and update the shareholder
+        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, _flowRate, _superToken
+        );
+
+        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+    }
+
+    // Agreement Terminated
+
+    function beforeAgreementTerminated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _ctx
+    ) external view virtual override returns (bytes memory _cbdata) {
+        _onlyHost();
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        (
+            ,
+            int96 _flowRateMain,
+            uint256 _timestamp
+        ) = _getShareholderInfo(_agreementData, _superToken);
+
+        uint256 _uinvestAmount = _calcUserUninvested(
+            _timestamp,
+            uint256(uint96(_flowRateMain)),
+            // Select the correct lastDistributedAt for this _superToken
+            lastDistributedAt
+        );
+        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
+    }
+
+    /// @dev Called after an agreement is terminated
+    /// @param _superToken The agreement SuperToken for this update
+    /// @param _agreementClass The agreement class for this update
+    /// @param _agreementData Agreement data associated with this update
+    /// @param _cbdata Callback data associated with this update
+    /// @param _ctx SuperFluid context data
+    /// @return _newCtx updated SuperFluid context data
+    function afterAgreementTerminated(
+        ISuperToken _superToken,
+        address _agreementClass,
+        bytes32, //_agreementId,
+        bytes calldata _agreementData,
+        bytes calldata _cbdata, //_cbdata,
+        bytes calldata _ctx
+    ) external virtual override returns (bytes memory _newCtx) {
+        // Only allow the Superfluid host to call this function
+        _onlyHost();
+
+        // If the agreement is not a CFAv1 agreement, return the context
+        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+            return _ctx;
+
+        _newCtx = _ctx;
+
+        // Get the caller's address and current flow rate from the agreement data
+        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
+        
+        // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
+        (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
+
+        // Build the shareholder update parameters and update the shareholder
+        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
+          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, 0, _superToken
+        );
+
+        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+        // Refund the unswapped amount back to the person who started the stream
+        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        // solhint-disable-next-line no-empty-blocks
+        {} catch {
+            console.log("Error refunding uninvested amount to shareholder:", _shareholder);
+            console.log("Uninvested amount:", _uninvestAmount);
+        }
+    }
+
+    // Superfluid Agreement Helper Methods
 
     /// @dev Distributes `_distAmount` amount of `_distToken` token among all IDA index subscribers
     /// @param _index IDA index ID
@@ -654,33 +820,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             new bytes(0) // user data
         );
     }
-
-    /// @dev Set new `shares` share for `subscriber` address in IDA with `index` index
-    /// @param index IDA index ID
-    /// @param subscriber is subscriber address
-    /// @param shares is distribution shares count
-    /// @param distToken is distribution token address
-    function _updateSubscription(
-        uint256 index,
-        address subscriber,
-        uint128 shares,
-        ISuperToken distToken
-    ) internal {
-        host.callAgreement(
-            ida,
-            abi.encodeWithSelector(
-                ida.updateSubscription.selector,
-                distToken,
-                index,
-                subscriber,
-                // All shares are scaled based on the difference in magnitude between the input token and the output token
-                // This addresses the issue that you can't sell 1 wei of USDC to ETH
-                shares,
-                new bytes(0) // placeholder ctx
-            ),
-            new bytes(0) // user data
-        );
-    }
     
     /// @dev Same as _updateSubscription but uses provided SuperFluid context data
     /// @param ctx SuperFluid context data
@@ -712,116 +851,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
     }
 
-    // Agreement Updated
-
-     function beforeAgreementUpdated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-      _onlyHost();
-      if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-          return _ctx;
-
-      // Get the stakeholders current flow rate and save it in cbData
-      (, int96 _flowRate,) = _getShareholderInfo(
-          _agreementData, _superToken
-      );
-
-      _cbdata = abi.encode(_flowRate);
-    }
-
-    function afterAgreementUpdated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _cbdata,
-        bytes calldata _ctx
-    ) external virtual override returns (bytes memory _newCtx) {
-        _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-            return _ctx;
-
-        _newCtx = _ctx;
-        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
-            _agreementData, _superToken
-        );
-
-        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
-
-
-        if (_shouldDistribute()) {
-            _newCtx = distribute(_newCtx, true);
-        }
-
-        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, _flowRate, _superToken
-        );
-
-        // TODO: Udpate shareholder needs before and after flow rate
-        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-
-    }
-
-    // Agreement Terminated
-
-    function beforeAgreementTerminated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _ctx
-    ) external view virtual override returns (bytes memory _cbdata) {
-        _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-            return _ctx;
-
-        (
-            address _shareholder,
-            int96 _flowRateMain,
-            uint256 _timestamp
-        ) = _getShareholderInfo(_agreementData, _superToken);
-
-        uint256 _uinvestAmount = _calcUserUninvested(
-            _timestamp,
-            uint256(uint96(_flowRateMain)),
-            // Select the correct lastDistributedAt for this _superToken
-            lastDistributedAt
-        );
-        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
-    }
-
-    function afterAgreementTerminated(
-        ISuperToken _superToken,
-        address _agreementClass,
-        bytes32, //_agreementId,
-        bytes calldata _agreementData,
-        bytes calldata _cbdata, //_cbdata,
-        bytes calldata _ctx
-    ) external virtual override returns (bytes memory _newCtx) {
-        _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
-            return _ctx;
-
-        _newCtx = _ctx;
-        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
-        (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
-
-        ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, 0, _superToken
-        );
-
-        _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-        // Refund the unswapped amount back to the person who started the stream
-        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
-        // solhint-disable-next-line no-empty-blocks
-        {} catch {
-        }
-    }
-
     // REX Referral Methods
     function _registerReferral(bytes memory _ctx, address _shareholder) internal {
         require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
@@ -838,6 +867,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // Helper Methods
 
+    /// @dev Checks if the agreementClass is a CFAv1 agreement
+    /// @param _agreementClass Agreement class address
+    /// @return _isCFAv1 is the agreement class a CFAv1 agreement
     function _isCFAv1(address _agreementClass) internal view returns (bool) {
         return
             ISuperAgreement(_agreementClass).agreementType() ==
@@ -851,7 +883,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         require(msg.sender == address(host), "!host");
     }
 
-        // internal helper function to get the amount that needs to be returned back to the user
+    /// @dev Calculate the uninvested amount for the user based on the flow rate and last update time
+    /// @param _prevUpdateTimestamp is the previous update timestamp
+    /// @param _flowRate is the flow rate
+    /// @param _lastDistributedAt is the last distributed timestamp
+    /// @return _uninvestedAmount is the uninvested amount
     function _calcUserUninvested(
         uint256 _prevUpdateTimestamp,
         uint256 _flowRate,
@@ -978,7 +1014,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     }
 
     function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
-     internal returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
+     internal view returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
     {
       (,,daoShares,) = getIDAShares(outputPoolIndicies[_shareholderUpdate.token], owner());
       daoShares *= shareScaler;
@@ -1021,8 +1057,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     }
 
     // Internal Oracle Methods
-    // TODO: Chainlink?
 
+    /// @dev Record the exchange rate of the token in the circular buffer
+    /// @param rate is the exchange rate of the token
+    /// @param timestamp is the timestamp of the exchange rate
     function _recordExchangeRate(uint256 rate, uint256 timestamp) internal { 
         // Record the exchange rate and timestamp in the circular buffer, tokenExchangeRates
         if (block.timestamp - lastDistributedAt > BUFFER_DELAY) {
@@ -1037,10 +1075,12 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     }
 
-    // Function to compute a average value from tokenExchangeRates circular buffer using the tokenExchangeRateIndex
+    /// @dev Get the average exchange rate of the token over the last 3 rate samples
     function getTwap() public view returns (uint256) {
         uint256 sum = 0;
         uint startIndex = tokenExchangeRateIndex;
+        
+        // Sum the exchange rates of the last 3 samples
         for (uint256 i = 0; i < BUFFER_SIZE; i++) {
             sum += tokenExchangeRates[startIndex].rate;
             if (startIndex == 0) {
@@ -1049,15 +1089,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 startIndex -= 1;
             }
         }
-        if (sum == 0) {
-            return 1;   // Will be 0 for the first BUFFER_SIZE distributions
-        }
+
         return sum / BUFFER_SIZE;
     }
-
-    
-    // 
-
+     
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
     function emergencyCloseStream(address streamer, ISuperToken token) external virtual {
@@ -1121,7 +1156,15 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         outputPools[_index].emissionRate = _emissionRate;
     }
 
+    /// @dev sets the rateTolerance for the swap
+    /// @param _rateTolerance is the rateTolerance for the swap in basis points
+    function setRateTolerance(uint256 _rateTolerance) external onlyOwner {
+        require(rateTolerance <= 10000, "RTL");
+        rateTolerance = _rateTolerance;
+    }
+
     // Payable for X->MATICx markets to work
     receive() external payable {}
 
 }
+
