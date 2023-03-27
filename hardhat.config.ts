@@ -57,6 +57,11 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
     },
+    optimism: {
+      url: process.env.OPTIMISM_NODE_URL,
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      blockGasLimit: 20000000,
+    },
     maticmum: {
       url: process.env.MUMBAI_NODE_URL,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
@@ -67,7 +72,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8545/'
     },
     tenderly: {
-      chainId: 80001,
+      chainId: 10,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       url: process.env.TENDERLY_NODE_URL,
     },
@@ -78,7 +83,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: process.env.POLYGONSCAN_API_KEY,
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
   contractSizer: {
     alphaSort: true,
@@ -88,7 +93,7 @@ const config: HardhatUserConfig = {
   tenderly: {
     username: process.env.TENDERLY_USERNAME, 
     project: "ricochet",
-    forkNetwork: "137", 
+    forkNetwork: "10", 
     privateVerification: false,
   },
   plugins: ["solidity-coverage"],
