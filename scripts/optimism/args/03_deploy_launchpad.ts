@@ -1,11 +1,9 @@
-import { Constants } from "../misc/Constants"
-
-const NETWORK = 'maticmum';
+import { Constants } from "../../../misc/Constants"
 
 // Get the right constants for the network
-const config = Constants[NETWORK];
-console.log("Using this for config:", config);
+const config = Constants['optimism'];
 
+// Export the arguments for the deployment
 module.exports = [
   config.HOST_SUPERFLUID_ADDRESS,
   config.CFA_SUPERFLUID_ADDRESS,
