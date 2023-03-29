@@ -34,7 +34,7 @@ async function main() {
       ["uint128", "uint128"],
       [GELATO_BLOCK_TIMESTAMP, 60]
   );
-  let execData = rexMarket.interface.encodeFunctionData("distribute", ['0x3078', 0]);
+  let execData = rexMarket.interface.encodeFunctionData("distribute", ['0x', 0]);
   let moduleData = {
       modules: [1],
       args: [encodedArgs],

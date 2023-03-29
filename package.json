@@ -58,6 +58,7 @@
     "web3-utils": "^1.5.1"
   },
   "dependencies": {
+    "@chainlink/contracts": "^0.6.1",
     "@openzeppelin/contracts-upgradeable": "^4.1.0",
     "@superfluid-finance/sdk-core": "^0.5.9",
     "@truffle/abi-utils": "^0.2.3",

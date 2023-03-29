@@ -11,6 +11,9 @@ async function main() {
         ethers.utils.hexValue(ethers.utils.parseUnits("10000", "ether").toHexString()),
     ]);
 
+    // Check the balance of the first wallet
+    const balance = await ethers.provider.getBalance(WALLETS[0]);
+    console.log("Balance:", ethers.utils.formatEther(balance));
     console.log("Result:", result);
 
 }

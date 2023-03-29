@@ -20,6 +20,9 @@ import "./uniswap/IUniswapV3Factory.sol";
 // Gelato Imports
 import "./gelato/OpsTaskCreator.sol";
 
+// Chainlink
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 // REX Imports
 import './ISETHCustom.sol';
 import './matic/IWMATIC.sol';
@@ -91,6 +94,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     address[] uniswapPath; // The path between inputToken and outputToken
     uint24 poolFee; // The pool fee to use in the path between inputToken and outputToken 
 
+    // Chainlink Variables
+    AggregatorV3Interface internal priceFeed; // Chainlink price feed for the inputToken/outputToken pair
+
     // Gelato task variables
     uint256 public count;
     uint256 public lastExecuted;
@@ -98,12 +104,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     uint256 public gelatoFeeShare = 10; // number of basis points gelato takes for executing the task
     uint256 public constant MAX_COUNT = 5;
     uint256 public constant INTERVAL = 60;
-
-    // Internal Buffering Oracle Variables
-    uint public constant BUFFER_SIZE = 3; // 3 slot circular buffer architecture
-    uint public constant BUFFER_DELAY = 60; // min. 60 seconds between each data sample
-    TokenExchangeRate[BUFFER_SIZE] public tokenExchangeRates; // The exchange rates of the token
-    uint256 public tokenExchangeRateIndex; // The index of the next exchange rate to be recorded
 
     /// @dev Record the price of the token at the time of the swap
     /// @param rate is the price of the token at the time of the swap
@@ -200,7 +200,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @param _subsidyToken is the subsidy supertoken for the market
     /// @param _shareScaler is the scaler for the output (IDA) pool shares
     /// @param _feeRate is the protocol dev share rate 
-    /// @param _initialTokenExchangeRate is the initial exchange rate between input/output
     /// @param _rateTolerance is the rate tolerance for the market
     function initializeMarket(
         ISuperToken _inputToken,
@@ -209,7 +208,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint128 _shareScaler,
         uint128 _feeRate,
         uint128 _affiliateFee,
-        uint256 _initialTokenExchangeRate,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
         inputToken = _inputToken;
@@ -247,14 +245,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 address(outputToken),
                 2**256 - 1
             );
-        }
-
-        // Set up tokenExchangeRates
-        for(uint i = 0; i < BUFFER_SIZE; i++) {
-            tokenExchangeRates[i] = TokenExchangeRate({
-                rate: _initialTokenExchangeRate,
-                timestamp: block.timestamp
-            });
         }
 
         lastDistributedAt = block.timestamp;
@@ -321,6 +311,32 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     }
 
+    /// @dev Initialize the Chainlink Aggregator
+    /// @param _priceFeed is the Chainlink Aggregator
+    function initializePriceFeed(
+        AggregatorV3Interface _priceFeed
+    ) external onlyOwner {
+        // Only init priceFeed if not already initialized
+        require(address(priceFeed) == address(0), "A");
+        priceFeed = _priceFeed;
+    }
+
+    /// @dev Get the latest price from the Chainlink Aggregator
+    /// @return price is the latest price
+    /// @notice From https://docs.chain.link/data-feeds/using-data-feeds
+    function getLatestPrice() public view returns (int) {
+        // prettier-ignore
+        (
+            /* uint80 roundID */,
+            int price,
+            /*uint startedAt*/,
+            /*uint timeStamp*/,
+            /*uint80 answeredInRound*/
+        ) = priceFeed.latestRoundData();
+        return price;
+    }
+
+
     /// @dev Add a new output pool to the market
     /// @param _token is the output token for the pool
     /// @param _feeRate is the protocol dev share rate
@@ -367,7 +383,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         uint256 outputTokenAmount = outputToken.balanceOf(address(this));
-        _recordExchangeRate(inputTokenAmount * 1e18 / outputTokenAmount, block.timestamp);
 
         // If there is no outputToken to distribute, then return
         if (outputTokenAmount == 0) {
@@ -475,22 +490,18 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-
-        // Scale it to 1e18 if not (e.g. USDC, WBTC)
-        amount = amount * (10**(18 - ERC20(underlyingInputToken).decimals()));
+        amount = amount / 1e5 * (1e5 - gelatoFeeShare);
+        console.log("Amount to swap: %s", amount);
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
-        uint twapPrice = getTwap();
-        minOutput = amount * 1e18 / twapPrice;
+        uint latestPrice = uint(int(getLatestPrice()));
+        console.log("Latest price: %s", latestPrice);
+        // Use the latest price (1e8 scale) to calculate the minOutput (1e18 scale)
+        minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+        console.log("Min output: %s", minOutput);
         minOutput = (minOutput * (1e5 - rateTolerance)) / 1e5;
-
-        // Scale back from 1e18 to outputToken decimals
-        // minOutput = (minOutput * (10**(ERC20(outputToken).decimals()))) / 1e18;
-        // Scale it back to inputToken decimals
-        amount = amount / (10**(18 - ERC20(underlyingInputToken).decimals()));
-        amount = amount / 1e5 * (1e5 - gelatoFeeShare);
-        // The left over input tokne amount is for the gelato fee
+        console.log("Min output after tolerance: %s", minOutput);
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -498,9 +509,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: minOutput
+                amountOutMinimum: 0
             });
         outAmount = router.exactInput(params);
+        console.log("Amount of output token received: %s", outAmount);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
@@ -1046,43 +1058,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     }
 
-    // Internal Oracle Methods
-
-    /// @dev Record the exchange rate of the token in the circular buffer
-    /// @param rate is the exchange rate of the token
-    /// @param timestamp is the timestamp of the exchange rate
-    function _recordExchangeRate(uint256 rate, uint256 timestamp) internal { 
-        // Record the exchange rate and timestamp in the circular buffer, tokenExchangeRates
-        if (block.timestamp - lastDistributedAt > BUFFER_DELAY) {
-            // Only record the exchange rate if the last distribution was more than 60 seconds ago
-            // This is to prevent the exchange rate from being recorded too frequently
-            // which may cause the average exchange rate to be manipulated
-            tokenExchangeRates[tokenExchangeRateIndex] = TokenExchangeRate(rate, timestamp);
-            // Increment the index, account for the circular buffer structure
-            tokenExchangeRateIndex = (tokenExchangeRateIndex + 1) % BUFFER_SIZE;
-            emit RecordTokenPrice(rate, timestamp);
-        }
-
-    }
-
-    /// @dev Get the average exchange rate of the token over the last 3 rate samples
-    function getTwap() public view returns (uint256) {
-        uint256 sum = 0;
-        uint startIndex = tokenExchangeRateIndex;
-        
-        // Sum the exchange rates of the last 3 samples
-        for (uint256 i = 0; i < BUFFER_SIZE; i++) {
-            sum += tokenExchangeRates[startIndex].rate;
-            if (startIndex == 0) {
-                startIndex = BUFFER_SIZE - 1;
-            } else {
-                startIndex -= 1;
-            }
-        }
-
-        return sum / BUFFER_SIZE;
-    }
-     
     /// @dev Allows anyone to close any stream if the app is jailed.
     /// @param streamer is stream source (streamer) address
     function emergencyCloseStream(address streamer, ISuperToken token) external virtual {

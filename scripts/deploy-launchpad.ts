@@ -31,12 +31,13 @@ async function main() {
   });
 
   console.log("Deploying RicochetLaunchpad with params")
-
   const ricochetLaunchpad = await RicochetLaunchpad.deploy(config.HOST_SUPERFLUID_ADDRESS,
     config.CFA_SUPERFLUID_ADDRESS,
     config.IDA_SUPERFLUID_ADDRESS,
     config.SF_REG_KEY,
     config.REX_REFERRAL_ADDRESS);
+  await ricochetLaunchpad.deployed();
+
 
   console.log("Deployed app, initializing...")
 
@@ -50,9 +51,14 @@ async function main() {
     config.DAO_ADDRESS,
     EMISSION_RATE,
     FEE_RATE);
-  await ricochetLaunchpad.deployed();
-  console.log("Deployed RicochetLaunchpadHelper at address:", ricochetLaunchpadHelpder.address);
   console.log("Deployed RicochetLaunchpad at address:", ricochetLaunchpad.address);
+
+  // Allowlist this launchpad with REX Referral system
+  console.log("Allowlisting RicochetLaunchpad with REX Referral system")
+  const rexReferral = await ethers.getContractAt("RexReferral", config.REX_REFERRAL_ADDRESS);
+  await rexReferral.registerApp(ricochetLaunchpad.address);
+  console.log("Allowlisted RicochetLaunchpad with REX Referral system")
+
 }
 
 main()
