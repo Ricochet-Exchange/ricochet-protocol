@@ -58,6 +58,14 @@ async function main() {
   console.log("Deployed RicochetLaunchpadHelper at address:", ricochetLaunchpadHelpder.address);
   console.log("Deployed RicochetLaunchpad at address:", ricochetLaunchpad.address);
 
+
+
+  // Allowlist this launchpad with REX Referral system
+  console.log("Allowlisting RicochetLaunchpad with REX Referral system")
+  const rexReferral = await ethers.getContractAt("REXReferral", config.REX_REFERRAL_ADDRESS);
+  await rexReferral.registerApp(ricochetLaunchpad.address);
+  console.log("Allowlisted RicochetLaunchpad with REX Referral system")
+
   // Export the artifacts to tenderly for further inspection, monitoring, and debugging
   await hre.tenderly.persistArtifacts({
     name: "RicochetLaunchpadHelper",

@@ -13,7 +13,7 @@ async function main() {
   let referral = await REXReferral.deploy();
   console.log("Deployed RexReferral at address:", referral.address)
 
-      // Save the artifacts to tenderly for further inspection, monitoring, and debugging
+  // Save the artifacts to tenderly for further inspection, monitoring, and debugging
   await hre.tenderly.persistArtifacts({
     name: "REXReferral",
     address: referral.address,
