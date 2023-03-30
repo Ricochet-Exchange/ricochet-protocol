@@ -4,10 +4,10 @@ import { Constants } from "../misc/Constants"
 
 // Impersonate gelato ops executor and trigger `distribute`
 
-const REXMARKET_CONTRACT_ADDRESS = "0x4fb7309f1e000d40c0eb074cd5579e14386c1b77"; // The rex market to trigger
+const REXMARKET_CONTRACT_ADDRESS = "0xFfE64Adb721D4251e05a14e6F3BbeA83f7478465"; // The rex market to trigger
 // Pulled using Tenderly 
-const GELATO_BLOCK_TIMESTAMP = 1679336943; // The block timestamp the contract was deployed at
-const GELATO_FEE = "40000000000000000";
+const GELATO_BLOCK_TIMESTAMP = 1680119601; // The block timestamp the contract was deployed at
+const GELATO_FEE = "10000000";
 const { TENDERLY_USERNAME, TENDERLY_PROJECT, TENDERLY_ACCESS_KEY } = process.env;
 const SIMULATE_API = `https://api.tenderly.co/api/v1/account/${TENDERLY_USERNAME}/project/${TENDERLY_PROJECT}/simulate`
 
@@ -34,7 +34,7 @@ async function main() {
       ["uint128", "uint128"],
       [GELATO_BLOCK_TIMESTAMP, 60]
   );
-  let execData = rexMarket.interface.encodeFunctionData("distribute", ['0x', 0]);
+  let execData = rexMarket.interface.encodeFunctionData("distribute", ['0x', false]);
   let moduleData = {
       modules: [1],
       args: [encodedArgs],
@@ -52,6 +52,17 @@ async function main() {
     true
   );
   console.log("TX_DATA:", TX_DATA);
+
+  console.log( "Executing Gelato Task",
+    rexMarket.address,
+    rexMarket.address,
+    execData,
+    moduleData,
+    GELATO_FEE,
+    "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", 
+    false, // true if payed with treasury
+    true
+  )
  
   const transaction = {
     network_id: '80001',
