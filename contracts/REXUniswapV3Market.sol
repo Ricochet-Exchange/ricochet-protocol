@@ -491,17 +491,13 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
         amount = amount / 1e5 * (1e5 - gelatoFeeShare);
-        console.log("Amount to swap: %s", amount);
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint latestPrice = uint(int(getLatestPrice()));
-        console.log("Latest price: %s", latestPrice);
         // Use the latest price (1e8 scale) to calculate the minOutput (1e18 scale)
         minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
-        console.log("Min output: %s", minOutput);
         minOutput = (minOutput * (1e5 - rateTolerance)) / 1e5;
-        console.log("Min output after tolerance: %s", minOutput);
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -509,10 +505,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: 0
+                amountOutMinimum: minOutput
             });
         outAmount = router.exactInput(params);
-        console.log("Amount of output token received: %s", outAmount);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
@@ -1058,25 +1053,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     }
 
-    /// @dev Allows anyone to close any stream if the app is jailed.
-    /// @param streamer is stream source (streamer) address
-    function emergencyCloseStream(address streamer, ISuperToken token) external virtual {
-        // Allows anyone to close any stream if the app is jailed
-        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
-
-        host.callAgreement(
-            cfa,
-            abi.encodeWithSelector(
-                cfa.deleteFlow.selector,
-                token,
-                streamer,
-                address(this),
-                new bytes(0) // placeholder
-            ),
-            "0x"
-        );
-    }
-
     /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
     /// @param streamer is stream source (streamer) address
     function closeStream(address streamer, ISuperToken token) public {
@@ -1101,28 +1077,23 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
       );
     }
 
-    /// @dev Drain contract's input and output tokens balance to owner if SuperApp dont have any input streams.
-    function emergencyDrain(ISuperToken token) external virtual onlyOwner {
-        require(host.isAppJailed(ISuperApp(address(this))), "!jailed");
-
-        token.transfer(
-            owner(),
-            token.balanceOf(address(this))
-        );
+    /// @dev Withdraw subsidy token from the contract
+    function withdrawSubsidyToken(uint _amount) external virtual onlyOwner {
+        require(subsidyToken.transfer(owner(), _amount), "WST");
     }
 
     /// @dev Sets emission rate for a output pool/token
-    /// @param _index IDA index for the output pool/token
     /// @param _emissionRate Emission rate for the output pool/token
-    function setEmissionRate(uint32 _index, uint128 _emissionRate)
+    function setEmissionRate(uint128 _emissionRate)
         external
         onlyOwner
     {
-        outputPools[_index].emissionRate = _emissionRate;
+        outputPools[SUBSIDY_INDEX].emissionRate = _emissionRate;
     }
 
     /// @dev sets the rateTolerance for the swap
     /// @param _rateTolerance is the rateTolerance for the swap in basis points
+    /// @notice this needs a min and max
     function setRateTolerance(uint256 _rateTolerance) external onlyOwner {
         require(rateTolerance <= 10000, "RTL");
         rateTolerance = _rateTolerance;
