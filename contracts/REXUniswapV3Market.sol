@@ -490,7 +490,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = amount / 1e5 * (1e5 - gelatoFeeShare);
+        amount = amount * (1e5 - gelatoFeeShare) / 1e5;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method

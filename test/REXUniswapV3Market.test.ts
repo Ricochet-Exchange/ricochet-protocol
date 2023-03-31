@@ -1232,17 +1232,18 @@ describe('REXUniswapV3Market', () => {
 
         it("#3.1 distribution", async () => {
 
-            // First try swap of RIC to USDC
+            // Increase rateTolerance to 2%, occasionally the price will be off by 1.5%
+            await market.setRateTolerance(300);
 
             // Check balance
             await takeMeasurements();
 
             // Fast forward an hour and distribute
-            await increaseTime(3600);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
-            await increaseTime(3600);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
-            await increaseTime(3600);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
             // Check balances again
             await takeMeasurements();
