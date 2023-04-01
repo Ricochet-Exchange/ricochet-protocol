@@ -86,6 +86,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     ISuperToken public maticx;
     uint32 constant OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
     uint32 constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
+    uint256 constant INTERVAL = 60; // The interval for gelato to check for execution
 
 
     // Uniswap Variables
@@ -102,41 +103,16 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     uint256 public lastExecuted;
     bytes32 public taskId;
     uint256 public gelatoFeeShare = 10; // number of basis points gelato takes for executing the task
-    uint256 public constant MAX_COUNT = 5;
-    uint256 public constant INTERVAL = 60;
 
-    /// @dev Record the price of the token at the time of the swap
-    /// @param rate is the price of the token at the time of the swap
-    /// @param timestamp is the timestamp of the swap
-    event RecordTokenPrice(uint256 rate, uint256 timestamp);
-    
-    // TODO: Emit these events where appropriate
-    /// @dev Distribution event. Emitted on each token distribution operation.
-    /// @param totalAmount is total distributed amount
-    /// @param feeCollected is fee amount collected during distribution
-    /// @param token is distributed token address
-    event Distribution(
-        uint256 totalAmount,
-        uint256 feeCollected,
-        address token
+    /// @dev Swap data for performance tracking overtime
+    /// @param inputAmount The amount of inputToken swapped
+    /// @param outputAmount The amount of outputToken received
+    /// @param oraclePrice The oracle price at the time of the swap
+    event RexSwap(
+        uint256 inputAmount, 
+        uint256 outputAmount,
+        uint256 oraclePrice   
     );
-
-    error InvalidAgreement();
-
-    /// @dev Shareholder update event. Emitted on each shareholder update operation.
-    /// @param shareholder is the shareholder address
-    /// @param affiliate is the affiliate address
-    /// @param previousFlowRate is the previous flow rate of the shareholder
-    /// @param currentFlowRate is the current flow rate of the shareholder
-    /// @param token is the token address of the pool where shares changed
-    event ShareholderShareUpdate(
-        address shareholder,
-        address affiliate,
-        int96 previousFlowRate,
-        int96 currentFlowRate,
-        ISuperToken token
-    );
-
 
     constructor(
         address _owner,
@@ -490,14 +466,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = amount * (1e5 - gelatoFeeShare) / 1e5;
+        amount = amount * (1e4 - gelatoFeeShare) / 1e4;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint latestPrice = uint(int(getLatestPrice()));
         // Use the latest price (1e8 scale) to calculate the minOutput (1e18 scale)
         minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
-        minOutput = (minOutput * (1e5 - rateTolerance)) / 1e5;
+        minOutput = (minOutput * (1e4 - rateTolerance)) / 1e4;
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -508,6 +484,13 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 amountOutMinimum: minOutput
             });
         outAmount = router.exactInput(params);
+
+        // Emit swap event for performance tracking
+        emit RexSwap(
+            amount,
+            outAmount,
+            latestPrice
+        );
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
@@ -756,6 +739,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
         // solhint-disable-next-line no-empty-blocks
         {} catch {
+            // In case of any problems here, just log the error for record keeping and continue
             console.log("Error refunding uninvested amount to shareholder:", _shareholder);
             console.log("Uninvested amount:", _uninvestAmount);
         }
@@ -1078,7 +1062,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     }
 
     /// @dev Withdraw subsidy token from the contract
-    function withdrawSubsidyToken(uint _amount) external virtual onlyOwner {
+    function withdrawSubsidyToken(uint _amount) external onlyOwner {
         require(subsidyToken.transfer(owner(), _amount), "WST");
     }
 
@@ -1095,8 +1079,16 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @param _rateTolerance is the rateTolerance for the swap in basis points
     /// @notice this needs a min and max
     function setRateTolerance(uint256 _rateTolerance) external onlyOwner {
-        require(rateTolerance <= 10000, "RTL");
+        require(rateTolerance <= 1e4, "RT");
         rateTolerance = _rateTolerance;
+    }
+
+    /// @dev sets the gelatoFeeShare for the swap
+    /// @param _gelatoFeeShare is the gelatoFeeShare for the swap in basis points
+    /// @notice this needs a min and max
+    function setGelatoFeeShare(uint256 _gelatoFeeShare) external onlyOwner {
+        require(_gelatoFeeShare <= 1e4, "GFS");
+        gelatoFeeShare = _gelatoFeeShare;
     }
 
     // Payable for X->MATICx markets to work

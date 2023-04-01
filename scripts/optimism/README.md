@@ -7,15 +7,16 @@ Confirm that the `hardhat.config.ts` is configured for this network.
 ## Deployed Contracts
 This is a summary of the contracts that were deployed with the scripts in this directory. 
 
-| Contract Name | Contract Address | Deployment Script |
-|---------------|------------------|-------------------|
-| Ricochet DAO | 0x8e38Be5c136B3f7f05aD570c2996e43733418C4a | NA |
-| Ricochet (RIC) | 0x7abd51A15668308D3b42Cc1F6148Be8bdE939568 | `./02_rextokens.sh` |
-| REX Shirt (rexSHIRT) | 0x0942570634A80bcd096873afC9b112A900492fd7 | `./02_rextokens.sh` |
-| REX Hat (rexHAT) | 0xBaB5fF73925a1C205F8b2565B225AbF55c5D68a9 | `./02_rextokens.sh` |
-| REX Launchpad | 0x5C2E1A331678e1A9c6f8c156b5D48A5cC7e50cDa | `./03_deploy_launcpad.sh` |
-| REX Referral | 0xC79255821DA1edf8E1a8870ED5cED9099bf2eAAA | `./01_referral.ts` |
-| REX Market: USDC>>DAI | | |
+| Contract Name         | Contract Address                           |
+|-----------------------|--------------------------------------------|
+| Ricochet DAO          | 0x8e38Be5c136B3f7f05aD570c2996e43733418C4a | 
+| Ricochet (RIC)        | 0x7abd51A15668308D3b42Cc1F6148Be8bdE939568 | 
+| REX Shirt (rexSHIRT)  | 0x0942570634A80bcd096873afC9b112A900492fd7 | 
+| REX Hat (rexHAT)      | 0xBaB5fF73925a1C205F8b2565B225AbF55c5D68a9 | 
+| REX Launchpad         | 0x5C2E1A331678e1A9c6f8c156b5D48A5cC7e50cDa | 
+| REX Referral          | 0xC79255821DA1edf8E1a8870ED5cED9099bf2eAAA |
+| REX Market: USDC>>DAI | 0xd16DAc3C32498D231eA80a1D93Aea7A016762b91 | 
+| REX Market: DAI>>USDC | TBD | 
 
 
 ## Launch Plan

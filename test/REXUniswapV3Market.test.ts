@@ -423,6 +423,10 @@ describe('REXUniswapV3Market', () => {
 
             await market.setRateTolerance(200);
             expect(await market.rateTolerance()).to.equal(200);
+
+            await market.setGelatoFeeShare(20);
+            expect(await market.gelatoFeeShare()).to.equal(20);
+
         });
 
         it("#1.2 withdraw subsidy token", async () => {
@@ -701,8 +705,11 @@ describe('REXUniswapV3Market', () => {
 
             // Fast forward an hour and distribute
             await increaseTime(TEST_TRAVEL_TIME);
-            await market.distribute("0x", true);
+            // Expect this call to distribute emits a RexSwap event
+            await expect(market.distribute("0x", true))
+                .to.emit(market, "RexSwap");
             
+            // Do two more distributions before checking balances
             await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", true);
 
@@ -954,13 +961,14 @@ describe('REXUniswapV3Market', () => {
                 config.UNISWAP_V3_ROUTER_ADDRESS, 
                 config.UNISWAP_V3_FACTORY_ADDRESS,
                 [config.USDC_ADDRESS, config.REXSHIRT_ADDRESS],
-                [10000]
+                10000
             );
 
             // Initialize Price Feed
-            await market.initializePriceFeed(
-                config.CHAINLINK_MATIC_USDC_PRICE_FEED
-            );
+            // No pricefeed available for rexSHIRT
+            // await market.initializePriceFeed(
+            //     config.CHAINLINK_MATIC_USDC_PRICE_FEED
+            // );
 
             // Register the market with REXReferral
             await referral.registerApp(market.address);
@@ -988,7 +996,10 @@ describe('REXUniswapV3Market', () => {
                 overrides,
             }).exec(aliceSigner);
 
-            // Bob opens a USDC stream to REXMarket
+            // Advance time to allow for some tokens to accumulate in the market
+            await increaseTime(TEST_TRAVEL_TIME);
+
+            // Bob opens a USDC stream to REXMarket, triggers a distribute
             await sf.cfaV1.createFlow({
                 sender: bobSigner.address,
                 receiver: market.address,
@@ -1031,13 +1042,13 @@ describe('REXUniswapV3Market', () => {
             await takeMeasurements();
 
             // Fast forward an hour and distribute
-            await increaseTime(60);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
             // Fast forward an hour and distribute
-            await increaseTime(60);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
             // Fast forward an hour and distribute
-            await increaseTime(60);
+            await increaseTime(TEST_TRAVEL_TIME);
             await market.distribute("0x", false);
 
 
@@ -1155,7 +1166,7 @@ describe('REXUniswapV3Market', () => {
                 config.UNISWAP_V3_ROUTER_ADDRESS, 
                 config.UNISWAP_V3_FACTORY_ADDRESS,
                 [config.USDC_ADDRESS, config.WMATIC_ADDRESS],
-                3000
+                500
             );
 
             // Initialize Price Feed

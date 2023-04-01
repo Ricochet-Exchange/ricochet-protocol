@@ -13,7 +13,7 @@ async function main() {
     console.log("Deploying contracts with the account:", deployer.address);
     console.log("Account balance:", (await deployer.getBalance()).toString());
 
-    // Deloy REXUniswapV3Market
+    // Deploy REXUniswapV3Market
     console.log("Deploying REXUniswapV3Market")
     const REXUniswapV3Market = await ethers.getContractFactory("REXUniswapV3Market");
     const market = await REXUniswapV3Market.deploy(
