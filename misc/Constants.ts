@@ -61,7 +61,7 @@ export const Constants : {[key: string]: any} = {
         /**
          * Tokens Adresses
          */
-        RIC_TOKEN_ADDRESS: "0x263026E7e53DBFDce5ae55Ade22493f828922965",
+        RIC_ADDRESS: "0x263026E7e53DBFDce5ae55Ade22493f828922965",
         USDCX_ADDRESS: "0xCAa7349CEA390F89641fe306D93591f87595dc1F",
         USDC_ADDRESS: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
         ETHX_ADDRESS: "0x27e1e4E6BC79D93032abef01025811B7E4727e85",
@@ -110,7 +110,7 @@ export const Constants : {[key: string]: any} = {
         GELATO_NETWORK: "0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA",
 
         // Polygon DAO Gnosis
-        GNOSIS_SAFE_ADDRESS: "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89",
+        DAO_ADDRESS: "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89",
         SF_REG_KEY: "k1",
 
         // Deployment constants for UniswapV3 market
