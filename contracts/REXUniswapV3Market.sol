@@ -96,7 +96,8 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     uint24 public poolFee; // The pool fee to use in the path between inputToken and outputToken 
 
     // Chainlink Variables
-    AggregatorV3Interface internal priceFeed; // Chainlink price feed for the inputToken/outputToken pair
+    AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
+    bool internal invertPrice; // Whether to invert the price in rate conversions
 
     // Gelato task variables
     bytes32 public taskId;  
@@ -253,14 +254,16 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
 
         // Require that the pool for gas reimbursements exists
-        require(
-            factory.getPool(
-                address(underlyingInputToken),
-                address(wmatic),
-                poolFee
-            ) != address(0),
-            "PDNE2"
-        );
+        if(address(underlyingInputToken) != address(wmatic)) {
+            require(
+                factory.getPool(
+                    address(wmatic),
+                    address(underlyingInputToken),
+                    poolFee
+                ) != address(0),
+                "PDNE2"
+            );
+        }
 
         // Use the pool for the underlying tokens for the input/output supertokens 
         uniswapPool = IUniswapV3Pool(
@@ -288,11 +291,13 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @dev Initialize the Chainlink Aggregator
     /// @param _priceFeed is the Chainlink Aggregator
     function initializePriceFeed(
-        AggregatorV3Interface _priceFeed
+        AggregatorV3Interface _priceFeed,
+        bool _invertPrice
     ) external onlyOwner {
         // Only init priceFeed if not already initialized
         require(address(priceFeed) == address(0), "A");
         priceFeed = _priceFeed;
+        invertPrice = _invertPrice;
     }
 
     /// @dev Get the latest price from the Chainlink Aggregator
@@ -434,6 +439,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 amountOut
     ) internal returns (uint256) {
 
+        // If the underlyingInputToken is WMATIC, then just return the amountOut
+        if(underlyingInputToken == address(wmatic)) {
+            return amountOut;
+        }
+
         // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
         // Use this amount to swap for enough WMATIC to cover the gas fee
         IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
@@ -469,8 +479,17 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint latestPrice = uint(int(getLatestPrice()));
-        // Use the latest price (1e8 scale) to calculate the minOutput (1e18 scale)
-        minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+
+        
+        // Compute the minimumOutput based on latestPrice
+        if (!invertPrice) {
+            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+        } else {
+            // Invert the price, e.g. for OP>USDC market
+            minOutput = amount * latestPrice / 1e8 / 1e12;
+        }
+
+        // Apply the rate tolerance to allow for some slippage
         minOutput = (minOutput * (1e4 - rateTolerance)) / 1e4;
 
         // This is the code for the uniswap
@@ -479,7 +498,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: minOutput
+                amountOutMinimum: 0
             });
         outAmount = router.exactInput(params);
 

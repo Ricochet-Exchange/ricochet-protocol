@@ -110,7 +110,7 @@ export const setup = async () => {
     //   "IbAlluo", "0xc677B0918a96ad258A68785C2a3955428DeA7e50"
     // ),
     ric: await superfluid.loadSuperToken(
-      CONSTANTS.RIC_TOKEN_ADDRESS
+      CONSTANTS.RIC_ADDRESS
     ),
     rexshirt: await superfluid.loadSuperToken(
       CONSTANTS.REXSHIRT_ADDRESS
@@ -130,7 +130,7 @@ export const setup = async () => {
   // console.log(superTokens.ethx)
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
-    "ERC20", CONSTANTS.RIC_TOKEN_ADDRESS
+    "ERC20", CONSTANTS.RIC_ADDRESS
   );
   // tokens.weth = await ethers.getContractAt(
   //   "ERC20",
