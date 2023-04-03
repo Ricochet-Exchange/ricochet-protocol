@@ -11,17 +11,17 @@ This script will deploy a REX Market for any input/output token pair that has a 
     OUTPUT_TOKEN_UNDERLYING=0xDDDD \
     PRICE_FEED=0xFFFF \
     UNISWAP_POOL_FEE=500 \
-    npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+    npx hardhat run scripts/optimism/05_deploy_rex_market.ts --network tenderly
 
-    Example: DAI>USDC market on Polygon with Chainlinnk DAI/USD price feed
+    Example: DAI>USDC market on Optimism with Chainlinnk DAI/USD price feed
 
-    INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
-    INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
-    OUTPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
-    OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
-    PRICE_FEED=0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7 \
+    INPUT_TOKEN=0x7d342726b69c28d942ad8bfe6ac81b972349d524 \
+    INPUT_TOKEN_UNDERLYING=0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1 \
+    OUTPUT_TOKEN=0x8430f084b939208e2eded1584889c9a66b90562f \
+    OUTPUT_TOKEN_UNDERLYING=0x7F5c764cBc14f9669B88837ca1490cCa17c31607 \
+    PRICE_FEED=0x8dBa75e83DA73cc766A7e5a0ee71F656BAb470d6 \
     UNISWAP_POOL_FEE=500 \
-    npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+    npx hardhat run scripts/optimism/05_deploy_rex_market.ts --network tenderly
 
 Where:
 
@@ -36,8 +36,11 @@ Where:
 
 async function main() {
 
+    // Get the current network from hardhat
+    const network = await ethers.provider.getNetwork();
+
     // Get the right constants for the network we are deploying on
-    const config = Constants['polygon'];
+    const config = Constants[network.name];
 
     // Get the deployer for this deployment, first hardhat signer
     const [deployer] = await ethers.getSigners();
@@ -51,6 +54,7 @@ async function main() {
     const OUTPUT_TOKEN_UNDERLYING = process.env.OUTPUT_TOKEN_UNDERLYING;
     const PRICE_FEED = process.env.PRICE_FEED;
     const UNISWAP_POOL_FEE = process.env.UNISWAP_POOL_FEE;
+
 
     // Log all the config values for the network we are initialize on this market
     console.log("HOST_SUPERFLUID_ADDRESS:", config.HOST_SUPERFLUID_ADDRESS);
@@ -82,8 +86,9 @@ async function main() {
     console.log("REXUniswapV3Market deployed to:", market.address);
 
     // Log the config values for the network we are initializeMATIC
-    console.log("WMATIC_ADDRESS:", config.WMATIC_ADDRESS);
-    console.log("MATICX_ADDRESS:", config.MATICX_ADDRESS);
+    // TODO: This varies on MATIC network
+    console.log("ETH_ADDRESS:", config.ETH_ADDRESS);
+    console.log("ETHX_ADDRESS:", config.ETHX_ADDRESS);
 
     // Prompt the user to continue after checking the config
     console.log("Verify these parameters. Then press any key to continue the deployment...");
@@ -91,9 +96,9 @@ async function main() {
 
     // Initialize WMATIC and MATICx
     let tx: any;
-    tx = await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS);
+    tx = await market.initializeMATIC(config.ETH_ADDRESS, config.ETHX_ADDRESS);
     await tx.wait();
-    console.log("Initialized WMATIC and MATICx", tx.hash);
+    console.log("Initialized WETH and WETHx", tx.hash);
 
     // Create the Gelato task that will be used to execute the market
     tx = await market.createTask();

@@ -48,5 +48,20 @@ npx hardhat verify CONTRACT_ADDRESS --network optimism \
 ```
 
 ## Phase 5: Additional Markets and Launchpads
-Additional markets and launchpads can be deployed as needed. The `05_deploy_usdc_market.ts` script can be used as a template for other markets. Launchpads can be deployed using the `03_deploy_launchpad.ts` script.
+Additional markets and launchpads can be deployed as needed. Use `05_deploy_rex_market.ts`:
+```shell
+    INPUT_TOKEN=0xAAAA \
+    INPUT_TOKEN_UNDERLYING=0xBBBB \
+    OUTPUT_TOKEN=0xCCCC \
+    OUTPUT_TOKEN_UNDERLYING=0xDDDD \
+    PRICE_FEED=0xFFFF \
+    UNISWAP_POOL_FEE=500 \
+    npx hardhat run scripts/optimism/05_deploy_rex_market.ts --network tenderly
+```
+Then verify the markets:
+```shell
+npx hardhat verify CONTRACT_ADDRESS \
+--constructor-args ./scripts/optimism/args/05_deploy_rex_market.ts \
+--network optimism
+```
 

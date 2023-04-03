@@ -24,8 +24,8 @@ import "./gelato/OpsTaskCreator.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 // REX Imports
-import './ISETHCustom.sol';
-import './matic/IWMATIC.sol';
+import "./ISETHCustom.sol";
+import "./matic/IWMATIC.sol";
 import "./superswap/interfaces/ISwapRouter02.sol";
 import "./referral/IREXReferral.sol";
 
@@ -84,25 +84,23 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     address public underlyingOutputToken; // e.g. WETH
     IWMATIC public wmatic;
     ISuperToken public maticx;
-    uint32 constant OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
-    uint32 constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
-    uint256 constant INTERVAL = 60; // The interval for gelato to check for execution
+    uint32 constant public OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
+    uint32 constant public SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
+    uint256 constant public INTERVAL = 60; // The interval for gelato to check for execution
 
 
     // Uniswap Variables
-    ISwapRouter02 router; // UniswapV3 Router
-    IUniswapV3Pool uniswapPool; // The Uniswap V3 pool for inputToken and outputToken
-    address[] uniswapPath; // The path between inputToken and outputToken
-    uint24 poolFee; // The pool fee to use in the path between inputToken and outputToken 
+    ISwapRouter02 public router; // UniswapV3 Router
+    IUniswapV3Pool public uniswapPool; // The Uniswap V3 pool for inputToken and outputToken
+    address[] public uniswapPath; // The path between inputToken and outputToken
+    uint24 public poolFee; // The pool fee to use in the path between inputToken and outputToken 
 
     // Chainlink Variables
     AggregatorV3Interface internal priceFeed; // Chainlink price feed for the inputToken/outputToken pair
 
     // Gelato task variables
-    uint256 public count;
-    uint256 public lastExecuted;
-    bytes32 public taskId;
-    uint256 public gelatoFeeShare = 10; // number of basis points gelato takes for executing the task
+    bytes32 public taskId;  
+    uint256 public gelatoFeeShare = 100; // number of basis points gelato takes for executing the task
 
     /// @dev Swap data for performance tracking overtime
     /// @param inputAmount The amount of inputToken swapped
