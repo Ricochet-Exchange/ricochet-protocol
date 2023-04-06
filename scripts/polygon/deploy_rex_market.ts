@@ -51,6 +51,7 @@ async function main() {
     const OUTPUT_TOKEN_UNDERLYING = process.env.OUTPUT_TOKEN_UNDERLYING;
     const PRICE_FEED = process.env.PRICE_FEED;
     const UNISWAP_POOL_FEE = process.env.UNISWAP_POOL_FEE;
+    const INVERTED_PRICE_FEED = process.env.INVERTED_PRICE_FEED;
 
     // Log all the config values for the network we are initialize on this market
     console.log("HOST_SUPERFLUID_ADDRESS:", config.HOST_SUPERFLUID_ADDRESS);
@@ -91,12 +92,14 @@ async function main() {
 
     // Initialize WMATIC and MATICx
     let tx: any;
-    tx = await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS);
+    tx = await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS, {gasLimit: 10000000});
     await tx.wait();
     console.log("Initialized WMATIC and MATICx", tx.hash);
 
     // Create the Gelato task that will be used to execute the market
-    tx = await market.createTask();
+    tx = await market.createTask(
+        {gasLimit: 10000000}
+    );
     await tx.wait();
     console.log("Created Gelato task (does not have any input parameters)", tx.hash);
 
@@ -146,13 +149,14 @@ async function main() {
 
     // Log the config values for the network we are initialize on this market
     console.log("PRICE_FEED:", PRICE_FEED);
+    console.log("INVERTED_PRICE_FEED:", INVERTED_PRICE_FEED);
 
     // Prompt the user to continue after checking the config
     console.log("Verify these parameters. Then press any key to continue the deployment...");
     await new Promise(resolve => process.stdin.once("data", resolve));
 
-    // Initialize the price feed
-    tx = await market.initializePriceFeed(PRICE_FEED);
+
+    tx = await market.initializePriceFeed(PRICE_FEED, INVERTED_PRICE_FEED, { gasLimit: 10000000 });
     await tx.wait();
     console.log("Initialized price feed", tx.hash);
 
@@ -166,7 +170,7 @@ async function main() {
     console.log("Registering with RexReferral system...");
     const REXReferral = await ethers.getContractFactory("REXReferral");
     const referral = await REXReferral.attach(config.REX_REFERRAL_ADDRESS);
-    tx = await referral.registerApp(market.address);
+    tx = await referral.registerApp(market.address, { gasLimit: 10000000 });
     await tx.wait();
     console.log("Registered with RexReferral system", tx.hash);
 
@@ -177,7 +181,7 @@ async function main() {
     console.log("Verify these parameters. Then press any key to continue the deployment...");
     await new Promise(resolve => process.stdin.once("data", resolve));
 
-    tx = await market.transferOwnership(config.DAO_ADDRESS);
+    tx = await market.transferOwnership(config.DAO_ADDRESS, { gasLimit: 10000000 });
     await tx.wait();
     console.log("Transferred ownership to DAO", tx.hash);
 

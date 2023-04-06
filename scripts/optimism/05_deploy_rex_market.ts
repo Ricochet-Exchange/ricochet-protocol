@@ -23,6 +23,7 @@ This script will deploy a REX Market for any input/output token pair that has a 
     UNISWAP_POOL_FEE=500 \
     npx hardhat run scripts/optimism/05_deploy_rex_market.ts --network tenderly
 
+
 Where:
 
     INPUT_TOKEN: The address of the input supertoken (e.g. USDCx)
@@ -80,7 +81,7 @@ async function main() {
         config.REX_REFERRAL_ADDRESS,
         config.GELATO_OPS,
         deployer.address,
-        { gasLimit: 10000000 } // Force deploy even if estimate gas fails
+        // { gasLimit: 10000000 } // Force deploy even if estimate gas fails
     );
     await market.deployed();
     console.log("REXUniswapV3Market deployed to:", market.address);
@@ -157,7 +158,7 @@ async function main() {
     await new Promise(resolve => process.stdin.once("data", resolve));
 
     // Initialize the price feed
-    tx = await market.initializePriceFeed(PRICE_FEED);
+    tx = await market.initializePriceFeed(PRICE_FEED, true);
     await tx.wait();
     console.log("Initialized price feed", tx.hash);
 

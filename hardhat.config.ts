@@ -56,6 +56,7 @@ const config: HardhatUserConfig = {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       blockGasLimit: 20000000,
+      gasPrice: 100000000000 
     },
     optimism: {
       url: process.env.OPTIMISM_NODE_URL,
@@ -72,7 +73,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8545/'
     },
     tenderly: {
-      chainId: 137,
+      chainId: Number(process.env.TENDERLY_NETWORK_ID),
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       url: process.env.TENDERLY_NODE_URL,
     },

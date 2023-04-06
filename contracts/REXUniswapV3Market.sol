@@ -128,16 +128,22 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         cfa = _cfa;
         ida = _ida;
         referrals = _rexReferral;
+        console.log("RexUniswapV3Market: Initialized");
 
         transferOwnership(_owner);
+        console.log("RexUniswapV3Market: Transferred ownership to %s", _owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
+        
 
         if (bytes(_registrationKey).length > 0) {
+            console.log("RexUniswapV3Market: Registering app with key %s", _registrationKey);
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
+            console.log("RexUniswapV3Market: Registering app");
             host.registerApp(_configWord);
         }
+        console.log("RexUniswapV3Market: Registered app");
     }
 
     /// @dev Creates the distribute task on Gelato Network

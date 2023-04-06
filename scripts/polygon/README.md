@@ -15,26 +15,29 @@ This is a summary of the contracts that were deployed with the scripts in this d
 | REX Hat (rexHAT)        | 0xe91d640fcaea9602cf94c0d48a251a7f6d946953 | 
 | REX Launchpad           | 0x98d463A3F29F259E67176482eB15107F364c7E18 | 
 | REX Referral            | 0xA0eC9E1542485700110688b3e6FbebBDf23cd901 |
-| REX Market: USDC>>DAI   | TBD | 
-| REX Market: DAI>>USDC   | TBD | 
-| REX Market: USDC>>ETH   | TBD | 
-| REX Market: ETH>>USDC   | TBD | 
-| REX Market: USDC>>MATIC | TBD | 
-| REX Market: MATIC>>USDC | TBD | 
-| REX Market: USDC>>WBTC  | TBD | 
-| REX Market: WBTC>>USDC  | TBD | 
+| REX Market: USDC>>DAI   | 0x8f8E389Fa66e439EE98f4f2d71104ad993190983 | 
+| REX Market: DAI>>USDC   | 0x21140427F2e32C801FA8AAC2A352e85a9e23847b | 
+| REX Market: USDC>>ETH   | 0x2D482F552eC3F770b3eF67833D61723CB2c745b3 | 
+| REX Market: ETH>>USDC   | 0x842babb8f198Cf6ea251a23b54021c8E46948Fa9 | 
+| REX Market: DAI>>ETH    | 0x8A4B86d85c708ffeb0C634E582344fFc7A9B2b4D |
+| REX Market: ETH>>DAI    | 0xe9609339C8c40F153bAa81F6b8F3B5549B5e9BCa |
+| REX Market: USDC>>MATIC | 0xBC55F3a39404eE23C0049F898b70f8A3Df83d682 | 
+| REX Market: MATIC>>USDC | 0x68b2B680cfeFDe114D5dcfAE44517922a63EC358 | 
+| REX Market: DAI>>MATIC  | 0x400cf8168457F6170be9C620fa2637d55bb2f4AE |
+| REX Market: MATIC>>DAI  | 0xcc21cBdBDcCBebcb57C8d69A4ce47640219BAd7c |
+| REX Market: USDC>>WBTC  | 0x304531f8FBC6eF7bb114A44f3De180B0F7c2cF30 | 
+| REX Market: WBTC>>USDC  | 0x970d6769A0eD8028dbD102E11cc8dE3BC182904D | 
+| REX Market: DAI>>WBTC   | 0xe81156fb6a90555b9bc4c781f2a3da89b18b8f03 | 
+| REX Market: WBTC>>DAI   | 0xc3baDD1316a7e7a140E118D7c31B5F8a3223e2C4 | 
+| REX Market: USDC>>MaticX | 0xD119549566A26D7197944d749D904FA308b6cE4C |
+| MaticXx                 | 0xb38514E22c5B60cE26aAF907eC144128EbF7a2DF |
 
+# Rex Market Deploy Commands:
 
-## REX Market Launch
-- [ ] Run through this plan using a Tenderly fork of Polygon. 
-- [ ] Verify that the Rex Pro and Rex Lite apps work as expected using the fork's RPC
-- [ ] Deploy the contracts to Polygon
-- [ ] Verify the contracts on Polygon
+## Stablecoin Pairs
 
-### Phase 1: Deploy USDC<>DAI markets
-Use the deploy script to deploy a USDC>>DAI and DAI>>USDC market
-
-USDC>>DAI:
+### USDC>>DAI
+Deployed to Polygon: [0x8f8E389Fa66e439EE98f4f2d71104ad993190983](https://polygonscan.com/address/0x8f8E389Fa66e439EE98f4f2d71104ad993190983)
 ```shell
     INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
     INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
@@ -42,10 +45,13 @@ USDC>>DAI:
     OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
     PRICE_FEED=0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7 \
     UNISWAP_POOL_FEE=500 \
+    INVERTED_PRICE_FEED=false \
     npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
 ```
 
-DAI>>USDC:
+
+### DAI>>USDC
+Deployed to Polygon: [0x21140427F2e32C801FA8AAC2A352e85a9e23847b](https://polygonscan.com/address/0x21140427F2e32C801FA8AAC2A352e85a9e23847b)
 ```shell
     INPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
     INPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
@@ -53,23 +59,183 @@ DAI>>USDC:
     OUTPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
     PRICE_FEED=0x4746DeC9e833A82EC7C2C1356372CcF2cfcD2F3D \
     UNISWAP_POOL_FEE=500 \
+    INVERTED_PRICE_FEED=false \
     npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
 ```
 
-## Phase 2: Deploy USDC<>ETH/MATIC/WBTC markets
-...
+## Ethereum (ETH) Pairs
 
-## Phase 3: Deploy USDC<>RIC markets
-...
-
-## Phase 4: REX Market
-Begin with deploying a stablecoin stablecoin pairing for easy benchmarking:
-```shell    
-npx hardhat run scripts/optimism/04_deploy_usdcdai_market.ts --network optimism
-npx hardhat verify CONTRACT_ADDRESS --network optimism \
---constructor-args ./scripts/optimism/args/04_deploy_usdcdai_market.ts
+### USDC>ETH:
+Deployed to Polygon: [0x2D482F552eC3F770b3eF67833D61723CB2c745b3](https://polygonscan.com/address/0x2D482F552eC3F770b3eF67833D61723CB2c745b3)
+```shell
+INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+OUTPUT_TOKEN=0x27e1e4E6BC79D93032abef01025811B7E4727e85 \
+OUTPUT_TOKEN_UNDERLYING=0x7ceb23fd6bc0add59e62ac25578270cff1b9f619 \
+PRICE_FEED=0xF9680D99D6C9589e2a93a78A04A279e509205945 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
 ```
 
-## Phase 5: Additional Markets and Launchpads
-Additional markets and launchpads can be deployed as needed. The `05_deploy_usdc_market.ts` script can be used as a template for other markets. Launchpads can be deployed using the `03_deploy_launchpad.ts` script.
+### DAI>ETH:
+Deployed to Polygon: [0x8A4B86d85c708ffeb0C634E582344fFc7A9B2b4D](https://polygonscan.com/address/0x8A4B86d85c708ffeb0C634E582344fFc7A9B2b4D)
+```shell
+INPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+INPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+OUTPUT_TOKEN=0x27e1e4E6BC79D93032abef01025811B7E4727e85 \
+OUTPUT_TOKEN_UNDERLYING=0x7ceb23fd6bc0add59e62ac25578270cff1b9f619 \
+PRICE_FEED=0xF9680D99D6C9589e2a93a78A04A279e509205945 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
 
+### ETH>USDC:
+Deployed to Polygon: [0x842babb8f198Cf6ea251a23b54021c8E46948Fa9](https://polygonscan.com/address/0x842babb8f198Cf6ea251a23b54021c8E46948Fa9)
+```shell
+INPUT_TOKEN=0x27e1e4E6BC79D93032abef01025811B7E4727e85 \
+INPUT_TOKEN_UNDERLYING=0x7ceb23fd6bc0add59e62ac25578270cff1b9f619 \
+OUTPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+OUTPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+PRICE_FEED=0xF9680D99D6C9589e2a93a78A04A279e509205945 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### ETH>DAI:
+Deployed to Polygon: [0xe9609339C8c40F153bAa81F6b8F3B5549B5e9BCa](https://polygonscan.com/address/0xe9609339C8c40F153bAa81F6b8F3B5549B5e9BCa)
+```shell
+INPUT_TOKEN=0x27e1e4E6BC79D93032abef01025811B7E4727e85  \
+INPUT_TOKEN_UNDERLYING=0x7ceb23fd6bc0add59e62ac25578270cff1b9f619 \
+OUTPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+PRICE_FEED=0xF9680D99D6C9589e2a93a78A04A279e509205945 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+## Wrapped Bitcoin (WBTC) Pairs
+
+### USDC>WBTC:
+Deployed to Polygon: [0x304531f8FBC6eF7bb114A44f3De180B0F7c2cF30](https://polygonscan.com/address/0x304531f8FBC6eF7bb114A44f3De180B0F7c2cF30)
+```shell
+INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+OUTPUT_TOKEN=0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92 \
+OUTPUT_TOKEN_UNDERLYING=0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6 \
+PRICE_FEED=0xDE31F8bFBD8c84b5360CFACCa3539B938dd78ae6 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### DAI>WBTC:
+Deployed to Polygon: [](https://polygonscan.com/address/)
+```shell
+INPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+INPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+OUTPUT_TOKEN=0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92 \
+OUTPUT_TOKEN_UNDERLYING=0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6 \
+PRICE_FEED=0xDE31F8bFBD8c84b5360CFACCa3539B938dd78ae6 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### WBTC>USDC:
+Deployed to Polygon: [0x970d6769A0eD8028dbD102E11cc8dE3BC182904D](https://polygonscan.com/address/0x970d6769A0eD8028dbD102E11cc8dE3BC182904D)
+```shell
+INPUT_TOKEN=0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92 \
+INPUT_TOKEN_UNDERLYING=0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6 \
+OUTPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+OUTPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+PRICE_FEED=0xDE31F8bFBD8c84b5360CFACCa3539B938dd78ae6 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### WBTC>DAI:
+Deployed to Polygon: [0xc3baDD1316a7e7a140E118D7c31B5F8a3223e2C4](https://polygonscan.com/address/0xc3baDD1316a7e7a140E118D7c31B5F8a3223e2C4)
+```shell
+INPUT_TOKEN=0x4086eBf75233e8492F1BCDa41C7f2A8288c2fB92  \
+INPUT_TOKEN_UNDERLYING=0x1bfd67037b42cf73acf2047067bd4f2c47d9bfd6 \
+OUTPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+PRICE_FEED=0xDE31F8bFBD8c84b5360CFACCa3539B938dd78ae6 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+## Polygon (MATIC) Pairs
+
+### USDC>MATIC:
+Deployed to Polygon: [0xBC55F3a39404eE23C0049F898b70f8A3Df83d682](https://polygonscan.com/address/0xBC55F3a39404eE23C0049F898b70f8A3Df83d682)
+```shell
+INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+OUTPUT_TOKEN=0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3 \
+OUTPUT_TOKEN_UNDERLYING=0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 \
+PRICE_FEED=0xAB594600376Ec9fD91F8e885dADF0CE036862dE0 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### DAI>MATIC:
+Deployed to Polygon: [0x400cf8168457F6170be9C620fa2637d55bb2f4AE](https://polygonscan.com/address/0x400cf8168457F6170be9C620fa2637d55bb2f4AE)
+```shell
+INPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+INPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+OUTPUT_TOKEN=0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3 \
+OUTPUT_TOKEN_UNDERLYING=0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 \
+PRICE_FEED=0xAB594600376Ec9fD91F8e885dADF0CE036862dE0 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### MATIC>USDC:
+Deployed to Polygon: [0x68b2B680cfeFDe114D5dcfAE44517922a63EC358](https://polygonscan.com/address/0x68b2B680cfeFDe114D5dcfAE44517922a63EC358)
+```shell
+INPUT_TOKEN=0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3 \
+INPUT_TOKEN_UNDERLYING=0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 \
+OUTPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+OUTPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+PRICE_FEED=0xAB594600376Ec9fD91F8e885dADF0CE036862dE0 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+### MATIC>DAI:
+Deployed to Polygon: [0xcc21cBdBDcCBebcb57C8d69A4ce47640219BAd7c](https://polygonscan.com/address/0xcc21cBdBDcCBebcb57C8d69A4ce47640219BAd7c)
+```shell
+INPUT_TOKEN=0x3aD736904E9e65189c3000c7DD2c8AC8bB7cD4e3  \
+INPUT_TOKEN_UNDERLYING=0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270 \
+OUTPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
+OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
+PRICE_FEED=0xAB594600376Ec9fD91F8e885dADF0CE036862dE0 \
+UNISWAP_POOL_FEE=500 \
+INVERTED_PRICE_FEED=true \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
+
+## Stader Staked Matic (PoS) (MaticX) Pairs
+
+### USDC>MaticX:
+Deployed to Polygon: [](https://polygonscan.com/address/)
+```shell
+INPUT_TOKEN=0xCAa7349CEA390F89641fe306D93591f87595dc1F \
+INPUT_TOKEN_UNDERLYING=0x2791bca1f2de4661ed88a30c99a7a9449aa84174 \
+OUTPUT_TOKEN=0xb38514E22c5B60cE26aAF907eC144128EbF7a2DF \
+OUTPUT_TOKEN_UNDERLYING=0xfa68FB4628DFF1028CFEc22b4162FCcd0d45efb6 \
+PRICE_FEED=0x5d37E4b374E6907de8Fc7fb33EE3b0af403C7403 \
+UNISWAP_POOL_FEE=3000 \
+INVERTED_PRICE_FEED=false \
+npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
+```
