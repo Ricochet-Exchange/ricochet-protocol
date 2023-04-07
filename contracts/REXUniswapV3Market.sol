@@ -128,22 +128,18 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         cfa = _cfa;
         ida = _ida;
         referrals = _rexReferral;
-        console.log("RexUniswapV3Market: Initialized");
 
         transferOwnership(_owner);
-        console.log("RexUniswapV3Market: Transferred ownership to %s", _owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
         
 
         if (bytes(_registrationKey).length > 0) {
-            console.log("RexUniswapV3Market: Registering app with key %s", _registrationKey);
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
-            console.log("RexUniswapV3Market: Registering app");
             host.registerApp(_configWord);
         }
-        console.log("RexUniswapV3Market: Registered app");
+
     }
 
     /// @dev Creates the distribute task on Gelato Network
@@ -504,7 +500,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: 0
+                amountOutMinimum: minOutput
             });
         outAmount = router.exactInput(params);
 
@@ -557,12 +553,17 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         view
         returns (address)
     {
-        address underlyingToken = address(
-            _token.getUnderlyingToken()
-        );
 
-        if (underlyingToken == address(0)) {
-            underlyingToken = address(_token);
+        // If the token is maticx, then the underlying token is wmatic
+        if (address(_token) == address(maticx)) {
+            return address(wmatic);
+        }
+
+        address underlyingToken = _token.getUnderlyingToken();
+
+        // If the underlying token is 0x0, then the token is a supertoken
+        if (address(underlyingToken) == address(0)) {
+            return address(_token);
         }
 
         return underlyingToken;

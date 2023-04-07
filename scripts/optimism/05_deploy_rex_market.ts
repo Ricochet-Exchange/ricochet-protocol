@@ -37,11 +37,8 @@ Where:
 
 async function main() {
 
-    // Get the current network from hardhat
-    const network = await ethers.provider.getNetwork();
-
     // Get the right constants for the network we are deploying on
-    const config = Constants[network.name];
+    const config = Constants['optimism'];
 
     // Get the deployer for this deployment, first hardhat signer
     const [deployer] = await ethers.getSigners();
