@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 // } = require('@decentral.ee/web3-helpers');
 // const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 
-const REXMARKET_CONTRACT_ADDRESS = "0xd16DAc3C32498D231eA80a1D93Aea7A016762b91";
+const REXMARKET_CONTRACT_ADDRESS = "0x3323e191e8d1435eE2941d5d01e2Dd73630a89c6";
 
 async function main() {
 
@@ -24,7 +24,7 @@ async function main() {
   // console.log("Updated Prices")
 
   console.log('Distributing...');
-  let tx = await rexMarket.distribute("0x", true, {gasLimit: 10000000});
+  let tx = await rexMarket.distribute("0x", {gasLimit: 10000000});
   console.log(tx)
   console.log('Distributed');
 

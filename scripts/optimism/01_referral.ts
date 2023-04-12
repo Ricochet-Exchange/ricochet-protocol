@@ -11,11 +11,13 @@ async function main() {
   console.log("Deploying RexReferral")
   const REXReferral = await ethers.getContractFactory("REXReferral");
   let referral = await REXReferral.deploy();
-  console.log("Deployed RexReferral at address:", referral.address);
+  console.log("Deployed RexReferral at address:", referral.address)
 
-  // This is not immediately transferred to the config.DAO_ADDRESS
-  // The deployer will register the app with the REXReferral contract
-  // After apps have been registered, the deployer can transfer the ownership to the DAO
+  // Save the artifacts to tenderly for further inspection, monitoring, and debugging
+  await hre.tenderly.persistArtifacts({
+    name: "REXReferral",
+    address: referral.address,
+  });
 
 }
 

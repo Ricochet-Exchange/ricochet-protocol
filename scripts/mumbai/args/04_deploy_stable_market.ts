@@ -1,8 +1,9 @@
-import { Constants } from "../misc/Constants"
+import { Constants } from "../../../misc/Constants"
 
-// Change me to the network you want to deploy to
+// Get the right constants for the network
 const config = Constants['maticmum'];
 
+// Export the arguments for the deployment
 module.exports = [
   config.REX_DEPLOYER_ADDRESS,
   config.HOST_SUPERFLUID_ADDRESS,

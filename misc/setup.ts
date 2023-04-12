@@ -16,6 +16,7 @@ const { provider, loadFixture } = waffle;
 // provider and will throw an error if this doesn't exist.
 
 dotenv.config();
+const CONSTANTS = Constants['polygon'];
 
 const ETHX_ADDRESS = "";
 const USDCX_ADDRESS = "";
@@ -50,35 +51,20 @@ export const setup = async () => {
   // tokens.ric = new ERC20();
 
   const contracts: any = {};
-  const constants: { [key: string]: string } = {
-    "OWNER_ADDRESS": Constants.OWNER_ADDRESS,
-    "ALICE_ADDRESS": Constants.ALICE_ADDRESS,
-    "CARL_ADDRESS": Constants.CARL_ADDRESS,
-    "BOB_ADDRESS": Constants.BOB_ADDRESS,
-    "RIC_TOKEN_ADDRESS": Constants.RIC_TOKEN_ADDRESS,
-    "SF_RESOLVER": Constants.SF_RESOLVER,
-    "USDCX_SOURCE_ADDRESS": Constants.USDCX_SOURCE_ADDRESS,
-    "MATICX_SOURCE_ADDRESS": Constants.MATICX_SOURCE_ADDRESS,
-    "IBALLUOUSD_SOURCE_ADDRESS": Constants.IBALLUOUSD_SOURCE_ADDRESS,
-    "IBALLUOETH_SOURCE_ADDRESS": Constants.IBALLUOETH_SOURCE_ADDRESS,
-    "SUSHISWAP_ROUTER_ADDRESS": Constants.SUSHISWAP_ROUTER_ADDRESS,
-    "IDA_SUPERFLUID_ADDRESS": Constants.IDA_SUPERFLUID_ADDRESS,
-    "CFA_SUPERFLUID_ADDRESS": Constants.CFA_SUPERFLUID_ADDRESS,
-  };
-
+  const constants = Constants['polygon'];
   const accountAddrs = [
-    Constants.OWNER_ADDRESS,
-    Constants.ALICE_ADDRESS,
-    Constants.BOB_ADDRESS,
-    Constants.CARL_ADDRESS,
-    Constants.KAREN_ADDRESS,
-    Constants.USDCX_SOURCE_ADDRESS,
-    Constants.ETHX_SOURCE_ADDRESS,
-    Constants.MATICX_SOURCE_ADDRESS,
-    Constants.IBALLUOUSD_SOURCE_ADDRESS,
-    Constants.IBALLUOETH_SOURCE_ADDRESS,
-    Constants.RIC_SOURCE_ADDRESS,
-    Constants.SF_RESOLVER,
+    CONSTANTS.OWNER_ADDRESS,
+    CONSTANTS.ALICE_ADDRESS,
+    CONSTANTS.BOB_ADDRESS,
+    CONSTANTS.CARL_ADDRESS,
+    CONSTANTS.KAREN_ADDRESS,
+    CONSTANTS.USDCX_SOURCE_ADDRESS,
+    CONSTANTS.ETHX_SOURCE_ADDRESS,
+    CONSTANTS.MATICX_SOURCE_ADDRESS,
+    CONSTANTS.IBALLUOUSD_SOURCE_ADDRESS,
+    CONSTANTS.IBALLUOETH_SOURCE_ADDRESS,
+    CONSTANTS.RIC_SOURCE_ADDRESS,
+    CONSTANTS.SF_RESOLVER,
   ];
 
   const accounts: SignerWithAddress[] = await impersonateAccounts(accountAddrs);
@@ -87,7 +73,7 @@ export const setup = async () => {
   // Initialize superfluid sdk
   const superfluid = await Framework.create({
     provider: ethers.provider,  //   PROVIDER,  // ethers.getDefaultProvider(),
-    resolverAddress: Constants.SF_RESOLVER,
+    resolverAddress: CONSTANTS.SF_RESOLVER,
     networkName: "hardhat",
     dataMode: "WEB3_ONLY",
     protocolReleaseVersion: "v1",
@@ -124,10 +110,10 @@ export const setup = async () => {
     //   "IbAlluo", "0xc677B0918a96ad258A68785C2a3955428DeA7e50"
     // ),
     ric: await superfluid.loadSuperToken(
-      Constants.RIC_TOKEN_ADDRESS
+      CONSTANTS.RIC_ADDRESS
     ),
     rexshirt: await superfluid.loadSuperToken(
-      Constants.REXSHIRT_ADDRESS
+      CONSTANTS.REXSHIRT_ADDRESS
     ),
   };
 
@@ -144,7 +130,7 @@ export const setup = async () => {
   // console.log(superTokens.ethx)
   // Declare ERC 20 tokens
   tokens.ric = await ethers.getContractAt(
-    "ERC20", Constants.RIC_TOKEN_ADDRESS
+    "ERC20", CONSTANTS.RIC_ADDRESS
   );
   // tokens.weth = await ethers.getContractAt(
   //   "ERC20",

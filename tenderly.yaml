@@ -1,0 +1,38 @@
+account_id: e807b03f-74ef-4d0f-ab81-43b1388e9b91
+exports:
+  hardhat:
+    chain_config:
+      berlin_block: 0
+      byzantium_block: 0
+      constantinople_block: 0
+      eip150_block: 0
+      eip150_hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+      eip155_block: 0
+      eip158_block: 0
+      homestead_block: 0
+      istanbul_block: 0
+      london_block: 0
+      petersburg_block: 0
+    forked_network: Polygon
+    project_slug: mikeghen/ricochet-local
+    protocol: ""
+    rpc_address: 127.0.0.1:8545
+  tenderly:
+    chain_config:
+      berlin_block: "0"
+      byzantium_block: "0"
+      constantinople_block: "0"
+      eip150_block: "0"
+      eip150_hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+      eip155_block: "0"
+      eip158_block: "0"
+      homestead_block: "0"
+      istanbul_block: "0"
+      london_block: "0"
+      petersburg_block: "0"
+    forked_network: Polygon
+    project_slug: mikeghen/ricochet-local
+    protocol: ""
+    rpc_address: https://rpc.tenderly.co/fork/7acb6599-2ee4-4d7e-9ab7-1207edcff0c0
+project_slug: ricochet-local
+provider: Hardhat

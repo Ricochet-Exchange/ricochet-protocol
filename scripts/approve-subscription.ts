@@ -1,19 +1,16 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { web3, ethers } from "hardhat";
 import { Constants } from "../misc/Constants"
+const CONSTANTS = Constants['polygon'];
 const {
   web3tx,
 } = require('@decentral.ee/web3-helpers');
 const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 
-const HOST_ADDRESS = "0x3E14dC1b13c488a8d5D310918780c983bD5982E7";
-const CFA_ADDRESS = Constants.CFA_SUPERFLUID_ADDRESS;
-const IDA_ADDRESS = Constants.IDA_SUPERFLUID_ADDRESS;
-const RIC_CONTRACT_ADDRESS = Constants.RIC_TOKEN_ADDRESS;
-const USDCX_ADDRESS = "0xCAa7349CEA390F89641fe306D93591f87595dc1F";
-const ETHX_ADDRESS = "0x27e1e4E6BC79D93032abef01025811B7E4727e85";
+
+const RIC_CONTRACT_ADDRESS = CONSTANTS.RIC_TOKEN_ADDRESS;
+const SF_RESOLVER = CONSTANTS.SF_RESOLVER;
 const REXMARKET_CONTRACT_ADDRESS = "0xF6a03FCf12Cdc8066aFaf12255105CA301E15ba6";
-const SF_RESOLVER = Constants.SF_RESOLVER;
 
 
 async function main() {
@@ -34,11 +31,11 @@ async function main() {
 
   await web3tx(
     sf.host.callAgreement,
-    `${deployer.address} approves subscription to the app ${ETHX_ADDRESS} 0`,
+    `${deployer.address} approves subscription to the app ${CONSTANTS.ETHX_ADDRESS} 0`,
   )(
     sf.agreements.ida.address,
     sf.agreements.ida.contract.methods
-      .approveSubscription(ETHX_ADDRESS, REXMARKET_CONTRACT_ADDRESS, 1, '0x')
+      .approveSubscription(CONSTANTS.ETHX_ADDRESS, REXMARKET_CONTRACT_ADDRESS, 1, '0x')
       .encodeABI(),
     '0x', // user data
     {
@@ -48,11 +45,11 @@ async function main() {
   console.log('Approved ETHx');
   await web3tx(
     sf.host.callAgreement,
-    `${deployer.address} approves subscription to the app ${RIC_CONTRACT_ADDRESS} 0`,
+    `${deployer.address} approves subscription to the app ${CONSTANTS.RIC_TOKEN_ADDRESS} 0`,
   )(
     sf.agreements.ida.address,
     sf.agreements.ida.contract.methods
-      .approveSubscription(RIC_CONTRACT_ADDRESS, REXMARKET_CONTRACT_ADDRESS, 3, '0x')
+      .approveSubscription(CONSTANTS.RIC_TOKEN_ADDRESS, REXMARKET_CONTRACT_ADDRESS, 3, '0x')
       .encodeABI(),
     '0x', // user data
     {
