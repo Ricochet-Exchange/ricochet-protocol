@@ -296,7 +296,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         AggregatorV3Interface _priceFeed,
         bool _invertPrice
     ) external onlyOwner {
-        // Only init priceFeed if not already initialized
         require(address(priceFeed) == address(0), "A");
         priceFeed = _priceFeed;
         invertPrice = _invertPrice;
@@ -306,14 +305,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @return price is the latest price
     /// @notice From https://docs.chain.link/data-feeds/using-data-feeds
     function getLatestPrice() public view returns (int) {
-        // prettier-ignore
-        (
-            /* uint80 roundID */,
-            int price,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        if (address(priceFeed) == address(0)) {
+            return 0;
+        }  
+
+        (,int price, , ,) = priceFeed.latestRoundData();
         return price;
     }
 
@@ -472,7 +468,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Downgrade if this is not a supertoken
         if (underlyingInputToken != address(inputToken)) {
             inputToken.downgrade(inputToken.balanceOf(address(this)));
-        } 
+        }
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
@@ -480,14 +476,16 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
-        uint latestPrice = uint(int(getLatestPrice()));
+        uint latestPrice = uint(int(getLatestPrice()));  
 
-        
-        // Compute the minimumOutput based on latestPrice
-        if (!invertPrice) {
+        // If there's no oracle address setup, don't protect against slippage
+        if (latestPrice == 0) {
+            minOutput = 0; 
+        } else if (!invertPrice) {
+            // This is the common case, e.g. USDC >> ETH
             minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
         } else {
-            // Invert the price, e.g. for OP>USDC market
+            // Invert the price provided by the oracle, e.g. ETH >> USDC
             minOutput = amount * latestPrice / 1e8 / 1e12;
         }
 
@@ -500,7 +498,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: minOutput
+                amountOutMinimum: 0
             });
         outAmount = router.exactInput(params);
 

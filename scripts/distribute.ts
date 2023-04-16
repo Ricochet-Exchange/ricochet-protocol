@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 // } = require('@decentral.ee/web3-helpers');
 // const SuperfluidSDK = require('@superfluid-finance/js-sdk');
 
-const REXMARKET_CONTRACT_ADDRESS = "0xd16DAc3C32498D231eA80a1D93Aea7A016762b91";
+const REXMARKET_CONTRACT_ADDRESS = "0x1cb1E93a485f6dd87a835B68A504173AaEC9Ab52";
 
 async function main() {
 

@@ -120,7 +120,7 @@ async function main() {
     tx = await market.initializeMarket(
         INPUT_TOKEN,
         OUTPUT_TOKEN,
-        config.RIC_ADDRESS,
+        config.REX_SHIRT_ADDRESS,
         config.SHARE_SCALER,
         config.FEE_RATE,
         config.AFFILAITE_FEE,
