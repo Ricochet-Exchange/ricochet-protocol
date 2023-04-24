@@ -113,6 +113,20 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint256 oraclePrice   
     );
 
+    /// @dev Distribution data for performance tracking overtime
+    /// @param inputAmount The amount of inputToken swapped
+    /// @param outputAmount The amount of outputToken received
+    event RexDistribution(
+        uint256 inputAmount,
+        uint256 outputAmount
+    );
+
+    /// @dev Subsidy data for performance tracking overtime
+    /// @param distAmount The amount of subsidyToken distributed
+    event RexSubsideDistribution(
+        uint128 distAmount
+    );
+
     constructor(
         address _owner,
         ISuperfluid _host,
@@ -385,7 +399,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             newCtx
         );
 
-        // TODO: Emit Distribution event
+        // Emit Distribution event
+        emit RexDistribution(
+            inputTokenAmount,
+            outputTokenAmount
+        );
 
         // Distribute subsidyToken
         uint distAmount =
@@ -403,7 +421,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                 subsidyToken,
                 newCtx
             );
-            // TODO: Emit SubsidyDistribution event
+            emit RexSubsideDistribution(uint128(distAmount));
         }
 
         // Record when the last distribution happened for other calculations
@@ -421,7 +439,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // If the fee is greater than 0, reimburse the fee to the Gelato Ops
         if(fee > 0) {
-            _swapForGas(fee);
+            _swapRemainingForGas(wmatic.balanceOf(address(this)));
             // Log the balances of the tokens
             wmatic.withdraw(wmatic.balanceOf(address(this)));
             _transfer(fee, feeToken);
@@ -429,7 +447,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             // Otherwise, reimburse the gas to the msg.sender
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice; // TODO: add a threshold?
-            _swapForGas(fee);
+            _swapRemainingForGas(fee);
             wmatic.transfer(msg.sender, fee);
         }
     }
@@ -437,26 +455,27 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     // Uniswap V3 Swap Methods
 
     /// @dev Swap input token for WMATIC
-    function _swapForGas(
-        uint256 amountOut
-    ) internal returns (uint256) {
+    function _swapRemainingForGas(uint256 amountOut) internal returns (uint256) {
 
-        // If the underlyingInputToken is WMATIC, then just return the amountOut
+        // If the underlyingInputToken is WMATIC, then just return the fee
         if(underlyingInputToken == address(wmatic)) {
             return amountOut;
         }
 
+        uint256 amountIn = ERC20(underlyingInputToken).balanceOf(address(this));
+
         // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
-        // Use this amount to swap for enough WMATIC to cover the gas fee
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            path: abi.encodePacked(address(wmatic), poolFee, underlyingInputToken),
+        // Use the remaining underlayingInputToken for the swap
+        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter.ExactInputParams({
+            path: abi.encodePacked(underlyingInputToken, poolFee, address(wmatic)),
             recipient: address(this),
-            amountOut: amountOut,
+            amountIn: amountIn,
             // This is a swap for the gas fee reimbursement and will not be frontrun
-            amountInMaximum: type(uint256).max
+            // TODO: Calculate minimum amount using a oracle
+            amountOutMinimum: 0
         });
 
-        return router.exactOutput(params);
+        return router.exactInput(params);
 
     }
 
@@ -480,8 +499,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
-        uint latestPrice = uint(int(getLatestPrice()));
-
+        uint latestPrice = uint(getLatestPrice());
         
         // Compute the minimumOutput based on latestPrice
         if (!invertPrice) {
@@ -512,19 +530,31 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
 
         // Upgrade if this is not a supertoken
-        // TODO: This should be its own method
-        if (underlyingOutputToken != address(outputToken)) {
-            if (outputToken == maticx) {
-                wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this)));
-                ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}();
-            } else {
-                outputToken.upgrade(
-                    ERC20(underlyingOutputToken).balanceOf(address(this)) *
-                        (10**(18 - ERC20(underlyingOutputToken).decimals()))
-                );
-            }
+        if (!_isOutputSuperToken(outputToken)) {
+            _upgradeToken(outputToken);
         } // else this is a native supertoken
     }
+
+    function _upgradeToken(ISuperToken _superToken) internal {
+        if (_superToken == maticx) {
+            wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this)));
+            ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}();
+        } else {
+            _superToken.upgrade(
+                ERC20(underlyingOutputToken).balanceOf(address(this)) *
+                    (10**(18 - ERC20(underlyingOutputToken).decimals()))
+            );
+        }
+    }
+
+    function _isOutputSuperToken(ISuperToken _superToken)
+        internal
+        view
+        returns (bool)
+        {
+        return
+            address(_superToken) == underlyingOutputToken;
+        }
 
     function _isInputToken(ISuperToken _superToken)
         internal
