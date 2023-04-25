@@ -425,8 +425,8 @@ describe('REXUniswapV3Market', () => {
             await market.setRateTolerance(200);
             expect(await market.rateTolerance()).to.equal(200);
 
-            await market.setGelatoFeeShare(20);
-            expect(await market.gelatoFeeShare()).to.equal(20);
+            await market.setgasBudgetShare(20);
+            expect(await market.gasBudgetShare()).to.equal(20);
 
         });
 

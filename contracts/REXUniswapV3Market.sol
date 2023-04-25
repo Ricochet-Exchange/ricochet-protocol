@@ -101,7 +101,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // Gelato task variables
     bytes32 public taskId;  
-    uint256 public gelatoFeeShare = 100; // number of basis points gelato takes for executing the task
+    uint256 public gasBudgetShare = 100; // number of basis points gelato takes for executing the task
 
     /// @dev Swap data for performance tracking overtime
     /// @param inputAmount The amount of inputToken swapped
@@ -464,7 +464,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         uint256 amountIn = ERC20(underlyingInputToken).balanceOf(address(this));
 
-        // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
+        // gasBudgetShare reserves some underlyingInputToken for gas reimbursement
         // Use the remaining underlayingInputToken for the swap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter.ExactInputParams({
             path: abi.encodePacked(underlyingInputToken, poolFee, address(wmatic)),
@@ -495,7 +495,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = amount * (1e4 - gelatoFeeShare) / 1e4;
+        amount = amount * (1e4 - gasBudgetShare) / 1e4;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
@@ -1137,12 +1137,12 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         rateTolerance = _rateTolerance;
     }
 
-    /// @dev sets the gelatoFeeShare for the swap
-    /// @param _gelatoFeeShare is the gelatoFeeShare for the swap in basis points
+    /// @dev sets the gasBudgetShare for the swap
+    /// @param _gasBudgetShare is the gasBudgetShare for the swap in basis points
     /// @notice this needs a min and max
-    function setGelatoFeeShare(uint256 _gelatoFeeShare) external onlyOwner {
-        require(_gelatoFeeShare <= 1e4, "GFS");
-        gelatoFeeShare = _gelatoFeeShare;
+    function setgasBudgetShare(uint256 _gasBudgetShare) external onlyOwner {
+        require(_gasBudgetShare <= 1e4, "GBS");
+        gasBudgetShare = _gasBudgetShare;
     }
 
     // Payable for X->MATICx markets to work
