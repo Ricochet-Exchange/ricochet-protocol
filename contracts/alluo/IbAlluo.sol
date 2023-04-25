@@ -3,253 +3,247 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 interface IbAlluo {
-    event AdminChanged(address previousAdmin, address newAdmin);
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-    event BeaconUpgraded(address indexed beacon);
-    event BurnedForWithdraw(address indexed user, uint256 amount);
-    event CreateFlow(
-        address indexed from,
-        address indexed to,
-        int96 amountPerSecond
-    );
-    event DeletedFlow(address indexed from, address indexed to);
-    event DepositTokenStatusChanged(address token, bool status);
-    event Deposited(address indexed user, address token, uint256 amount);
-    event Initialized(uint8 version);
-    event InterestChanged(
-        uint256 oldYearInterest,
-        uint256 newYearInterest,
-        uint256 oldInterestPerSecond,
-        uint256 newInterestPerSecond
-    );
-    event NewHandlerSet(address oldHandler, address newHandler);
-    event Paused(address account);
-    event RoleAdminChanged(
-        bytes32 indexed role,
-        bytes32 indexed previousAdminRole,
-        bytes32 indexed newAdminRole
-    );
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event TransferAssetValue(
-        address indexed from,
-        address indexed to,
-        uint256 tokenAmount,
-        uint256 assetValue,
-        uint256 growingRatio
-    );
-    event Unpaused(address account);
-    event UpdateTimeLimitSet(uint256 oldValue, uint256 newValue);
-    event UpdatedFlow(
-        address indexed from,
-        address indexed to,
-        int96 amountPerSecond
-    );
-    event Upgraded(address indexed implementation);
-
-    function CFA_ID() external view returns (bytes32);
-
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
-
-    function UPGRADER_ROLE() external view returns (bytes32);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function annualInterest() external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function approveAssetValue(address spender, uint256 amount)
-        external
-        returns (bool);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function burn(address account, uint256 amount) external;
-
-    function cfaV1Lib() external view returns (address host, address cfa);
-
-    function changeTokenStatus(address _token, bool _status) external;
-
-    function changeUpgradeStatus(bool _status) external;
-
-    function convertToAssetValue(uint256 _amount)
-        external
-        view
-        returns (uint256);
+  event AdminChanged(address previousAdmin, address newAdmin);
+  event Approval(address indexed owner, address indexed spender, uint256 value);
+  event BeaconUpgraded(address indexed beacon);
+  event BurnedForWithdraw(address indexed user, uint256 amount);
+  event CreateFlow(
+    address indexed from,
+    address indexed to,
+    int96 amountPerSecond
+  );
+  event DeletedFlow(address indexed from, address indexed to);
+  event DepositTokenStatusChanged(address token, bool status);
+  event Deposited(address indexed user, address token, uint256 amount);
+  event Initialized(uint8 version);
+  event InterestChanged(
+    uint256 oldYearInterest,
+    uint256 newYearInterest,
+    uint256 oldInterestPerSecond,
+    uint256 newInterestPerSecond
+  );
+  event NewHandlerSet(address oldHandler, address newHandler);
+  event Paused(address account);
+  event RoleAdminChanged(
+    bytes32 indexed role,
+    bytes32 indexed previousAdminRole,
+    bytes32 indexed newAdminRole
+  );
+  event RoleGranted(
+    bytes32 indexed role,
+    address indexed account,
+    address indexed sender
+  );
+  event RoleRevoked(
+    bytes32 indexed role,
+    address indexed account,
+    address indexed sender
+  );
+  event Transfer(address indexed from, address indexed to, uint256 value);
+  event TransferAssetValue(
+    address indexed from,
+    address indexed to,
+    uint256 tokenAmount,
+    uint256 assetValue,
+    uint256 growingRatio
+  );
+  event Unpaused(address account);
+  event UpdateTimeLimitSet(uint256 oldValue, uint256 newValue);
+  event UpdatedFlow(
+    address indexed from,
+    address indexed to,
+    int96 amountPerSecond
+  );
+  event Upgraded(address indexed implementation);
+
+  function CFA_ID() external view returns (bytes32);
+
+  function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+  function UPGRADER_ROLE() external view returns (bytes32);
+
+  function allowance(
+    address owner,
+    address spender
+  ) external view returns (uint256);
+
+  function annualInterest() external view returns (uint256);
+
+  function approve(address spender, uint256 amount) external returns (bool);
 
-    function createFlow(
-        address receiver,
-        int96 flowRate,
-        uint256 toWrap
-    ) external;
+  function approveAssetValue(
+    address spender,
+    uint256 amount
+  ) external returns (bool);
 
-    function decimals() external view returns (uint8);
+  function balanceOf(address account) external view returns (uint256);
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        external
-        returns (bool);
+  function burn(address account, uint256 amount) external;
 
-    function deleteFlow(address receiver) external;
+  function cfaV1Lib() external view returns (address host, address cfa);
 
-    function deposit(address _token, uint256 _amount) external;
+  function changeTokenStatus(address _token, bool _status) external;
 
-    function exchangeAddress() external view returns (address);
+  function changeUpgradeStatus(bool _status) external;
 
-    function formatFlow(
-        address receiver,
-        int96 flowRate,
-        address agreement
-    ) external view returns (bytes memory);
+  function convertToAssetValue(uint256 _amount) external view returns (uint256);
 
-    function formatPermissions() external view returns (bytes memory);
+  function createFlow(
+    address receiver,
+    int96 flowRate,
+    uint256 toWrap
+  ) external;
 
-    function getBalance(address _address) external view returns (int256);
+  function decimals() external view returns (uint8);
 
-    function getBalanceForTransfer(address _address)
-        external
-        view
-        returns (int256);
+  function decreaseAllowance(
+    address spender,
+    uint256 subtractedValue
+  ) external returns (bool);
 
-    function getListSupportedTokens() external view returns (address[] memory);
+  function deleteFlow(address receiver) external;
 
-    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+  function deposit(address _token, uint256 _amount) external;
 
-    function grantRole(bytes32 role, address account) external;
+  function exchangeAddress() external view returns (address);
 
-    function growingRatio() external view returns (uint256);
+  function formatFlow(
+    address receiver,
+    int96 flowRate,
+    address agreement
+  ) external view returns (bytes memory);
 
-    function hasRole(bytes32 role, address account)
-        external
-        view
-        returns (bool);
+  function formatPermissions() external view returns (bytes memory);
 
-    function increaseAllowance(address spender, uint256 addedValue)
-        external
-        returns (bool);
+  function getBalance(address _address) external view returns (int256);
 
-    function initialize(
-        string memory _name,
-        string memory _symbol,
-        address _multiSigWallet,
-        address _handler,
-        address[] memory _supportedTokens,
-        uint256 _interestPerSecond,
-        uint256 _annualInterest,
-        address _trustedForwarder,
-        address _exchangeAddress
-    ) external;
+  function getBalanceForTransfer(
+    address _address
+  ) external view returns (int256);
 
-    function interestPerSecond() external view returns (uint256);
+  function getListSupportedTokens() external view returns (address[] memory);
 
-    function isTrustedForwarder(address forwarder) external view returns (bool);
+  function getRoleAdmin(bytes32 role) external view returns (bytes32);
 
-    function lastInterestCompound() external view returns (uint256);
+  function grantRole(bytes32 role, address account) external;
 
-    function liquidityHandler() external view returns (address);
+  function growingRatio() external view returns (uint256);
 
-    function mint(address account, uint256 amount) external;
+  function hasRole(bytes32 role, address account) external view returns (bool);
 
-    function name() external view returns (string memory);
+  function increaseAllowance(
+    address spender,
+    uint256 addedValue
+  ) external returns (bool);
 
-    function pause() external;
+  function initialize(
+    string memory _name,
+    string memory _symbol,
+    address _multiSigWallet,
+    address _handler,
+    address[] memory _supportedTokens,
+    uint256 _interestPerSecond,
+    uint256 _annualInterest,
+    address _trustedForwarder,
+    address _exchangeAddress
+  ) external;
 
-    function paused() external view returns (bool);
+  function interestPerSecond() external view returns (uint256);
 
-    function proxiableUUID() external view returns (bytes32);
+  function isTrustedForwarder(address forwarder) external view returns (bool);
 
-    function renounceRole(bytes32 role, address account) external;
+  function lastInterestCompound() external view returns (uint256);
 
-    function revokeRole(bytes32 role, address account) external;
+  function liquidityHandler() external view returns (address);
 
-    function setExchangeAddress(address newExchangeAddress) external;
+  function mint(address account, uint256 amount) external;
 
-    function setInterest(
-        uint256 _newAnnualInterest,
-        uint256 _newInterestPerSecond
-    ) external;
+  function name() external view returns (string memory);
 
-    function setLiquidityHandler(address newHandler) external;
+  function pause() external;
 
-    function setSuperToken(address _superToken) external;
+  function paused() external view returns (bool);
 
-    function setTrustedForwarder(address newTrustedForwarder) external;
+  function proxiableUUID() external view returns (bytes32);
 
-    function setUpdateTimeLimit(uint256 _newLimit) external;
+  function renounceRole(bytes32 role, address account) external;
 
-    function superToken() external view returns (address);
+  function revokeRole(bytes32 role, address account) external;
 
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+  function setExchangeAddress(address newExchangeAddress) external;
 
-    function symbol() external view returns (string memory);
+  function setInterest(
+    uint256 _newAnnualInterest,
+    uint256 _newInterestPerSecond
+  ) external;
 
-    function totalAssetSupply() external view returns (uint256);
+  function setLiquidityHandler(address newHandler) external;
 
-    function totalSupply() external view returns (uint256);
+  function setSuperToken(address _superToken) external;
 
-    function transfer(address to, uint256 amount) external returns (bool);
+  function setTrustedForwarder(address newTrustedForwarder) external;
 
-    function transferAssetValue(address to, uint256 amount)
-        external
-        returns (bool);
+  function setUpdateTimeLimit(uint256 _newLimit) external;
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+  function superToken() external view returns (address);
 
-    function transferFromAssetValue(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
+  function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
-    function trustedForwarder() external view returns (address);
+  function symbol() external view returns (string memory);
 
-    function unpause() external;
+  function totalAssetSupply() external view returns (uint256);
 
-    function updateFlow(
-        address receiver,
-        int96 flowRate,
-        uint256 toWrap
-    ) external;
+  function totalSupply() external view returns (uint256);
 
-    function updateRatio() external;
+  function transfer(address to, uint256 amount) external returns (bool);
 
-    function updateTimeLimit() external view returns (uint256);
+  function transferAssetValue(
+    address to,
+    uint256 amount
+  ) external returns (bool);
 
-    function upgradeStatus() external view returns (bool);
+  function transferFrom(
+    address from,
+    address to,
+    uint256 amount
+  ) external returns (bool);
 
-    function upgradeTo(address newImplementation) external;
+  function transferFromAssetValue(
+    address from,
+    address to,
+    uint256 amount
+  ) external returns (bool);
 
-    function upgradeToAndCall(address newImplementation, bytes memory data)
-        external
-        payable;
+  function trustedForwarder() external view returns (address);
 
-    function withdraw(address _targetToken, uint256 _amount) external;
+  function unpause() external;
 
-    function withdrawTo(
-        address _recipient,
-        address _targetToken,
-        uint256 _amount
-    ) external;
+  function updateFlow(
+    address receiver,
+    int96 flowRate,
+    uint256 toWrap
+  ) external;
+
+  function updateRatio() external;
+
+  function updateTimeLimit() external view returns (uint256);
+
+  function upgradeStatus() external view returns (bool);
+
+  function upgradeTo(address newImplementation) external;
+
+  function upgradeToAndCall(
+    address newImplementation,
+    bytes memory data
+  ) external payable;
+
+  function withdraw(address _targetToken, uint256 _amount) external;
+
+  function withdrawTo(
+    address _recipient,
+    address _targetToken,
+    uint256 _amount
+  ) external;
 }
 
 // THIS FILE WAS AUTOGENERATED FROM THE FOLLOWING ABI JSON:

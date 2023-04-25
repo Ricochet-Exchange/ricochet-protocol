@@ -13,12 +13,12 @@ import './pool/IUniswapV3PoolEvents.sol';
 /// to the ERC20 specification
 /// @dev The pool interface is broken up into many smaller pieces
 interface IUniswapV3Pool is
-    IUniswapV3PoolImmutables,
-    IUniswapV3PoolState,
-    IUniswapV3PoolDerivedState,
-    IUniswapV3PoolActions,
-    IUniswapV3PoolOwnerActions,
-    IUniswapV3PoolEvents
+  IUniswapV3PoolImmutables,
+  IUniswapV3PoolState,
+  IUniswapV3PoolDerivedState,
+  IUniswapV3PoolActions,
+  IUniswapV3PoolOwnerActions,
+  IUniswapV3PoolEvents
 {
 
 }

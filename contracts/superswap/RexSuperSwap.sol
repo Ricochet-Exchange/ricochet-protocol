@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import "./TransferHelper.sol";
-import "./interfaces/ISwapRouter02.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../ISETHCustom.sol";
-import "hardhat/console.sol";
+import {ISuperToken} from '@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol';
+import './TransferHelper.sol';
+import './interfaces/ISwapRouter02.sol';
+import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '../ISETHCustom.sol';
+import 'hardhat/console.sol';
 
 contract RexSuperSwap {
   using SafeERC20 for ERC20;
@@ -24,17 +24,21 @@ contract RexSuperSwap {
   }
 
   // Having unlimited approvals rather then dealing with decimal conversions.
-    // Not a problem as contract is not storing any tokens.
-    function approve(IERC20 _token, address _spender) internal {
-        if (_token.allowance(_spender, msg.sender) == 0) {
-            TransferHelper.safeApprove(address(_token), address(_spender), ((2 ** 256) - 1));
-        }
+  // Not a problem as contract is not storing any tokens.
+  function approve(IERC20 _token, address _spender) internal {
+    if (_token.allowance(_spender, msg.sender) == 0) {
+      TransferHelper.safeApprove(
+        address(_token),
+        address(_spender),
+        ((2 ** 256) - 1)
+      );
     }
+  }
 
-    function withdrawToken(IWMATIC _tokenContract, uint256 _amount) private {
-      // Withdraw matic to this address
-      _tokenContract.withdraw(_amount);
-    }
+  function withdrawToken(IWMATIC _tokenContract, uint256 _amount) private {
+    // Withdraw matic to this address
+    _tokenContract.withdraw(_amount);
+  }
 
   /**
    * @dev Swaps `amountIn` of `_from` SuperToken for at least `amountOutMin`
@@ -52,9 +56,9 @@ contract RexSuperSwap {
     bool _hasUnderlyingFrom,
     bool _hasUnderlyingTo
   ) external payable returns (uint256 amountOut) {
-    require(amountIn > 0, "Amount cannot be 0");
-    require(path.length > 1, "Incorrect path");
-    require(poolFees.length == path.length - 1, "Incorrect poolFees length");
+    require(amountIn > 0, 'Amount cannot be 0');
+    require(path.length > 1, 'Incorrect path');
+    require(poolFees.length == path.length - 1, 'Incorrect poolFees length');
 
     // Step 1: Get underlying tokens and verify path
     address fromBase = address(_from);
@@ -62,7 +66,7 @@ contract RexSuperSwap {
     if (_hasUnderlyingFrom) {
       fromBase = _from.getUnderlyingToken();
     }
-    if(_hasUnderlyingTo){
+    if (_hasUnderlyingTo) {
       toBase = _to.getUnderlyingToken();
     }
 
@@ -77,10 +81,13 @@ contract RexSuperSwap {
       amountIn
     );
 
-    console.log("starting balance of from token - ", _from.balanceOf(address(this)));
+    console.log(
+      'starting balance of from token - ',
+      _from.balanceOf(address(this))
+    );
 
     // Step 3: Downgrade if it's not a native token
-    if(_hasUnderlyingFrom){
+    if (_hasUnderlyingFrom) {
       _from.downgrade(amountIn);
     }
 
@@ -96,8 +103,11 @@ contract RexSuperSwap {
 
     // Approve the router to spend token supplied (fromBase).
     approve(IERC20(fromBase), address(swapRouter));
-   
-    console.log("balance of from token before swap - ", ERC20(fromBase).balanceOf(address(this)));
+
+    console.log(
+      'balance of from token before swap - ',
+      ERC20(fromBase).balanceOf(address(this))
+    );
 
     IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
       .ExactInputParams({
@@ -106,44 +116,51 @@ contract RexSuperSwap {
         amountIn: ERC20(fromBase).balanceOf(address(this)),
         amountOutMinimum: amountOutMin
       });
- 
+
     // Execute the swap
     amountOut = swapRouter.exactInput(params);
-      
-    console.log("balance of to token after swap - ", ERC20(toBase).balanceOf(address(this)));
-  
+
+    console.log(
+      'balance of to token after swap - ',
+      ERC20(toBase).balanceOf(address(this))
+    );
+
     // Step 5: Upgrade and send tokens back
     approve(IERC20(toBase), address(_to));
 
     // Upgrade if it has underlying token
     if (_hasUnderlyingTo) {
-        if (address(_to) == superNativeToken) {
+      if (address(_to) == superNativeToken) {
         // withdraw from WMATIC to MATIC and then upgrade.
         withdrawToken(IWMATIC(toBase), ERC20(toBase).balanceOf(address(this)));
         ISETHCustom(address(_to)).upgradeByETH{value: address(this).balance}();
       } else {
-        _to.upgrade(amountOut * (10**(18 - ERC20(toBase).decimals())));
+        _to.upgrade(amountOut * (10 ** (18 - ERC20(toBase).decimals())));
       }
-
     }
 
     approve(IERC20(address(_to)), msg.sender);
-    
-    console.log("balance of downgraded token after upgrade should be 0 - ", ERC20(toBase).balanceOf(address(this)));
-    console.log("balance of swapped super token - ", _to.balanceOf(address(this)));
+
+    console.log(
+      'balance of downgraded token after upgrade should be 0 - ',
+      ERC20(toBase).balanceOf(address(this))
+    );
+    console.log(
+      'balance of swapped super token - ',
+      _to.balanceOf(address(this))
+    );
     // transfer swapped token back to user
     _to.transfer(msg.sender, _to.balanceOf(address(this)));
     emit SuperSwapComplete(amountOut);
   }
 
-  receive() external payable  { 
-  }
+  receive() external payable {}
 
-  fallback() external payable {
-  }
+  fallback() external payable {}
 }
 
 interface IWMATIC is IERC20 {
-    function deposit() external payable;
-    function withdraw(uint wad) external;
+  function deposit() external payable;
+
+  function withdraw(uint wad) external;
 }

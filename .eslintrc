@@ -1,0 +1,21 @@
+{
+    "extends": ["eslint:recommended", "plugin:prettier/recommended"],
+    "plugins": ["prettier"],
+    "rules": {
+      "prettier/prettier": "error"
+    },
+    "overrides": [
+      {
+        "files": ["**/*.sol"],
+        "parser": "solidity-eslint-parser",
+        "plugins": ["solidity", "prettier"],
+        "rules": {
+          "prettier/prettier": ["error", { "parser": "solidity" }],
+          "no-unused-vars": "off",
+          "no-undef": "off",
+          "no-empty": "off"
+        }
+      }
+    ]
+  }
+  
