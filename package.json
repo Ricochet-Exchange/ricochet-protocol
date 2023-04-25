@@ -17,7 +17,7 @@
   "license": "ISC",
   "husky": {
     "hooks": {
-      "pre-push": "npm run prettier:solidity && npm run prettier:ts"
+      "pre-push": "npm run prettier:solidity-fix && npm run prettier:ts-fix"
     }
   },
   "devDependencies": {
