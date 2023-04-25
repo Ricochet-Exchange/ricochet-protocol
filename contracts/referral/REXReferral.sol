@@ -27,12 +27,15 @@ contract REXReferral is AccessControlEnumerable {
 
     event AffiliateApplied(string name, string id);
     event AffiliateWithdrawn(string affiliateId);
-    event ReferredCustomerRegistered(address customer, address affiliate, string affiliateId);
+    event ReferredCustomerRegistered(
+        address customer,
+        address affiliate,
+        string affiliateId
+    );
     event OrganicCustomerRegistered(address customer);
 
     // Roles
-    bytes32 public constant APP_ROLE =
-        keccak256("APP_ROLE");
+    bytes32 public constant APP_ROLE = keccak256("APP_ROLE");
 
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -87,10 +90,22 @@ contract REXReferral is AccessControlEnumerable {
     }
 
     // Apply a new affiliate
-    function applyForAffiliate(string memory name, string memory affiliateId) public {
+    function applyForAffiliate(
+        string memory name,
+        string memory affiliateId
+    ) public {
         require(addressToAffiliate[msg.sender] == 0, "Already applied");
-        require(affiliateIdToAffiliate[affiliateId] == 0, "Affiliate ID already exists");
-        Affiliate memory affliate = Affiliate(name, affiliateId, false, 0, msg.sender);
+        require(
+            affiliateIdToAffiliate[affiliateId] == 0,
+            "Affiliate ID already exists"
+        );
+        Affiliate memory affliate = Affiliate(
+            name,
+            affiliateId,
+            false,
+            0,
+            msg.sender
+        );
         affiliates.push(affliate);
         addressToAffiliate[msg.sender] = affiliates.length - 1;
         affiliateIdToAffiliate[affiliateId] = affiliates.length - 1;
@@ -99,21 +114,16 @@ contract REXReferral is AccessControlEnumerable {
     }
 
     // Disable affiliate to refer customers
-    function disableAffiliate(string memory affiliateId)
-        public
-        onlyAdmin
-        validAffiliate(affiliateId)
-    {
+    function disableAffiliate(
+        string memory affiliateId
+    ) public onlyAdmin validAffiliate(affiliateId) {
         affiliates[affiliateIdToAffiliate[affiliateId]].enabled = false;
     }
 
     // Check if a affiliate is enabled
-    function isAffiliateEnabled(string memory affiliateId)
-        public
-        view
-        validAffiliate(affiliateId)
-        returns (bool)
-    {
+    function isAffiliateEnabled(
+        string memory affiliateId
+    ) public view validAffiliate(affiliateId) returns (bool) {
         return affiliates[affiliateIdToAffiliate[affiliateId]].enabled;
     }
 
@@ -123,18 +133,17 @@ contract REXReferral is AccessControlEnumerable {
             affiliates[addressToAffiliate[msg.sender]].enabled == false,
             "Affiliate is already enabled"
         );
-        string memory affiliateId = affiliates[addressToAffiliate[msg.sender]].id;
+        string memory affiliateId = affiliates[addressToAffiliate[msg.sender]]
+            .id;
         addressToAffiliate[msg.sender] = 0;
         affiliateIdToAffiliate[affiliateId] = 0;
         emit AffiliateWithdrawn(affiliateId);
     }
 
     // Change affiliate address (to transfer rewards)
-    function changeAffiliateAddress(address newAddress)
-        public
-        validAffiliateAddress
-        notZero(newAddress)
-    {
+    function changeAffiliateAddress(
+        address newAddress
+    ) public validAffiliateAddress notZero(newAddress) {
         uint256 affiliateIdx = addressToAffiliate[msg.sender];
         Affiliate storage affiliate = affiliates[affiliateIdx];
         affiliate.addr = newAddress;
@@ -143,11 +152,10 @@ contract REXReferral is AccessControlEnumerable {
     }
 
     // Register a customer with an affiliate
-    function registerReferredCustomer(address customerAddr, string memory affiliateId)
-        internal
-        validAffiliate(affiliateId)
-        notZero(customerAddr)
-    {
+    function registerReferredCustomer(
+        address customerAddr,
+        string memory affiliateId
+    ) internal validAffiliate(affiliateId) notZero(customerAddr) {
         require(
             isCustomerOrganic[customerAddr] == false,
             "Already registered organically"
@@ -165,11 +173,17 @@ contract REXReferral is AccessControlEnumerable {
 
         customerToAffiliate[customerAddr] = affiliateIdx;
         affiliates[affiliateIdx].totalRef += 1;
-        emit ReferredCustomerRegistered(customerAddr, affiliates[affiliateIdx].addr, affiliateId);
+        emit ReferredCustomerRegistered(
+            customerAddr,
+            affiliates[affiliateIdx].addr,
+            affiliateId
+        );
     }
 
     // Register a customer as organic
-    function registerOrganicCustomer(address customerAddr) internal notZero(customerAddr) {
+    function registerOrganicCustomer(
+        address customerAddr
+    ) internal notZero(customerAddr) {
         require(
             customerToAffiliate[customerAddr] == 0,
             "Already registered to affiliate"
@@ -179,16 +193,19 @@ contract REXReferral is AccessControlEnumerable {
     }
 
     // Get affiliate address for customer - returns 0 if customer is organic
-    function getAffiliateAddress(address customerAddr)
-        public
-        view
-        returns (address)
-    {
-        if (isCustomerOrganic[customerAddr] || customerToAffiliate[customerAddr] == 0) {
+    function getAffiliateAddress(
+        address customerAddr
+    ) public view returns (address) {
+        if (
+            isCustomerOrganic[customerAddr] ||
+            customerToAffiliate[customerAddr] == 0
+        ) {
             return address(0);
         }
 
-        Affiliate memory affiliate = affiliates[customerToAffiliate[customerAddr]];
+        Affiliate memory affiliate = affiliates[
+            customerToAffiliate[customerAddr]
+        ];
         if (!affiliate.enabled) {
             return address(0);
         }
@@ -196,10 +213,10 @@ contract REXReferral is AccessControlEnumerable {
     }
 
     // Perform all checks for customer and register organically or to affiliate when necessary
-    function safeRegisterCustomer(address customerAddr, string memory affiliateId)
-        public
-        onlyApprovedApp
-    {
+    function safeRegisterCustomer(
+        address customerAddr,
+        string memory affiliateId
+    ) public onlyApprovedApp {
         // Customer is already registered organically
         if (isCustomerOrganic[customerAddr]) {
             return;

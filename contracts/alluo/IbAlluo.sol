@@ -66,18 +66,19 @@ interface IbAlluo {
 
     function UPGRADER_ROLE() external view returns (bytes32);
 
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     function annualInterest() external view returns (uint256);
 
     function approve(address spender, uint256 amount) external returns (bool);
 
-    function approveAssetValue(address spender, uint256 amount)
-        external
-        returns (bool);
+    function approveAssetValue(
+        address spender,
+        uint256 amount
+    ) external returns (bool);
 
     function balanceOf(address account) external view returns (uint256);
 
@@ -89,10 +90,9 @@ interface IbAlluo {
 
     function changeUpgradeStatus(bool _status) external;
 
-    function convertToAssetValue(uint256 _amount)
-        external
-        view
-        returns (uint256);
+    function convertToAssetValue(
+        uint256 _amount
+    ) external view returns (uint256);
 
     function createFlow(
         address receiver,
@@ -102,9 +102,10 @@ interface IbAlluo {
 
     function decimals() external view returns (uint8);
 
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        external
-        returns (bool);
+    function decreaseAllowance(
+        address spender,
+        uint256 subtractedValue
+    ) external returns (bool);
 
     function deleteFlow(address receiver) external;
 
@@ -122,10 +123,9 @@ interface IbAlluo {
 
     function getBalance(address _address) external view returns (int256);
 
-    function getBalanceForTransfer(address _address)
-        external
-        view
-        returns (int256);
+    function getBalanceForTransfer(
+        address _address
+    ) external view returns (int256);
 
     function getListSupportedTokens() external view returns (address[] memory);
 
@@ -135,14 +135,15 @@ interface IbAlluo {
 
     function growingRatio() external view returns (uint256);
 
-    function hasRole(bytes32 role, address account)
-        external
-        view
-        returns (bool);
+    function hasRole(
+        bytes32 role,
+        address account
+    ) external view returns (bool);
 
-    function increaseAllowance(address spender, uint256 addedValue)
-        external
-        returns (bool);
+    function increaseAllowance(
+        address spender,
+        uint256 addedValue
+    ) external returns (bool);
 
     function initialize(
         string memory _name,
@@ -205,9 +206,10 @@ interface IbAlluo {
 
     function transfer(address to, uint256 amount) external returns (bool);
 
-    function transferAssetValue(address to, uint256 amount)
-        external
-        returns (bool);
+    function transferAssetValue(
+        address to,
+        uint256 amount
+    ) external returns (bool);
 
     function transferFrom(
         address from,
@@ -239,9 +241,10 @@ interface IbAlluo {
 
     function upgradeTo(address newImplementation) external;
 
-    function upgradeToAndCall(address newImplementation, bytes memory data)
-        external
-        payable;
+    function upgradeToAndCall(
+        address newImplementation,
+        bytes memory data
+    ) external payable;
 
     function withdraw(address _targetToken, uint256 _amount) external;
 

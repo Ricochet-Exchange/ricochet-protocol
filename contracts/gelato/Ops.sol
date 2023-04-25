@@ -1,9 +1,8 @@
 pragma solidity ^0.8.0;
 
-import './LibDataTypes.sol';
+import "./LibDataTypes.sol";
 
 contract Ops {
-
     function exec(
         address _taskCreator,
         address _execAddress,
@@ -13,7 +12,5 @@ contract Ops {
         address _feeToken,
         bool _useTaskTreasuryFunds,
         bool _revertOnFailure
-    ) external {
-
-    }
+    ) external {}
 }

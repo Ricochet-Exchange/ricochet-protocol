@@ -5,8 +5,8 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
-import './ISETHCustom.sol';
-import './alluo/IbAlluo.sol';
+import "./ISETHCustom.sol";
+import "./alluo/IbAlluo.sol";
 
 contract REXTwoWayAlluoUsdcxMarket is REXMarket {
     using SafeERC20 for ERC20;
@@ -44,24 +44,19 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         market.rateTolerance = _rateTolerance;
         market.feeRate = _feeRate;
         market.affiliateFee = 500000;
-        addOutputPool(
-            inputTokenB,
-            _feeRate,
-            0
-        );
+        addOutputPool(inputTokenB, _feeRate, 0);
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
-
 
         // Approve stibAlluoUSD to upgrade ibAlluoUSD
         ERC20(inputTokenB.getUnderlyingToken()).safeIncreaseAllowance(
             address(inputTokenB),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         // Approve USDC to deposit to ibAlluoUSD
         ERC20(inputTokenA.getUnderlyingToken()).safeIncreaseAllowance(
             address(inputTokenB.getUnderlyingToken()),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         market.lastDistributionAt = block.timestamp;
@@ -76,11 +71,7 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
             address(market.outputPools[SUBSIDYB_INDEX].token) == address(0),
             "already initialized"
         );
-        addOutputPool(
-            _subsidyToken,
-            0,
-            _emissionRate
-        );
+        addOutputPool(_subsidyToken, 0, _emissionRate);
 
         market.lastDistributionAt = block.timestamp;
         // Does not need to add subsidy token to outputPoolIndicies
@@ -108,11 +99,9 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         // updateTokenPrice(_token);
     }
 
-    function distribute(bytes memory ctx)
-        public
-        override
-        returns (bytes memory newCtx)
-    {
+    function distribute(
+        bytes memory ctx
+    ) public override returns (bytes memory newCtx) {
         newCtx = ctx;
 
         IbAlluo ibTokenB = IbAlluo(inputTokenB.getUnderlyingToken());
@@ -122,7 +111,10 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         uint256 tokenBAmount;
 
         inputTokenA.downgrade(tokenAAmount - tokenBAmount);
-        ibTokenB.deposit(inputTokenA.getUnderlyingToken(), ERC20(inputTokenA.getUnderlyingToken()).balanceOf(address(this)));
+        ibTokenB.deposit(
+            inputTokenA.getUnderlyingToken(),
+            ERC20(inputTokenA.getUnderlyingToken()).balanceOf(address(this))
+        );
         inputTokenB.upgrade(ibTokenB.balanceOf(address(this)));
 
         // OK to distribute
@@ -134,46 +126,44 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         if (tokenBAmount == 0) {
             return newCtx;
         } else {
+            (tokenBAmount, ) = ida.calculateDistribution(
+                inputTokenB,
+                address(this),
+                OUTPUTB_INDEX,
+                tokenBAmount
+            );
 
-          (tokenBAmount, ) = ida.calculateDistribution(
-              inputTokenB,
-              address(this),
-              OUTPUTB_INDEX,
-              tokenBAmount
-          );
+            newCtx = _idaDistribute(
+                OUTPUTB_INDEX,
+                uint128(tokenBAmount),
+                inputTokenB,
+                newCtx
+            );
+            emit Distribution(tokenBAmount, 0, address(inputTokenB));
 
-          newCtx = _idaDistribute(
-              OUTPUTB_INDEX,
-              uint128(tokenBAmount),
-              inputTokenB,
-              newCtx
-          );
-          emit Distribution(tokenBAmount, 0, address(inputTokenB));
+            // Distribution Subsidy
+            uint256 distAmount = (block.timestamp - market.lastDistributionAt) *
+                market.outputPools[SUBSIDYB_INDEX].emissionRate;
+            if (
+                distAmount <
+                market.outputPools[SUBSIDYB_INDEX].token.balanceOf(
+                    address(this)
+                )
+            ) {
+                newCtx = _idaDistribute(
+                    SUBSIDYB_INDEX,
+                    uint128(distAmount),
+                    market.outputPools[SUBSIDYB_INDEX].token,
+                    newCtx
+                );
+                emit Distribution(
+                    distAmount,
+                    0,
+                    address(market.outputPools[SUBSIDYB_INDEX].token)
+                );
+            }
 
-          // Distribution Subsidy
-          uint256 distAmount =
-              (block.timestamp - market.lastDistributionAt) *
-              market.outputPools[SUBSIDYB_INDEX].emissionRate;
-          if (
-              distAmount <
-              market.outputPools[SUBSIDYB_INDEX].token.balanceOf(
-                  address(this)
-              )
-          ) {
-              newCtx = _idaDistribute(
-                  SUBSIDYB_INDEX,
-                  uint128(distAmount),
-                  market.outputPools[SUBSIDYB_INDEX].token,
-                  newCtx
-              );
-              emit Distribution(
-                  distAmount,
-                  0,
-                  address(market.outputPools[SUBSIDYB_INDEX].token)
-              );
-          }
-
-          market.lastDistributionAt = block.timestamp;
+            market.lastDistributionAt = block.timestamp;
         }
     }
 
@@ -233,7 +223,6 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
 
         _shareholderUpdate.token = inputTokenB;
 
-
         (
             uint128 userShares,
             uint128 daoShares,
@@ -259,20 +248,15 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         );
     }
 
-    function _isInputToken(ISuperToken _superToken)
-        internal
-        view
-        override
-        returns (bool)
-    {
+    function _isInputToken(
+        ISuperToken _superToken
+    ) internal view override returns (bool) {
         return address(_superToken) == address(inputTokenA);
     }
 
-    function _getLastDistributionAt(ISuperToken _token)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getLastDistributionAt(
+        ISuperToken _token
+    ) internal view returns (uint256) {
         return market.lastDistributionAt;
     }
 
@@ -280,16 +264,16 @@ contract REXTwoWayAlluoUsdcxMarket is REXMarket {
         // TODO: This section should be checked,
         //       since it only checks one IDA,
 
-        (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida.getIndex(
-            market.outputPools[OUTPUTB_INDEX].token,
-            address(this),
-            OUTPUTB_INDEX
-        );
+        (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
+            .getIndex(
+                market.outputPools[OUTPUTB_INDEX].token,
+                address(this),
+                OUTPUTB_INDEX
+            );
         if (_totalUnitsApproved + _totalUnitsPending > 0) {
             return true;
         }
 
         return false;
     }
-
 }

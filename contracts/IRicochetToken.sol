@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-import { ISuperAgreement } from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
-
+import {ISuperAgreement} from "ricochet-exchange-sfcontracts-used/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol";
 
 /**
  * @title Superfluid's token interface.
@@ -10,7 +9,6 @@ import { ISuperAgreement } from "ricochet-exchange-sfcontracts-used/ethereum-con
  * @author Superfluid
  */
 interface IRicochetToken {
-
     /**************************************************************************
      * Basic information
      *************************************************************************/
@@ -18,71 +16,79 @@ interface IRicochetToken {
     /**
      * @dev Get superfluid host contract address
      */
-    function getHost() external view returns(address host);
+    function getHost() external view returns (address host);
 
     // Ricochet Token lock
     function lock(bool _lockIt) external;
+
     function transferOwnership(address newOwner) external;
+
     function downgradeFrom(address account, uint256 amount) external;
-    function mintTo(address account, uint256 amount, bytes memory userData) external;
-    function burnFrom(address account, uint256 amount, bytes memory userData) external;
+
+    function mintTo(
+        address account,
+        uint256 amount,
+        bytes memory userData
+    ) external;
+
+    function burnFrom(
+        address account,
+        uint256 amount,
+        bytes memory userData
+    ) external;
 
     /**************************************************************************
      * Real-time balance functions
      *************************************************************************/
 
     /**
-    * @dev Calculate the real balance of a user, taking in consideration all agreements of the account
-    * @param account for the query
-    * @param timestamp Time of balance
-    * @return availableBalance Real-time balance
-    * @return deposit Account deposit
-    * @return owedDeposit Account owed Deposit
-    */
+     * @dev Calculate the real balance of a user, taking in consideration all agreements of the account
+     * @param account for the query
+     * @param timestamp Time of balance
+     * @return availableBalance Real-time balance
+     * @return deposit Account deposit
+     * @return owedDeposit Account owed Deposit
+     */
     function realtimeBalanceOf(
-       address account,
-       uint256 timestamp
+        address account,
+        uint256 timestamp
     )
-        external view
-        returns (
-            int256 availableBalance,
-            uint256 deposit,
-            uint256 owedDeposit);
+        external
+        view
+        returns (int256 availableBalance, uint256 deposit, uint256 owedDeposit);
 
     /// @dev realtimeBalanceOf with timestamp equals to block timestamp
     function realtimeBalanceOfNow(
-       address account
+        address account
     )
-        external view
+        external
+        view
         returns (
             int256 availableBalance,
             uint256 deposit,
             uint256 owedDeposit,
-            uint256 timestamp);
+            uint256 timestamp
+        );
 
     /**
-    * @dev Check if one account is critical
-    * @param account Account check if is critical by a future time
-    * @param timestamp Time of balance
-    * @return isCritical
-    */
+     * @dev Check if one account is critical
+     * @param account Account check if is critical by a future time
+     * @param timestamp Time of balance
+     * @return isCritical
+     */
     function isAccountCritical(
         address account,
         uint256 timestamp
-    )
-        external view
-        returns(bool isCritical);
+    ) external view returns (bool isCritical);
 
     /**
-    * @dev Check if one account is critical now
-    * @param account Account check if is critical by a future time
-    * @return isCritical
-    */
+     * @dev Check if one account is critical now
+     * @param account Account check if is critical by a future time
+     * @return isCritical
+     */
     function isAccountCriticalNow(
         address account
-    )
-        external view
-        returns(bool isCritical);
+    ) external view returns (bool isCritical);
 
     /**
      * @dev Check if one account is solvent
@@ -93,9 +99,7 @@ interface IRicochetToken {
     function isAccountSolvent(
         address account,
         uint256 timestamp
-    )
-        external view
-        returns(bool isSolvent);
+    ) external view returns (bool isSolvent);
 
     /**
      * @dev Check if one account is solvent now
@@ -104,35 +108,28 @@ interface IRicochetToken {
      */
     function isAccountSolventNow(
         address account
-    )
-        external view
-        returns(bool isSolvent);
+    ) external view returns (bool isSolvent);
 
     /**
-    * @dev Get a list of agreements that is active for the account
-    * @dev An active agreement is one that has state for the account
-    * @param account Account to query
-    * @return activeAgreements List of accounts that have non-zero states for the account
-    */
-    function getAccountActiveAgreements(address account)
-       external view
-       returns(ISuperAgreement[] memory activeAgreements);
+     * @dev Get a list of agreements that is active for the account
+     * @dev An active agreement is one that has state for the account
+     * @param account Account to query
+     * @return activeAgreements List of accounts that have non-zero states for the account
+     */
+    function getAccountActiveAgreements(
+        address account
+    ) external view returns (ISuperAgreement[] memory activeAgreements);
 
-
-   /**************************************************************************
-    * Super Agreement hosting functions
-    *************************************************************************/
+    /**************************************************************************
+     * Super Agreement hosting functions
+     *************************************************************************/
 
     /**
      * @dev Create a new agreement
      * @param id Agreement ID
      * @param data Agreement data
      */
-    function createAgreement(
-        bytes32 id,
-        bytes32[] calldata data
-    )
-        external;
+    function createAgreement(bytes32 id, bytes32[] calldata data) external;
 
     /**
      * @dev Agreement creation event
@@ -156,20 +153,14 @@ interface IRicochetToken {
         address agreementClass,
         bytes32 id,
         uint dataLength
-    )
-        external view
-        returns(bytes32[] memory data);
+    ) external view returns (bytes32[] memory data);
 
     /**
      * @dev Create a new agreement
      * @param id Agreement ID
      * @param data Agreement data
      */
-    function updateAgreementData(
-        bytes32 id,
-        bytes32[] calldata data
-    )
-        external;
+    function updateAgreementData(bytes32 id, bytes32[] calldata data) external;
 
     /**
      * @dev Agreement creation event
@@ -187,21 +178,14 @@ interface IRicochetToken {
      * @dev Close the agreement
      * @param id Agreement ID
      */
-    function terminateAgreement(
-        bytes32 id,
-        uint dataLength
-    )
-        external;
+    function terminateAgreement(bytes32 id, uint dataLength) external;
 
     /**
      * @dev Agreement termination event
      * @param agreementClass Contract address of the agreement
      * @param id Agreement ID
      */
-    event AgreementTerminated(
-        address indexed agreementClass,
-        bytes32 id
-    );
+    event AgreementTerminated(address indexed agreementClass, bytes32 id);
 
     /**
      * @dev Update agreement state slot
@@ -214,8 +198,7 @@ interface IRicochetToken {
         address account,
         uint256 slotId,
         bytes32[] calldata slotData
-    )
-        external;
+    ) external;
 
     /**
      * @dev Agreement account state updated event
@@ -241,9 +224,7 @@ interface IRicochetToken {
         address account,
         uint256 slotId,
         uint dataLength
-    )
-        external view
-        returns (bytes32[] memory slotData);
+    ) external view returns (bytes32[] memory slotData);
 
     /**
      * @dev Agreement account state updated event
@@ -266,11 +247,7 @@ interface IRicochetToken {
      * Modifiers:
      *  - onlyAgreement
      */
-    function settleBalance(
-        address account,
-        int256 delta
-    )
-        external;
+    function settleBalance(address account, int256 delta) external;
 
     /**
      * @dev Agreement liquidation event (DEPRECATED BY AgreementLiquidatedBy)
@@ -293,10 +270,7 @@ interface IRicochetToken {
      * @param bailoutAccount Account that bailout the penalty account
      * @param bailoutAmount Amount of account bailout
      */
-    event Bailout(
-        address indexed bailoutAccount,
-        uint256 bailoutAmount
-    );
+    event Bailout(address indexed bailoutAccount, uint256 bailoutAmount);
 
     /**
      * @dev Agreement liquidation event (including agent account)
@@ -346,15 +320,13 @@ interface IRicochetToken {
      * Modifiers:
      *  - onlyAgreement
      */
-    function makeLiquidationPayouts
-    (
+    function makeLiquidationPayouts(
         bytes32 id,
         address liquidator,
         address penaltyAccount,
         uint256 rewardAmount,
         uint256 bailoutAmount
-    )
-        external;
+    ) external;
 
     /**************************************************************************
      * Function modifiers for access control and parameter validations
@@ -365,10 +337,9 @@ interface IRicochetToken {
      * NOTE: solidity-coverage not supporting it
      *************************************************************************/
 
-     /// @dev The msg.sender must be host contract
-     //modifier onlyHost() virtual;
+    /// @dev The msg.sender must be host contract
+    //modifier onlyHost() virtual;
 
     /// @dev The msg.sender must be a listed agreement.
     //modifier onlyAgreement() virtual;
-
 }

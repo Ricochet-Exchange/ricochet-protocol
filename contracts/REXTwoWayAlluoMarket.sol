@@ -5,18 +5,20 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./REXMarket.sol";
-import './ISETHCustom.sol';
-import './alluo/IbAlluo.sol';
+import "./ISETHCustom.sol";
+import "./alluo/IbAlluo.sol";
 
 contract REXTwoWayAlluoMarket is REXMarket {
     using SafeERC20 for ERC20;
 
     // DAI
-    address constant inputTokenAUnderlying = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address constant inputTokenAUnderlying =
+        0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     // // WBTC
     // address constant inputTokenBUnderlying = 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6;
     // WETH
-    address constant inputTokenBUnderlying = 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
+    address constant inputTokenBUnderlying =
+        0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619;
 
     ISuperToken inputTokenA;
     ISuperToken inputTokenB;
@@ -57,48 +59,40 @@ contract REXTwoWayAlluoMarket is REXMarket {
         market.feeRate = _feeRate;
         market.affiliateFee = 500000; // TODO: Parameterize this
 
-        addOutputPool(
-            inputTokenA,
-            _feeRate,
-            0
-        );
-        addOutputPool(
-            inputTokenB,
-            _feeRate,
-            0
-        );
+        addOutputPool(inputTokenA, _feeRate, 0);
+        addOutputPool(inputTokenB, _feeRate, 0);
         market.outputPoolIndicies[inputTokenA] = OUTPUTA_INDEX;
         market.outputPoolIndicies[inputTokenB] = OUTPUTB_INDEX;
 
         // Approve ibAlluoA to deposit inputTokenA
         ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
             address(inputTokenA.getUnderlyingToken()),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         // otherwise approve underlying for upgrade
         ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
             address(inputTokenB.getUnderlyingToken()),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         // Approve ibAlluoA to deposit inputTokenA
         ERC20(inputTokenA.getUnderlyingToken()).safeIncreaseAllowance(
             address(inputTokenA),
-            2**256 - 1
+            2 ** 256 - 1
         );
         ERC20(inputTokenB.getUnderlyingToken()).safeIncreaseAllowance(
             address(inputTokenB),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         ERC20(inputTokenAUnderlying).safeIncreaseAllowance(
             address(router),
-            2**256 - 1
+            2 ** 256 - 1
         );
         ERC20(inputTokenBUnderlying).safeIncreaseAllowance(
             address(router),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         market.lastDistributionAt = block.timestamp;
@@ -114,16 +108,8 @@ contract REXTwoWayAlluoMarket is REXMarket {
                 address(market.outputPools[SUBSIDYB_INDEX].token) == address(0),
             "already initialized"
         );
-        addOutputPool(
-            _subsidyToken,
-            0,
-            _emissionRate
-        );
-        addOutputPool(
-            _subsidyToken,
-            0,
-            _emissionRate
-        );
+        addOutputPool(_subsidyToken, 0, _emissionRate);
+        addOutputPool(_subsidyToken, 0, _emissionRate);
         lastDistributionTokenAAt = block.timestamp;
         lastDistributionTokenBAt = block.timestamp;
         // Does not need to add subsidy token to outputPoolIndicies
@@ -150,11 +136,9 @@ contract REXTwoWayAlluoMarket is REXMarket {
         market.numOutputPools++;
     }
 
-    function distribute(bytes memory ctx)
-        public
-        override
-        returns (bytes memory newCtx)
-    {
+    function distribute(
+        bytes memory ctx
+    ) public override returns (bytes memory newCtx) {
         newCtx = ctx;
 
         IbAlluo ibTokenA = IbAlluo(inputTokenA.getUnderlyingToken());
@@ -163,8 +147,10 @@ contract REXTwoWayAlluoMarket is REXMarket {
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         ibTokenA.updateRatio();
         ibTokenB.updateRatio();
-        uint256 tokenAAmount = inputTokenA.balanceOf(address(this)) * ibTokenA.growingRatio() / 1e18;
-        uint256 tokenBAmount = inputTokenB.balanceOf(address(this)) * ibTokenB.growingRatio() / 1e18;
+        uint256 tokenAAmount = (inputTokenA.balanceOf(address(this)) *
+            ibTokenA.growingRatio()) / 1e18;
+        uint256 tokenBAmount = (inputTokenB.balanceOf(address(this)) *
+            ibTokenB.growingRatio()) / 1e18;
 
         // TODO: get token price from oracle
 
@@ -178,53 +164,53 @@ contract REXTwoWayAlluoMarket is REXMarket {
             // tokenHave becomes tokenANeed
             tokenHave = tokenAAmount - tokenHave;
             // Convert token have A to ibAlluoA amount
-            inputTokenA.downgrade(tokenHave * 1e18 / ibTokenA.growingRatio());
+            inputTokenA.downgrade((tokenHave * 1e18) / ibTokenA.growingRatio());
 
-            ibTokenA.withdraw(
-              inputTokenAUnderlying,
-              tokenHave
-            );
+            ibTokenA.withdraw(inputTokenAUnderlying, tokenHave);
 
             _swap(
-              inputTokenAUnderlying,
-              inputTokenBUnderlying,
-              ERC20(inputTokenAUnderlying).balanceOf(address(this)),
-              0,
-              block.timestamp + 3600
+                inputTokenAUnderlying,
+                inputTokenBUnderlying,
+                ERC20(inputTokenAUnderlying).balanceOf(address(this)),
+                0,
+                block.timestamp + 3600
             );
 
-            ibTokenB.deposit(inputTokenBUnderlying, ERC20(inputTokenBUnderlying).balanceOf(address(this)));
+            ibTokenB.deposit(
+                inputTokenBUnderlying,
+                ERC20(inputTokenBUnderlying).balanceOf(address(this))
+            );
             inputTokenB.upgrade(ibTokenB.balanceOf(address(this)));
-        // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
+            // Otherwise we have more tokenB than we need, swap the surplus to inputTokenA
         } else {
             // TODO: Calculate token have using oracle
             tokenHave = 0;
-                // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
-                // market.oracles[inputTokenB].usdPrice;
+            // (tokenAAmount * market.oracles[inputTokenA].usdPrice) /
+            // market.oracles[inputTokenB].usdPrice;
             tokenHave = tokenBAmount - tokenHave;
 
             // Convert token have B to ibAlluoB amount
-            inputTokenB.downgrade(tokenHave * 1e18 / ibTokenB.growingRatio());
+            inputTokenB.downgrade((tokenHave * 1e18) / ibTokenB.growingRatio());
 
             ibTokenB.withdrawTo(
-              address(this),
-              inputTokenBUnderlying,
-              tokenHave
+                address(this),
+                inputTokenBUnderlying,
+                tokenHave
             );
-
 
             _swap(
-              inputTokenBUnderlying,
-              inputTokenAUnderlying,
-              ERC20(inputTokenBUnderlying).balanceOf(address(this)),
-              0,
-              block.timestamp + 3600
+                inputTokenBUnderlying,
+                inputTokenAUnderlying,
+                ERC20(inputTokenBUnderlying).balanceOf(address(this)),
+                0,
+                block.timestamp + 3600
             );
             // Deposit inputTokenAUnderlying
-            ibTokenA.deposit(inputTokenAUnderlying, ERC20(inputTokenAUnderlying).balanceOf(address(this)));
+            ibTokenA.deposit(
+                inputTokenAUnderlying,
+                ERC20(inputTokenAUnderlying).balanceOf(address(this))
+            );
             inputTokenA.upgrade(ibTokenA.balanceOf(address(this)));
-
-
         }
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
@@ -406,11 +392,11 @@ contract REXTwoWayAlluoMarket is REXMarket {
         path[1] = output;
 
         router.swapExactTokensForTokens(
-           amount,
-           0,
-           path,
-           address(this),
-           block.timestamp + 3600
+            amount,
+            0,
+            path,
+            address(this),
+            block.timestamp + 3600
         );
     }
 
@@ -474,26 +460,20 @@ contract REXTwoWayAlluoMarket is REXMarket {
                 affiliateShares,
                 market.outputPools[outputIndex].token
             );
-
         }
     }
 
-    function _isInputToken(ISuperToken _superToken)
-        internal
-        view
-        override
-        returns (bool)
-    {
+    function _isInputToken(
+        ISuperToken _superToken
+    ) internal view override returns (bool) {
         return
             address(_superToken) == address(inputTokenA) ||
             address(_superToken) == address(inputTokenB);
     }
 
-    function _getLastDistributionAt(ISuperToken _token)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getLastDistributionAt(
+        ISuperToken _token
+    ) internal view returns (uint256) {
         return
             market.outputPoolIndicies[_token] == OUTPUTA_INDEX
                 ? lastDistributionTokenBAt
@@ -524,5 +504,4 @@ contract REXTwoWayAlluoMarket is REXMarket {
     }
 
     receive() external payable {}
-
 }

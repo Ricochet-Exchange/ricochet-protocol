@@ -9,10 +9,9 @@ import "./superswap/interfaces/IV3SwapRouter.sol";
 import "./matic/IWMATIC.sol";
 import "hardhat/console.sol";
 
-
 contract RecurringDeposits is Ownable, OpsTaskCreator {
-
-    IWMATIC public constant WMATIC = IWMATIC(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
+    IWMATIC public constant WMATIC =
+        IWMATIC(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
 
     ISuperToken public depositToken;
     ERC20 public gasToken;
@@ -102,7 +101,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
     // Creates the performNextDeposit task on Gelato Network
     function createTask() external payable onlyOwner {
         require(taskId == bytes32(""), "Already started task");
-        
+
         bytes memory execData = abi.encodeCall(this.performNextDeposit, ());
         ModuleData memory moduleData = ModuleData({
             modules: new Module[](1),
@@ -127,7 +126,6 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         );
         require(gasToken.transferFrom(msg.sender, address(this), amount));
         gasTank[msg.sender] += amount;
-
     }
 
     function withdrawGas(uint256 amount) public {
@@ -168,7 +166,7 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
     // Polled by gelato to perform the next deposit, gas tank is used to reimburse the user for gas costs
     function performNextDeposit() public payable {
-        uint gasUsed = gasleft(); 
+        uint gasUsed = gasleft();
         ScheduledDeposit storage deposit = scheduledDeposits[head];
         uint256 depositAmount = deposit.amount;
         address depositor = deposit.owner;
@@ -201,9 +199,12 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
 
         // If the gelato executor is paying for the transaction, pay for the gas for them
         uint amountIn;
-        if(fee > 0) {
+        if (fee > 0) {
             amountIn = _swap(fee, type(uint256).max, 500);
-            require(amountIn <= gasTank[depositor], "Not enough gas in the tank");
+            require(
+                amountIn <= gasTank[depositor],
+                "Not enough gas in the tank"
+            );
             WMATIC.withdraw(WMATIC.balanceOf(address(this)));
             _transfer(fee, feeToken);
         } else {
@@ -212,7 +213,6 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
             amountIn = _swap(fee, type(uint256).max, 500);
             WMATIC.transfer(depositor, amountIn);
         }
-
     }
 
     // Perform a deposit (upgrade) for a specific user for a specific amount
@@ -273,16 +273,21 @@ contract RecurringDeposits is Ownable, OpsTaskCreator {
         uint256 amountInMaximum,
         uint24 fee
     ) internal returns (uint256) {
-
         // TODO: Use path as (USDC -> RIC -> MATIC) instead of (USDC -> MATIC)
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            // Pass the swap through the feeToken LP
-            path: abi.encodePacked(address(WMATIC), fee, address(feeToken), fee, address(gasToken)),
-            recipient: address(this),
-            amountOut: amountOut,
-            amountInMaximum: 2000000
-        });
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
+            .ExactOutputParams({
+                // Pass the swap through the feeToken LP
+                path: abi.encodePacked(
+                    address(WMATIC),
+                    fee,
+                    address(feeToken),
+                    fee,
+                    address(gasToken)
+                ),
+                recipient: address(this),
+                amountOut: amountOut,
+                amountInMaximum: 2000000
+            });
         return router.exactOutput(params);
-
     }
 }

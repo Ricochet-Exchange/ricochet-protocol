@@ -37,9 +37,8 @@ abstract contract OpsReady {
         ops = IOps(_ops);
         _gelato = IOps(_ops).gelato();
         bool test;
-        (dedicatedMsgSender, test) = IOpsProxyFactory(OPS_PROXY_FACTORY).getProxyOf(
-            _taskCreator
-        );
+        (dedicatedMsgSender, test) = IOpsProxyFactory(OPS_PROXY_FACTORY)
+            .getProxyOf(_taskCreator);
     }
 
     /**

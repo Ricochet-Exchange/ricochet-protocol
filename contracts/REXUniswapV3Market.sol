@@ -32,22 +32,26 @@ import "./referral/IREXReferral.sol";
 // Hardhat console
 import "hardhat/console.sol";
 
-
-contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCreator {
+contract REXUniswapV3Market is
+    Ownable,
+    SuperAppBase,
+    Initializable,
+    OpsTaskCreator
+{
     using SafeERC20 for ERC20;
 
     // REX Market Structures
 
-    // Parameters needed to perform a shareholder update (i.e. a flow rate update) 
+    // Parameters needed to perform a shareholder update (i.e. a flow rate update)
     struct ShareholderUpdate {
-      address shareholder; // The shareholder to update
-      address affiliate; // The affiliate to update
-      int96 previousFlowRate; // The previous flow rate of the shareholder
-      int96 currentFlowRate; // The current flow rate of the shareholder
-      ISuperToken token; // The token to update the flow rate for
+        address shareholder; // The shareholder to update
+        address affiliate; // The affiliate to update
+        int96 previousFlowRate; // The previous flow rate of the shareholder
+        int96 currentFlowRate; // The current flow rate of the shareholder
+        ISuperToken token; // The token to update the flow rate for
     }
 
-    // The struct for the output pools (i.e. Superfluid IDA pools) 
+    // The struct for the output pools (i.e. Superfluid IDA pools)
     struct OutputPool {
         ISuperToken token; // The token to distribute
         uint128 feeRate; // Fee taken by the DAO on each output distribution
@@ -64,7 +68,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
-    
+
     // REX Referral System
     IREXReferral internal referrals;
 
@@ -77,30 +81,29 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     uint128 public feeRate; // Fee taken by the protocol on each distribution (basis points)
     uint128 public affiliateFee; // Fee taken by the affilaite on each distribution (basis points)
     uint128 public shareScaler; // The scaler to apply to the share of the outputToken pool
-    ISuperToken public inputToken;  // e.g. USDCx
+    ISuperToken public inputToken; // e.g. USDCx
     ISuperToken public outputToken; // e.g. ETHx
     ISuperToken public subsidyToken; // e.g. RICx
     address public underlyingInputToken; // e.g. USDC
     address public underlyingOutputToken; // e.g. WETH
     IWMATIC public wmatic;
     ISuperToken public maticx;
-    uint32 constant public OUTPUT_INDEX = 0;  // Superfluid IDA Index for outputToken's output pool
-    uint32 constant public SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
-    uint256 constant public INTERVAL = 60; // The interval for gelato to check for execution
-
+    uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
+    uint32 public constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
+    uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
     IUniswapV3Pool public uniswapPool; // The Uniswap V3 pool for inputToken and outputToken
     address[] public uniswapPath; // The path between inputToken and outputToken
-    uint24 public poolFee; // The pool fee to use in the path between inputToken and outputToken 
+    uint24 public poolFee; // The pool fee to use in the path between inputToken and outputToken
 
     // Chainlink Variables
     AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
     bool internal invertPrice; // Whether to invert the price in rate conversions
 
     // Gelato task variables
-    bytes32 public taskId;  
+    bytes32 public taskId;
     uint256 public gelatoFeeShare = 100; // number of basis points gelato takes for executing the task
 
     /// @dev Swap data for performance tracking overtime
@@ -108,9 +111,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @param outputAmount The amount of outputToken received
     /// @param oraclePrice The oracle price at the time of the swap
     event RexSwap(
-        uint256 inputAmount, 
+        uint256 inputAmount,
         uint256 outputAmount,
-        uint256 oraclePrice   
+        uint256 oraclePrice
     );
 
     constructor(
@@ -123,7 +126,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         address payable _ops,
         address _taskCreator
     ) OpsTaskCreator(_ops, _taskCreator) {
-        
         host = _host;
         cfa = _cfa;
         ida = _ida;
@@ -132,23 +134,21 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         transferOwnership(_owner);
 
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
-        
 
         if (bytes(_registrationKey).length > 0) {
             host.registerAppWithKey(_configWord, _registrationKey);
         } else {
             host.registerApp(_configWord);
         }
-
     }
 
     /// @dev Creates the distribute task on Gelato Network
     function createTask() external payable onlyOwner {
         // Check the task wasn't already created
         require(taskId == bytes32(""), "Already started task");
-        
+
         // Create a timed interval task with Gelato Network
-        bytes memory execData = abi.encodeCall(this.distribute, ('', false));
+        bytes memory execData = abi.encodeCall(this.distribute, ("", false));
         ModuleData memory moduleData = ModuleData({
             modules: new Module[](1),
             args: new bytes[](1)
@@ -176,7 +176,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @param _outputToken is the output supertoken for the market
     /// @param _subsidyToken is the subsidy supertoken for the market
     /// @param _shareScaler is the scaler for the output (IDA) pool shares
-    /// @param _feeRate is the protocol dev share rate 
+    /// @param _feeRate is the protocol dev share rate
     /// @param _rateTolerance is the rate tolerance for the market
     function initializeMarket(
         ISuperToken _inputToken,
@@ -194,20 +194,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         rateTolerance = _rateTolerance;
         feeRate = _feeRate;
         affiliateFee = _affiliateFee;
-    
-        // Create a OutputPool for the outputToken
-        addOutputPool(
-            outputToken,
-            _feeRate,
-            0
-        );
-        // Create a OutputPool for the subsidyToken
-        addOutputPool(
-            subsidyToken,
-            _feeRate,
-            0
-        );
 
+        // Create a OutputPool for the outputToken
+        addOutputPool(outputToken, _feeRate, 0);
+        // Create a OutputPool for the subsidyToken
+        addOutputPool(subsidyToken, _feeRate, 0);
 
         outputPoolIndicies[outputToken] = OUTPUT_INDEX;
         outputPoolIndicies[subsidyToken] = SUBSIDY_INDEX;
@@ -217,10 +208,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // Approve upgrading underlying outputTokens if its not a supertoken
         // Supertokens have their own address as the underlying token
-        if (underlyingOutputToken != address(outputToken)) { 
+        if (underlyingOutputToken != address(outputToken)) {
             ERC20(underlyingOutputToken).safeIncreaseAllowance(
                 address(outputToken),
-                2**256 - 1
+                2 ** 256 - 1
             );
         }
 
@@ -256,7 +247,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
 
         // Require that the pool for gas reimbursements exists
-        if(address(underlyingInputToken) != address(wmatic)) {
+        if (address(underlyingInputToken) != address(wmatic)) {
             require(
                 factory.getPool(
                     address(wmatic),
@@ -267,7 +258,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             );
         }
 
-        // Use the pool for the underlying tokens for the input/output supertokens 
+        // Use the pool for the underlying tokens for the input/output supertokens
         uniswapPool = IUniswapV3Pool(
             factory.getPool(
                 address(underlyingInputToken),
@@ -279,15 +270,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // Approve Uniswap Router to spend
         ERC20(underlyingInputToken).safeIncreaseAllowance(
             address(router),
-            2**256 - 1
+            2 ** 256 - 1
         );
 
         // Approve Uniswap Router to spend subsidyToken
         ERC20(_getUnderlyingToken(subsidyToken)).safeIncreaseAllowance(
             address(router),
-            2**256 - 1
+            2 ** 256 - 1
         );
-
     }
 
     /// @dev Initialize the Chainlink Aggregator
@@ -317,7 +307,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         return price;
     }
 
-
     /// @dev Add a new output pool to the market
     /// @param _token is the output token for the pool
     /// @param _feeRate is the protocol dev share rate
@@ -327,7 +316,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         uint128 _feeRate,
         uint256 _emissionRate
     ) public onlyOwner {
-
         OutputPool memory _newPool = OutputPool(
             _token,
             _feeRate,
@@ -343,24 +331,22 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @dev Distribute tokens to streamers
     /// @param ctx is the context for the distribution
     /// @param ignoreGasReimbursement is whether to ignore gas reimbursements (i.e. Gelato)
-    function distribute(bytes memory ctx, bool ignoreGasReimbursement) 
-        public
-        payable 
-        returns (bytes memory newCtx)
-    {
-
+    function distribute(
+        bytes memory ctx,
+        bool ignoreGasReimbursement
+    ) public payable returns (bytes memory newCtx) {
         newCtx = ctx;
 
         uint gasUsed = gasleft(); // Track gas used in this function
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
-        
+
         // If there is no inputToken to distribute, then return
         if (inputTokenAmount == 0) {
             return newCtx;
         }
 
         // Swap inputToken for outputToken
-        _swap(inputTokenAmount); 
+        _swap(inputTokenAmount);
 
         // At this point, we've got enough of tokenA and tokenB to perform the distribution
         uint256 outputTokenAmount = outputToken.balanceOf(address(this));
@@ -388,14 +374,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // TODO: Emit Distribution event
 
         // Distribute subsidyToken
-        uint distAmount =
-            (block.timestamp - lastDistributedAt) *
+        uint distAmount = (block.timestamp - lastDistributedAt) *
             outputPools[SUBSIDY_INDEX].emissionRate;
         if (
-            distAmount > 0 && distAmount <
-            subsidyToken.balanceOf(
-                address(this)
-            )
+            distAmount > 0 && distAmount < subsidyToken.balanceOf(address(this))
         ) {
             newCtx = _idaDistribute(
                 SUBSIDY_INDEX,
@@ -415,12 +397,12 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             return newCtx;
         }
         // Otherwise, calculate the gas reimbursement for Gelato or for the msg.sender
-        
+
         // Get the fee details from Gelato Ops
         (uint256 fee, address feeToken) = _getFeeDetails();
 
         // If the fee is greater than 0, reimburse the fee to the Gelato Ops
-        if(fee > 0) {
+        if (fee > 0) {
             _swapForGas(fee);
             // Log the balances of the tokens
             wmatic.withdraw(wmatic.balanceOf(address(this)));
@@ -437,58 +419,58 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     // Uniswap V3 Swap Methods
 
     /// @dev Swap input token for WMATIC
-    function _swapForGas(
-        uint256 amountOut
-    ) internal returns (uint256) {
-
+    function _swapForGas(uint256 amountOut) internal returns (uint256) {
         // If the underlyingInputToken is WMATIC, then just return the amountOut
-        if(underlyingInputToken == address(wmatic)) {
+        if (underlyingInputToken == address(wmatic)) {
             return amountOut;
         }
 
         // gelatoFeeShare reserves some underlyingInputToken for gas reimbursement
         // Use this amount to swap for enough WMATIC to cover the gas fee
-        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter.ExactOutputParams({
-            path: abi.encodePacked(address(wmatic), poolFee, underlyingInputToken),
-            recipient: address(this),
-            amountOut: amountOut,
-            // This is a swap for the gas fee reimbursement and will not be frontrun
-            amountInMaximum: type(uint256).max
-        });
+        IV3SwapRouter.ExactOutputParams memory params = IV3SwapRouter
+            .ExactOutputParams({
+                path: abi.encodePacked(
+                    address(wmatic),
+                    poolFee,
+                    underlyingInputToken
+                ),
+                recipient: address(this),
+                amountOut: amountOut,
+                // This is a swap for the gas fee reimbursement and will not be frontrun
+                amountInMaximum: type(uint256).max
+            });
 
         return router.exactOutput(params);
-
     }
 
     // @notice Swap input token for output token
     // @param amount Amount of inputToken to swap
     // @return outAmount Amount of outputToken received
     // @dev This function has grown to do far more than just swap, this needs to be refactored
-    function _swap(
-        uint256 amount
-    ) internal returns (uint256 outAmount) {
+    function _swap(uint256 amount) internal returns (uint256 outAmount) {
         uint256 minOutput; // The minimum amount of output tokens based on oracle
 
         // Downgrade if this is not a supertoken
         if (underlyingInputToken != address(inputToken)) {
             inputToken.downgrade(inputToken.balanceOf(address(this)));
-        } 
-        
+        }
+
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = amount * (1e4 - gelatoFeeShare) / 1e4;
+        amount = (amount * (1e4 - gelatoFeeShare)) / 1e4;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
         uint latestPrice = uint(int(getLatestPrice()));
 
-        
         // Compute the minimumOutput based on latestPrice
         if (!invertPrice) {
-            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+            minOutput =
+                ((amount * 1e8) / latestPrice) *
+                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
         } else {
             // Invert the price, e.g. for OP>USDC market
-            minOutput = amount * latestPrice / 1e8 / 1e12;
+            minOutput = (amount * latestPrice) / 1e8 / 1e12;
         }
 
         // Apply the rate tolerance to allow for some slippage
@@ -497,7 +479,11 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
-                path: abi.encodePacked(underlyingInputToken, poolFee, underlyingOutputToken),
+                path: abi.encodePacked(
+                    underlyingInputToken,
+                    poolFee,
+                    underlyingOutputToken
+                ),
                 recipient: address(this),
                 amountIn: amount,
                 amountOutMinimum: minOutput
@@ -505,34 +491,31 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         outAmount = router.exactInput(params);
 
         // Emit swap event for performance tracking
-        emit RexSwap(
-            amount,
-            outAmount,
-            latestPrice
-        );
+        emit RexSwap(amount, outAmount, latestPrice);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
         if (underlyingOutputToken != address(outputToken)) {
             if (outputToken == maticx) {
-                wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this)));
-                ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}();
+                wmatic.withdraw(
+                    ERC20(underlyingOutputToken).balanceOf(address(this))
+                );
+                ISETHCustom(address(outputToken)).upgradeByETH{
+                    value: address(this).balance
+                }();
             } else {
                 outputToken.upgrade(
                     ERC20(underlyingOutputToken).balanceOf(address(this)) *
-                        (10**(18 - ERC20(underlyingOutputToken).decimals()))
+                        (10 ** (18 - ERC20(underlyingOutputToken).decimals()))
                 );
             }
         } // else this is a native supertoken
     }
 
-    function _isInputToken(ISuperToken _superToken)
-        internal
-        view
-        returns (bool)
-    {
-        return
-            address(_superToken) == address(inputToken); 
+    function _isInputToken(
+        ISuperToken _superToken
+    ) internal view returns (bool) {
+        return address(_superToken) == address(inputToken);
     }
 
     function _shouldDistribute() internal view returns (bool) {
@@ -548,12 +531,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // function get the underlying tokens for token a and b, if token
     // is a supertoken, then the underlying is the supertoken itself
-    function _getUnderlyingToken(ISuperToken _token)
-        internal
-        view
-        returns (address)
-    {
-
+    function _getUnderlyingToken(
+        ISuperToken _token
+    ) internal view returns (address) {
         // If the token is maticx, then the underlying token is wmatic
         if (address(_token) == address(maticx)) {
             return address(wmatic);
@@ -569,8 +549,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         return underlyingToken;
     }
 
-
-
     // Superfluid Callbacks
 
     function beforeAgreementCreated(
@@ -583,7 +561,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         _onlyHost();
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-
     }
 
     function afterAgreementCreated(
@@ -605,16 +582,20 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         }
 
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
-            _agreementData, _superToken
+            _agreementData,
+            _superToken
         );
 
         _registerReferral(_ctx, _shareholder);
 
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, referrals.getAffiliateAddress(_shareholder), 0, _flowRate, _superToken
+            _shareholder,
+            referrals.getAffiliateAddress(_shareholder),
+            0,
+            _flowRate,
+            _superToken
         );
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-
     }
 
     /// @dev Called before an agreement is updated
@@ -638,8 +619,9 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             return _ctx;
 
         // Get the stakeholders current flow rate and save it in cbData
-        (, int96 _flowRate,) = _getShareholderInfo(
-            _agreementData, _superToken
+        (, int96 _flowRate, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
         );
 
         // Encode the rate for use in afterAgreementUpdated
@@ -666,13 +648,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         // If the agreement is not a CFAv1 agreement, return the context
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
-        
+
         // Copy the argment context to a new context return variable
         _newCtx = _ctx;
 
         // Get the caller's address and current flow rate from the agreement data
-        (address _shareholder, int96 _flowRate,) = _getShareholderInfo(
-            _agreementData, _superToken
+        (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
+            _agreementData,
+            _superToken
         );
 
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementUpdated
@@ -687,11 +670,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, _flowRate, _superToken
+            _shareholder,
+            referrals.getAffiliateAddress(_shareholder),
+            _beforeFlowRate,
+            _flowRate,
+            _superToken
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
-
     }
 
     // Agreement Terminated
@@ -707,11 +693,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
 
-        (
-            ,
-            int96 _flowRateMain,
-            uint256 _timestamp
-        ) = _getShareholderInfo(_agreementData, _superToken);
+        (, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(
+            _agreementData,
+            _superToken
+        );
 
         uint256 _uinvestAmount = _calcUserUninvested(
             _timestamp,
@@ -747,24 +732,44 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         _newCtx = _ctx;
 
         // Get the caller's address and current flow rate from the agreement data
-        (address _shareholder, ) = abi.decode(_agreementData, (address, address));
-        
+        (address _shareholder, ) = abi.decode(
+            _agreementData,
+            (address, address)
+        );
+
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
-        (uint256 _uninvestAmount, int96 _beforeFlowRate ) = abi.decode(_cbdata, (uint256, int96));
+        (uint256 _uninvestAmount, int96 _beforeFlowRate) = abi.decode(
+            _cbdata,
+            (uint256, int96)
+        );
 
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
-          _shareholder, referrals.getAffiliateAddress(_shareholder), _beforeFlowRate, 0, _superToken
+            _shareholder,
+            referrals.getAffiliateAddress(_shareholder),
+            _beforeFlowRate,
+            0,
+            _superToken
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
         // Refund the unswapped amount back to the person who started the stream
-        try _superToken.transferFrom(address(this), _shareholder, _uninvestAmount)
+        try
+            _superToken.transferFrom(
+                address(this),
+                _shareholder,
+                _uninvestAmount
+            )
         // solhint-disable-next-line no-empty-blocks
-        {} catch {
+        {
+
+        } catch {
             // In case of any problems here, just log the error for record keeping and continue
-            console.log("Error refunding uninvested amount to shareholder:", _shareholder);
+            console.log(
+                "Error refunding uninvested amount to shareholder:",
+                _shareholder
+            );
             console.log("Uninvested amount:", _uninvestAmount);
         }
     }
@@ -825,7 +830,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
             new bytes(0) // user data
         );
     }
-    
+
     /// @dev Same as _updateSubscription but uses provided SuperFluid context data
     /// @param ctx SuperFluid context data
     /// @param index IDA index ID
@@ -857,8 +862,14 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     }
 
     // REX Referral Methods
-    function _registerReferral(bytes memory _ctx, address _shareholder) internal {
-        require(referrals.addressToAffiliate(_shareholder) == 0, "noAffiliates");
+    function _registerReferral(
+        bytes memory _ctx,
+        address _shareholder
+    ) internal {
+        require(
+            referrals.addressToAffiliate(_shareholder) == 0,
+            "noAffiliates"
+        );
         ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
         string memory affiliateId;
         if (decompiledContext.userData.length > 0) {
@@ -906,7 +917,6 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
                         ? _prevUpdateTimestamp
                         : _lastDistributedAt
                 ));
-
     }
 
     // Shareholder Math Methods (TODO: Move to a library?)
@@ -921,11 +931,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
         uint32 outputIndex;
         uint32 subsidyIndex;
-   
+
         outputIndex = OUTPUT_INDEX;
         subsidyIndex = SUBSIDY_INDEX;
         _shareholderUpdate.token = outputToken;
-    
 
         (
             uint128 userShares,
@@ -980,7 +989,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         }
     }
 
-    function _getShareholderInfo(bytes calldata _agreementData, ISuperToken _superToken)
+    function _getShareholderInfo(
+        bytes calldata _agreementData,
+        ISuperToken _superToken
+    )
         internal
         view
         returns (address _shareholder, int96 _flowRate, uint256 _timestamp)
@@ -1000,7 +1012,10 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
     /// @return _approved Is the subscription approved?
     /// @return _units Units of the suscription.
     /// @return _pendingDistribution Pending amount of tokens to be distributed for unapproved subscription.
-    function getIDAShares(uint32 _index, address _streamer)
+    function getIDAShares(
+        uint32 _index,
+        address _streamer
+    )
         public
         view
         returns (
@@ -1018,71 +1033,97 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
         );
     }
 
-    function _getShareAllocations(ShareholderUpdate memory _shareholderUpdate)
-     internal view returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
+    function _getShareAllocations(
+        ShareholderUpdate memory _shareholderUpdate
+    )
+        internal
+        view
+        returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
     {
-      (,,daoShares,) = getIDAShares(outputPoolIndicies[_shareholderUpdate.token], owner());
-      daoShares *= shareScaler;
+        (, , daoShares, ) = getIDAShares(
+            outputPoolIndicies[_shareholderUpdate.token],
+            owner()
+        );
+        daoShares *= shareScaler;
 
-      if (address(0) != _shareholderUpdate.affiliate) {
-        (,,affiliateShares,) = getIDAShares(outputPoolIndicies[_shareholderUpdate.token], _shareholderUpdate.affiliate);
-        affiliateShares *= shareScaler;
-      }
-
-      // Compute the change in flow rate, will be negative is slowing the flow rate
-      int96 changeInFlowRate = _shareholderUpdate.currentFlowRate - _shareholderUpdate.previousFlowRate;
-      uint128 feeShares;
-      // if the change is positive value then DAO has some new shares,
-      // which would be 2% of the increase in shares
-      if(changeInFlowRate > 0) {
-        // Add new shares to the DAO
-        feeShares = uint128(uint256(int256(changeInFlowRate)) * feeRate / 1e6);
         if (address(0) != _shareholderUpdate.affiliate) {
-          affiliateShares += feeShares * affiliateFee / 1e6;
-          feeShares -= feeShares * affiliateFee / 1e6;
+            (, , affiliateShares, ) = getIDAShares(
+                outputPoolIndicies[_shareholderUpdate.token],
+                _shareholderUpdate.affiliate
+            );
+            affiliateShares *= shareScaler;
         }
-        daoShares += feeShares;
-      } else {
-        // Make the rate positive
-        changeInFlowRate = -1 * changeInFlowRate;
-        feeShares = uint128(uint256(int256(changeInFlowRate)) * feeRate / 1e6);
-        if (address(0) != _shareholderUpdate.affiliate) {
-          affiliateShares -= (feeShares * affiliateFee / 1e6 > affiliateShares) ? affiliateShares : feeShares * affiliateFee / 1e6;
-          feeShares -= feeShares * affiliateFee / 1e6;
+
+        // Compute the change in flow rate, will be negative is slowing the flow rate
+        int96 changeInFlowRate = _shareholderUpdate.currentFlowRate -
+            _shareholderUpdate.previousFlowRate;
+        uint128 feeShares;
+        // if the change is positive value then DAO has some new shares,
+        // which would be 2% of the increase in shares
+        if (changeInFlowRate > 0) {
+            // Add new shares to the DAO
+            feeShares = uint128(
+                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
+            );
+            if (address(0) != _shareholderUpdate.affiliate) {
+                affiliateShares += (feeShares * affiliateFee) / 1e6;
+                feeShares -= (feeShares * affiliateFee) / 1e6;
+            }
+            daoShares += feeShares;
+        } else {
+            // Make the rate positive
+            changeInFlowRate = -1 * changeInFlowRate;
+            feeShares = uint128(
+                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
+            );
+            if (address(0) != _shareholderUpdate.affiliate) {
+                affiliateShares -= ((feeShares * affiliateFee) / 1e6 >
+                    affiliateShares)
+                    ? affiliateShares
+                    : (feeShares * affiliateFee) / 1e6;
+                feeShares -= (feeShares * affiliateFee) / 1e6;
+            }
+            daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
         }
-        daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
-      }
-      userShares = uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) * (1e6 - feeRate) / 1e6;
+        userShares =
+            (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) *
+                (1e6 - feeRate)) /
+            1e6;
 
-      // Scale back shares
-      affiliateShares /= shareScaler;
-      daoShares /= shareScaler;
-      userShares /= shareScaler;
-
+        // Scale back shares
+        affiliateShares /= shareScaler;
+        daoShares /= shareScaler;
+        userShares /= shareScaler;
     }
 
     /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
     /// @param streamer is stream source (streamer) address
     function closeStream(address streamer, ISuperToken token) public {
-      // Only closable iff their balance is less than 8 hours of streaming
-      (,int96 streamerFlowRate,,) = cfa.getFlow(token, streamer, address(this));
-      // int96 streamerFlowRate = getStreamRate(token, streamer);
-      require(int(token.balanceOf(streamer)) <= streamerFlowRate * 8 hours,
-                "!closable");
+        // Only closable iff their balance is less than 8 hours of streaming
+        (, int96 streamerFlowRate, , ) = cfa.getFlow(
+            token,
+            streamer,
+            address(this)
+        );
+        // int96 streamerFlowRate = getStreamRate(token, streamer);
+        require(
+            int(token.balanceOf(streamer)) <= streamerFlowRate * 8 hours,
+            "!closable"
+        );
 
-      // Close the streamers stream
-      // Does this trigger before/afterAgreementTerminated
-      host.callAgreement(
-          cfa,
-          abi.encodeWithSelector(
-              cfa.deleteFlow.selector,
-              token,
-              streamer,
-              address(this),
-              new bytes(0) // placeholder
-          ),
-          "0x"
-      );
+        // Close the streamers stream
+        // Does this trigger before/afterAgreementTerminated
+        host.callAgreement(
+            cfa,
+            abi.encodeWithSelector(
+                cfa.deleteFlow.selector,
+                token,
+                streamer,
+                address(this),
+                new bytes(0) // placeholder
+            ),
+            "0x"
+        );
     }
 
     /// @dev Withdraw subsidy token from the contract
@@ -1092,10 +1133,7 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     /// @dev Sets emission rate for a output pool/token
     /// @param _emissionRate Emission rate for the output pool/token
-    function setEmissionRate(uint128 _emissionRate)
-        external
-        onlyOwner
-    {
+    function setEmissionRate(uint128 _emissionRate) external onlyOwner {
         outputPools[SUBSIDY_INDEX].emissionRate = _emissionRate;
     }
 
@@ -1117,6 +1155,4 @@ contract REXUniswapV3Market is Ownable, SuperAppBase, Initializable, OpsTaskCrea
 
     // Payable for X->MATICx markets to work
     receive() external payable {}
-
 }
-

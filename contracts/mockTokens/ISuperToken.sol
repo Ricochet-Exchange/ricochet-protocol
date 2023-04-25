@@ -71,11 +71,9 @@ interface SuperToken is IERC20, IERC777 {
     /**
      * @dev Returns the amount of tokens owned by an account (`owner`).
      */
-    function balanceOf(address account)
-        external
-        view
-        override(IERC777, IERC20)
-        returns (uint256 balance);
+    function balanceOf(
+        address account
+    ) external view override(IERC777, IERC20) returns (uint256 balance);
 
     /**************************************************************************
      * ERC20
@@ -88,10 +86,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount)
-        external
-        override(IERC20)
-        returns (bool);
+    function transfer(
+        address recipient,
+        uint256 amount
+    ) external override(IERC20) returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -100,11 +98,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(address owner, address spender)
-        external
-        view
-        override(IERC20)
-        returns (uint256);
+    function allowance(
+        address owner,
+        address spender
+    ) external view override(IERC20) returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -120,10 +117,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * Emits an {Approval} event.
      */
-    function approve(address spender, uint256 amount)
-        external
-        override(IERC20)
-        returns (bool);
+    function approve(
+        address spender,
+        uint256 amount
+    ) external override(IERC20) returns (bool);
 
     /**
      * @dev Moves `amount` tokens from `sender` to `recipient` using the
@@ -152,9 +149,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue)
-        external
-        returns (bool);
+    function increaseAllowance(
+        address spender,
+        uint256 addedValue
+    ) external returns (bool);
 
     /**
      * @dev Atomically decreases the allowance granted to `spender` by the caller.
@@ -170,9 +168,10 @@ interface SuperToken is IERC20, IERC777 {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue)
-        external
-        returns (bool);
+    function decreaseAllowance(
+        address spender,
+        uint256 subtractedValue
+    ) external returns (bool);
 
     /**************************************************************************
      * ERC777
@@ -222,9 +221,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * - the caller must have at least `amount` tokens.
      */
-    function burn(uint256 amount, bytes calldata data)
-        external
-        override(IERC777);
+    function burn(
+        uint256 amount,
+        bytes calldata data
+    ) external override(IERC777);
 
     /**
      * @dev Returns true if an account is an operator of `tokenHolder`.
@@ -233,11 +233,10 @@ interface SuperToken is IERC20, IERC777 {
      *
      * See {operatorSend} and {operatorBurn}.
      */
-    function isOperatorFor(address operator, address tokenHolder)
-        external
-        view
-        override(IERC777)
-        returns (bool);
+    function isOperatorFor(
+        address operator,
+        address tokenHolder
+    ) external view override(IERC777) returns (bool);
 
     /**
      * @dev Make an account an operator of the caller.

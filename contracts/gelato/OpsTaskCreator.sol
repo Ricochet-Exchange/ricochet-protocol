@@ -13,9 +13,10 @@ abstract contract OpsTaskCreator is OpsReady {
     address public immutable fundsOwner;
     ITaskTreasuryUpgradable public immutable taskTreasury;
 
-    constructor(address _ops, address _fundsOwner)
-        OpsReady(_ops, address(this))
-    {
+    constructor(
+        address _ops,
+        address _fundsOwner
+    ) OpsReady(_ops, address(this)) {
         fundsOwner = _fundsOwner;
         taskTreasury = ops.taskTreasury();
     }
@@ -68,11 +69,10 @@ abstract contract OpsTaskCreator is OpsReady {
         return abi.encode(_resolverAddress, _resolverData);
     }
 
-    function _timeModuleArg(uint256 _startTime, uint256 _interval)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function _timeModuleArg(
+        uint256 _startTime,
+        uint256 _interval
+    ) internal pure returns (bytes memory) {
         return abi.encode(uint128(_startTime), uint128(_interval));
     }
 
