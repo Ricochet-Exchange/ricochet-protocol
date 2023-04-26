@@ -43,8 +43,8 @@ export const Constants : {[key: string]: any} = {
 
         // Deployment constants for UniswapV3 market
         SHARE_SCALER: 10000,
-        FEE_RATE: 5000,
-        AFFILAITE_FEE: 500000,
+        FEE_RATE: 50,
+        AFFILAITE_FEE: 5000,
         RATE_TOLERANCE: 150,
         UNISWAP_POOL_FEE: 500,
 
@@ -116,8 +116,8 @@ export const Constants : {[key: string]: any} = {
 
         // Deployment constants for UniswapV3 market
         SHARE_SCALER: 10000,
-        FEE_RATE: 5000,
-        AFFILAITE_FEE: 500000,
+        FEE_RATE: 50,
+        AFFILAITE_FEE: 5000,
         INITIAL_PRICE: '1550000000000000000000',
         RATE_TOLERANCE: 300,
         UNISWAP_POOL_FEE: 3000,
@@ -153,8 +153,8 @@ export const Constants : {[key: string]: any} = {
         // Deployment constants for UniswapV3 market
         REX_DEPLOYER_ADDRESS: "0x3226C9EaC0379F04Ba2b1E1e1fcD52ac26309aeA",
         SHARE_SCALER: 10000,
-        FEE_RATE: 5000,
-        AFFILAITE_FEE: 500000,
+        FEE_RATE: 50,
+        AFFILAITE_FEE: 5000,
         INITIAL_PRICE: '1000000000000000000',
         RATE_TOLERANCE: 150,
 

@@ -91,6 +91,7 @@ contract REXUniswapV3Market is
     uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
     uint32 public constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
     uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
+    uint128 public constant BASIS_POINT_SCALER = 1e4; // The scaler for basis points
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
@@ -454,7 +455,9 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = (amount * (1e4 - gelatoFeeShare)) / 1e4;
+        amount =
+            (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) /
+            BASIS_POINT_SCALER;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
@@ -472,7 +475,9 @@ contract REXUniswapV3Market is
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput = (minOutput * (1e4 - rateTolerance)) / 1e4;
+        minOutput =
+            (minOutput * (BASIS_POINT_SCALER - rateTolerance)) /
+            BASIS_POINT_SCALER;
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -1061,32 +1066,37 @@ contract REXUniswapV3Market is
         if (changeInFlowRate > 0) {
             // Add new shares to the DAO
             feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
+                (uint256(int256(changeInFlowRate)) * feeRate) /
+                    BASIS_POINT_SCALER
             );
             if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares += (feeShares * affiliateFee) / 1e6;
-                feeShares -= (feeShares * affiliateFee) / 1e6;
+                affiliateShares +=
+                    (feeShares * affiliateFee) /
+                    BASIS_POINT_SCALER;
+                feeShares -= (feeShares * affiliateFee) / BASIS_POINT_SCALER;
             }
             daoShares += feeShares;
         } else {
             // Make the rate positive
             changeInFlowRate = -1 * changeInFlowRate;
             feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
+                (uint256(int256(changeInFlowRate)) * feeRate) /
+                    BASIS_POINT_SCALER
             );
             if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares -= ((feeShares * affiliateFee) / 1e6 >
+                affiliateShares -= ((feeShares * affiliateFee) /
+                    BASIS_POINT_SCALER >
                     affiliateShares)
                     ? affiliateShares
-                    : (feeShares * affiliateFee) / 1e6;
-                feeShares -= (feeShares * affiliateFee) / 1e6;
+                    : (feeShares * affiliateFee) / BASIS_POINT_SCALER;
+                feeShares -= (feeShares * affiliateFee) / BASIS_POINT_SCALER;
             }
             daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
         }
         userShares =
             (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) *
-                (1e6 - feeRate)) /
-            1e6;
+                (BASIS_POINT_SCALER - feeRate)) /
+            BASIS_POINT_SCALER;
 
         // Scale back shares
         affiliateShares /= shareScaler;
