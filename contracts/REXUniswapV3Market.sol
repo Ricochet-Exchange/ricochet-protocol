@@ -458,7 +458,9 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) / BASIS_POINT_SCALER;
+        amount =
+            (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) /
+            BASIS_POINT_SCALER;
 
         // @dev Calculate minOutput based on oracle
         // @dev This should be its own method
@@ -475,7 +477,9 @@ contract REXUniswapV3Market is
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput = (minOutput * (BASIS_POINT_SCALER  - rateTolerance)) / BASIS_POINT_SCALER ;
+        minOutput =
+            (minOutput * (BASIS_POINT_SCALER - rateTolerance)) /
+            BASIS_POINT_SCALER;
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -1064,10 +1068,13 @@ contract REXUniswapV3Market is
         if (changeInFlowRate > 0) {
             // Add new shares to the DAO
             feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / BASIS_POINT_SCALER
+                (uint256(int256(changeInFlowRate)) * feeRate) /
+                    BASIS_POINT_SCALER
             );
             if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares += (feeShares * affiliateFee) / BASIS_POINT_SCALER;
+                affiliateShares +=
+                    (feeShares * affiliateFee) /
+                    BASIS_POINT_SCALER;
                 feeShares -= (feeShares * affiliateFee) / BASIS_POINT_SCALER;
             }
             daoShares += feeShares;
@@ -1075,10 +1082,12 @@ contract REXUniswapV3Market is
             // Make the rate positive
             changeInFlowRate = -1 * changeInFlowRate;
             feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / BASIS_POINT_SCALER
+                (uint256(int256(changeInFlowRate)) * feeRate) /
+                    BASIS_POINT_SCALER
             );
             if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares -= ((feeShares * affiliateFee) / BASIS_POINT_SCALER >
+                affiliateShares -= ((feeShares * affiliateFee) /
+                    BASIS_POINT_SCALER >
                     affiliateShares)
                     ? affiliateShares
                     : (feeShares * affiliateFee) / BASIS_POINT_SCALER;
@@ -1090,7 +1099,6 @@ contract REXUniswapV3Market is
             (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) *
                 (BASIS_POINT_SCALER - feeRate)) /
             BASIS_POINT_SCALER;
-
 
         // Scale back shares
         affiliateShares /= shareScaler;
