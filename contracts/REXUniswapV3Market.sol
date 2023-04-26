@@ -296,14 +296,11 @@ contract REXUniswapV3Market is
     /// @return price is the latest price
     /// @notice From https://docs.chain.link/data-feeds/using-data-feeds
     function getLatestPrice() public view returns (int) {
-        // prettier-ignore
-        (
-            /* uint80 roundID */,
-            int price,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        if (address(priceFeed) == address(0)) {
+            return 0;
+        }  
+
+        (,int price, , ,) = priceFeed.latestRoundData();
         return price;
     }
 
@@ -463,14 +460,15 @@ contract REXUniswapV3Market is
         // @dev This should be its own method
         uint latestPrice = uint(int(getLatestPrice()));
 
-        // Compute the minimumOutput based on latestPrice
-        if (!invertPrice) {
-            minOutput =
-                ((amount * 1e8) / latestPrice) *
-                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
+        // If there's no oracle address setup, don't protect against slippage
+        if (latestPrice == 0) {
+            minOutput = 0; 
+        } else if (!invertPrice) {
+            // This is the common case, e.g. USDC >> ETH
+            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
         } else {
-            // Invert the price, e.g. for OP>USDC market
-            minOutput = (amount * latestPrice) / 1e8 / 1e12;
+            // Invert the price provided by the oracle, e.g. ETH >> USDC
+            minOutput = amount * latestPrice / 1e8 / 1e12;
         }
 
         // Apply the rate tolerance to allow for some slippage
