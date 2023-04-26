@@ -307,7 +307,7 @@ describe('REXUniswapV3Market', () => {
        
     });
 
-    xcontext("#1 - USDC >> ETH", async () => {
+    context("#1 - USDC >> ETH", async () => {
 
         before(async () => {
            
@@ -1241,7 +1241,7 @@ describe('REXUniswapV3Market', () => {
         });
         
         // Pending until more RIC-MATIC liquidity on Uniswap
-        it.only("#3.1 manual distribution", async () => {
+        it("#3.1 manual distribution", async () => {
             // Check balance
             await takeMeasurements();
 
