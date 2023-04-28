@@ -1008,6 +1008,23 @@ contract REXUniswapV3Market is
         );
     }
 
+    /**
+     * @dev Calculates the time for the next distribution based on the given input parameters in wei.
+     *
+     * @param gasPrice The gas price in wei per gas unit for the transaction.
+     * @param gasLimit The maximum amount of gas to be used for the transaction.
+     * @param inflowRate The rate of incoming tokens per second.
+     * @param lastDistributedAt The timestamp of the last token distribution.
+     * @param tokenToMaticRate The conversion rate from tokens to Matic.
+     *
+     * @return The timestamp for the next token distribution.
+     */
+    function getNextDistributionTime(uint256 gasPrice, uint256 gasLimit, uint256 inflowRate, uint256 lastDistributedAt, uint256 tokenToMaticRate) public view returns (uint256) {
+        uint256 tokenAmount = gasPrice * gasLimit * tokenToMaticRate;
+        uint256 timeToDistribute = (tokenAmount / inflowRate) / (10 ** 9);
+        return lastDistributedAt + timeToDistribute;
+    }
+
     /// @dev Get `_streamer` IDA subscription info for token with index `_index`
     /// @param _index is token index in IDA
     /// @param _streamer is streamer address
