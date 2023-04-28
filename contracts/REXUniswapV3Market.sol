@@ -450,7 +450,12 @@ contract REXUniswapV3Market is
 
         // Downgrade if this is not a supertoken
         if (underlyingInputToken != address(inputToken)) {
-            inputToken.downgrade(inputToken.balanceOf(address(this)));
+            try inputToken.downgrade(inputToken.balanceOf(address(this))) {} catch {
+                
+                ISETHCustom(address(inputToken)).downgradeToETH(
+                    inputToken.balanceOf(address(this))
+                );
+            }
         }
 
         // Calculate the amount of tokens
