@@ -1517,18 +1517,23 @@ describe('REXUniswapV3Market', () => {
     })
 
     it('#4.2 Should return the correct next distribution time', async () => {
-      const gasPrice = 320; // 300 GWEI
-      const gasLimit = 120000;
-      const inflowRate = 10555; // infow in gwei -> 0.38 usd / hr
-      const lastDistributedAt = 1651261812;
-      const tokenToMaticRate = 10 ** 9; // 1 matic = 1 usd
-  
-      const expectedDistributionTime = lastDistributedAt + 3638; // Around 1 hour
-  
-      const actualDistributionTime = await market.getNextDistributionTime(gasPrice, gasLimit, inflowRate, lastDistributedAt, tokenToMaticRate);
-  
-      expect(actualDistributionTime).to.equal(expectedDistributionTime);
+      const gasPrice = 320 // 300 GWEI
+      const gasLimit = 120000
+      const inflowRate = 10555 // infow in gwei -> 0.38 usd / hr
+      const lastDistributedAt = 1651261812
+      const tokenToMaticRate = 10 ** 9 // 1 matic = 1 usd
+
+      const expectedDistributionTime = lastDistributedAt + 3638 // Around 1 hour
+
+      const actualDistributionTime = await market.getNextDistributionTime(
+        gasPrice,
+        gasLimit,
+        inflowRate,
+        lastDistributedAt,
+        tokenToMaticRate
+      )
+
+      expect(actualDistributionTime).to.equal(expectedDistributionTime)
     })
-    
   })
 })
