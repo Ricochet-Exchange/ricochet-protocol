@@ -1527,12 +1527,16 @@ describe('REXUniswapV3Market', () => {
         account: market.address,
         providerOrSigner: adminSigner,
       })
-      console.log("Market input token NetFlowRate:", netFlowRate.toString())
-      console.log("Last Distribution time:", lastDistributedAt.toString())
+      console.log('Market input token NetFlowRate:', netFlowRate.toString())
+      console.log('Last Distribution time:', lastDistributedAt.toString())
 
       const actualDistributionTime = await market.getNextDistributionTime(gasPrice, gasLimit, tokenToMaticRate)
 
-      const calculatedDistributionTime = parseInt(lastDistributedAt) + (Math.floor(Math.floor((gasPrice * gasLimit * tokenToMaticRate) / 10 ** 9) / Math.floor(parseInt(netFlowRate) / 10 ** 9)))
+      const calculatedDistributionTime =
+        parseInt(lastDistributedAt) +
+        Math.floor(
+          Math.floor((gasPrice * gasLimit * tokenToMaticRate) / 10 ** 9) / Math.floor(parseInt(netFlowRate) / 10 ** 9)
+        )
 
       expect(actualDistributionTime).to.equal(calculatedDistributionTime)
     })
