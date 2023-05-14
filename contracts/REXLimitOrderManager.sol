@@ -40,6 +40,15 @@ contract REXLimitOrderManager {
         uint256 _price
     );
 
+    /**
+     * 
+     * @notice Creates a new limit order.
+     * @dev The order is created with the specified parameters.
+     * @param _market The address of the REX market where the order is placed for.
+     * @param _isInverted A boolean indicating if the order is for an inverted market.
+     * @param _streamRate The streaming rate for the order.
+     * @param _price The price at which the order is placed.
+     */
     function createLimitOrder(
         address _market,
         bool _isInverted,
@@ -72,6 +81,12 @@ contract REXLimitOrderManager {
         );
     }
 
+    /**
+     *
+     * @notice Cancels a limit order.
+     * @dev The order is cancelled for the specified market, msg.sender is used for user's address.
+     * @param _market The address of the REX market where the order is placed for.
+     */
     function cancelLimitOrder(address _market) public {
         LimitOrder memory order = limitOrders[msg.sender][_market];
         order.executed = true; // fail safe
@@ -87,6 +102,13 @@ contract REXLimitOrderManager {
         // TODO: cancel gelato task
     }
 
+    /**
+     * 
+     * @notice Updates the user's stream if order is in limit.
+     * @dev The user's stream is updated based on the current price of the market.
+     * @param _user The address of the user whose stream is updated.
+     * @param _market The address of the REX market where the order is placed for. 
+     */
     function updateUserStream(address _user, address _market) external {
         LimitOrder memory order = limitOrders[_user][_market];
         require(order.executed == false, "Already executed");
