@@ -1515,5 +1515,30 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(bobSigner)
     })
+
+    it('#4.2 Should return the correct next distribution time', async () => {
+      const gasPrice = 3200 // 3200 GWEI
+      const gasLimit = 120000
+      const tokenToMaticRate = 10 ** 9 // 1 matic = 1 usd
+      const lastDistributedAt = await market.lastDistributedAt()
+
+      const netFlowRate = await sf.cfaV1.getNetFlow({
+        superToken: ricochetMATICx.address,
+        account: market.address,
+        providerOrSigner: adminSigner,
+      })
+      console.log('Market input token NetFlowRate:', netFlowRate.toString())
+      console.log('Last Distribution time:', lastDistributedAt.toString())
+
+      const actualDistributionTime = await market.getNextDistributionTime(gasPrice, gasLimit, tokenToMaticRate)
+
+      const calculatedDistributionTime =
+        parseInt(lastDistributedAt) +
+        Math.floor(
+          Math.floor((gasPrice * gasLimit * tokenToMaticRate) / 10 ** 9) / Math.floor(parseInt(netFlowRate) / 10 ** 9)
+        )
+
+      expect(actualDistributionTime).to.equal(calculatedDistributionTime)
+    })
   })
 })
