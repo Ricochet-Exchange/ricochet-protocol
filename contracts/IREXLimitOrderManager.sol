@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
 interface IREXLimitOrderManager {
     struct LimitOrder {
         bool isInverted;
-        uint256 streamRate;
+        int96 streamRate;
         uint256 price;
         uint256 taskId;
         bool executed;
@@ -27,7 +27,7 @@ interface IREXLimitOrderManager {
     function createLimitOrder(
         address _market,
         bool _isInverted,
-        uint256 _streamRate,
+        int96 _streamRate,
         uint256 _price
     ) external;
 
