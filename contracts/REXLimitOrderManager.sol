@@ -6,7 +6,7 @@ import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/inte
 
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import {AutomateTaskCreator} from "./gelato/AutomateTaskCreator.sol";
+import "./gelato/AutomateTaskCreator.sol";
 
 import "./IREXUniswapV3Market.sol";
 
@@ -70,7 +70,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
             "No ACL permission"
         );
 
-        bytes32 taskId = createGelatoTask(); // TODO: create gelato task
+        bytes32 taskId = createGelatoTask(msg.sender, _market);
 
         limitOrders[msg.sender][_market] = LimitOrder(
             _isInverted,
@@ -98,7 +98,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         LimitOrder memory order = limitOrders[msg.sender][_market];
         order.executed = true; // fail safe
 
-        cancelGelatoTask(order.taskId); // TODO: cancel gelato task
+        cancelGelatoTask(order.taskId);
     }
 
     function createGelatoTask(
@@ -122,7 +122,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
 
         taskId = _createTask(
             address(this),
-            abi.encodeCall(this.updateUserStream, (_user, _market)),
+            abi.encode(this.updateUserStream, abi.encodePacked(_user, _market)),
             moduleData,
             ETH
         );
@@ -147,7 +147,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
         if (price < order.price) {
-            token.createFlowFrom(_user, _market, order.streamRate);
+            token.createFlowFrom(_user, _market, int96(int(order.streamRate)));
         }
     }
 
@@ -157,12 +157,14 @@ contract REXLimitOrderManager is AutomateTaskCreator {
     ) external view returns (bool canExec, bytes memory execPayload) {
         LimitOrder memory order = limitOrders[_user][_market];
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
-        ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
 
         if (price < order.price) {
             canExec = true;
-            execPayload = abi.encode(this.updateUserStream, (_user, _market));
+            execPayload = abi.encode(
+                this.updateUserStream,
+                abi.encodePacked(_user, _market)
+            );
         } else {
             canExec = false;
         }
