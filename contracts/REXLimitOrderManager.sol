@@ -21,7 +21,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
 
     struct LimitOrder {
         bool isInverted;
-        uint256 streamRate;
+        int96 streamRate;
         uint256 price;
         bytes32 taskId;
         bool executed;
@@ -43,7 +43,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         address _user,
         address _market,
         bool _isInverted,
-        uint256 _streamRate,
+        int96 _streamRate,
         uint256 _price
     );
 
@@ -59,7 +59,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
     function createLimitOrder(
         address _market,
         bool _isInverted,
-        uint256 _streamRate,
+        int96 _streamRate,
         uint256 _price
     ) external {
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
@@ -147,7 +147,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
         if (price < order.price) {
-            token.createFlowFrom(_user, _market, int96(int(order.streamRate)));
+            token.createFlowFrom(_user, _market, order.streamRate);
         }
     }
 
