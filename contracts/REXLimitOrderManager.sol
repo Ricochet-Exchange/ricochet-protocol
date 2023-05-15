@@ -6,6 +6,8 @@ import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/inte
 
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
+import {AutomateTaskCreator} from "./gelato/AutomateTaskCreator.sol";
+
 import "./IREXUniswapV3Market.sol";
 
 /**
@@ -14,7 +16,7 @@ import "./IREXUniswapV3Market.sol";
  * @notice This contract manages limit orders in the Ricochet protocol.
  *
  */
-contract REXLimitOrderManager {
+contract REXLimitOrderManager is AutomateTaskCreator {
     using SuperTokenV1Library for ISuperToken;
 
     struct LimitOrder {
@@ -24,6 +26,11 @@ contract REXLimitOrderManager {
         bytes32 taskId;
         bool executed;
     }
+
+    constructor(
+        address _automate,
+        address _fundsOwner
+    ) AutomateTaskCreator(_automate, _fundsOwner) {}
 
     /**
      * @notice This mapping stores the limit orders for each user.
@@ -41,7 +48,7 @@ contract REXLimitOrderManager {
     );
 
     /**
-     * 
+     *
      * @notice Creates a new limit order.
      * @dev The order is created with the specified parameters.
      * @param _market The address of the REX market where the order is placed for.
@@ -94,20 +101,43 @@ contract REXLimitOrderManager {
         cancelGelatoTask(order.taskId); // TODO: cancel gelato task
     }
 
-    function createGelatoTask() internal returns (bytes32 taskId) {
-        // TODO: create gelato task
+    function createGelatoTask(
+        address _user,
+        address _market
+    ) internal returns (bytes32 taskId) {
+        ModuleData memory moduleData = ModuleData({
+            modules: new Module[](2),
+            args: new bytes[](2)
+        });
+
+        moduleData.modules[0] = Module.RESOLVER;
+        moduleData.modules[1] = Module.SINGLE_EXEC;
+
+        moduleData.args[0] = _resolverModuleArg(
+            address(this),
+            abi.encodeCall(this.checker, (_user, _market))
+        );
+
+        moduleData.args[1] = _proxyModuleArg();
+
+        taskId = _createTask(
+            address(this),
+            abi.encodeCall(this.updateUserStream, (_user, _market)),
+            moduleData,
+            ETH
+        );
     }
 
     function cancelGelatoTask(bytes32 _taskId) internal {
-        // TODO: cancel gelato task
+        _cancelTask(_taskId);
     }
 
     /**
-     * 
+     *
      * @notice Updates the user's stream if order is in limit.
      * @dev The user's stream is updated based on the current price of the market.
      * @param _user The address of the user whose stream is updated.
-     * @param _market The address of the REX market where the order is placed for. 
+     * @param _market The address of the REX market where the order is placed for.
      */
     function updateUserStream(address _user, address _market) external {
         LimitOrder memory order = limitOrders[_user][_market];
@@ -118,6 +148,23 @@ contract REXLimitOrderManager {
         uint256 price = uint256(uint(market.getLatestPrice()));
         if (price < order.price) {
             token.createFlowFrom(_user, _market, order.streamRate);
+        }
+    }
+
+    function checker(
+        address _user,
+        address _market
+    ) external view returns (bool canExec, bytes memory execPayload) {
+        LimitOrder memory order = limitOrders[_user][_market];
+        IREXUniswapV3Market market = IREXUniswapV3Market(_market);
+        ISuperToken token = ISuperToken(market.inputToken());
+        uint256 price = uint256(uint(market.getLatestPrice()));
+
+        if (price < order.price) {
+            canExec = true;
+            execPayload = abi.encode(this.updateUserStream, (_user, _market));
+        } else {
+            canExec = false;
         }
     }
 }
