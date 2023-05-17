@@ -25,6 +25,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         uint256 price;
         bytes32 taskId;
         bool executed;
+        uint256 ttl; // time to live
     }
 
     constructor(
@@ -65,10 +66,8 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
 
-        require(
-            token.isOperatorFor(address(this), msg.sender),
-            "No ACL permission"
-        );
+        // check if address(this) is an operator for the user
+        require(token.isOperatorFor(address(this), msg.sender), "ACL");
 
         bytes32 taskId = createGelatoTask(msg.sender, _market);
 
@@ -77,7 +76,8 @@ contract REXLimitOrderManager is AutomateTaskCreator {
             _streamRate,
             _price,
             taskId,
-            false
+            false,
+            block.timestamp + 7 days
         );
         emit LimitOrderCreated(
             msg.sender,
@@ -106,19 +106,16 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         address _market
     ) internal returns (bytes32 taskId) {
         ModuleData memory moduleData = ModuleData({
-            modules: new Module[](2),
-            args: new bytes[](2)
+            modules: new Module[](1),
+            args: new bytes[](1)
         });
 
         moduleData.modules[0] = Module.RESOLVER;
-        moduleData.modules[1] = Module.SINGLE_EXEC;
 
         moduleData.args[0] = _resolverModuleArg(
             address(this),
             abi.encodeCall(this.checker, (_user, _market))
         );
-
-        moduleData.args[1] = _proxyModuleArg();
 
         taskId = _createTask(
             address(this),
@@ -141,13 +138,20 @@ contract REXLimitOrderManager is AutomateTaskCreator {
      */
     function updateUserStream(address _user, address _market) external {
         LimitOrder memory order = limitOrders[_user][_market];
-        require(order.executed == false, "Already executed");
+        // Already executed or cancelled
+        require(order.executed == false, "AE");
+
+        require(order.ttl > block.timestamp, "TTL");
 
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
         if (price < order.price) {
             token.createFlowFrom(_user, _market, order.streamRate);
+        } else {
+            if (token.getFlowRate(_user, _market) > 0) {
+                token.deleteFlowFrom(_user, _market);
+            }
         }
     }
 
@@ -158,7 +162,9 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         LimitOrder memory order = limitOrders[_user][_market];
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         uint256 price = uint256(uint(market.getLatestPrice()));
+        ISuperToken token = ISuperToken(market.inputToken());
 
+        int96 curRate = token.getFlowRate(_user, _market);
         if (price < order.price) {
             canExec = true;
             execPayload = abi.encode(
@@ -167,6 +173,13 @@ contract REXLimitOrderManager is AutomateTaskCreator {
             );
         } else {
             canExec = false;
+            if (curRate > 0) {
+                canExec = true;
+                execPayload = abi.encode(
+                    this.updateUserStream,
+                    abi.encodePacked(_user, _market)
+                );
+            }
         }
     }
 }
