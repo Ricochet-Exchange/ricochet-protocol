@@ -61,7 +61,8 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         address _market,
         bool _isInverted,
         int96 _streamRate,
-        uint256 _price
+        uint256 _price,
+        uint256 _ttl
     ) external {
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
@@ -77,7 +78,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
             _price,
             taskId,
             false,
-            block.timestamp + 7 days
+            _ttl
         );
         emit LimitOrderCreated(
             msg.sender,
@@ -96,9 +97,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
      */
     function cancelLimitOrder(address _market) public {
         LimitOrder memory order = limitOrders[msg.sender][_market];
-        order.executed = true; // fail safe
-
-        cancelGelatoTask(order.taskId);
+        _cancelTask(order.taskId);
     }
 
     function createGelatoTask(
@@ -125,10 +124,6 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         );
     }
 
-    function cancelGelatoTask(bytes32 _taskId) internal {
-        _cancelTask(_taskId);
-    }
-
     /**
      *
      * @notice Updates the user's stream if order is in limit.
@@ -138,14 +133,15 @@ contract REXLimitOrderManager is AutomateTaskCreator {
      */
     function updateUserStream(address _user, address _market) external {
         LimitOrder memory order = limitOrders[_user][_market];
-        // Already executed or cancelled
-        require(order.executed == false, "AE");
 
-        require(order.ttl > block.timestamp, "TTL");
+        if (order.ttl < block.timestamp && order.executed == false) {
+            _cancelTask(order.taskId);
+        }
 
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
+        order.executed = true;
         if (price < order.price) {
             token.createFlowFrom(_user, _market, order.streamRate);
         } else {
@@ -160,6 +156,9 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         address _market
     ) external view returns (bool canExec, bytes memory execPayload) {
         LimitOrder memory order = limitOrders[_user][_market];
+        if (order.executed == false && order.ttl < block.timestamp) {
+            return (false, "");
+        }
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         uint256 price = uint256(uint(market.getLatestPrice()));
         ISuperToken token = ISuperToken(market.inputToken());
