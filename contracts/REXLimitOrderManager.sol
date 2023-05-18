@@ -141,11 +141,13 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
         uint256 price = uint256(uint(market.getLatestPrice()));
+        int96 curRate = token.getFlowRate(_user, _market);
+
         order.executed = true;
-        if (price < order.price) {
+        if (price < order.price && curRate == 0) {
             token.createFlowFrom(_user, _market, order.streamRate);
         } else {
-            if (token.getFlowRate(_user, _market) > 0) {
+            if (curRate > 0) {
                 token.deleteFlowFrom(_user, _market);
             }
         }
@@ -164,7 +166,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         ISuperToken token = ISuperToken(market.inputToken());
 
         int96 curRate = token.getFlowRate(_user, _market);
-        if (price < order.price) {
+        if (price < order.price && curRate == 0) {
             canExec = true;
             execPayload = abi.encode(
                 this.updateUserStream,
