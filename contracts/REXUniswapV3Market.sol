@@ -174,6 +174,9 @@ contract REXUniswapV3Market is
         underlyingOutputToken = _getUnderlyingToken(outputToken);
         underlyingInputToken = _getUnderlyingToken(inputToken);
 
+        // Make the output IDA pool
+        _createIndex(OUTPUT_INDEX, outputToken);
+
         // Approve upgrading underlying outputTokens if its not a supertoken
         // Supertokens have their own address as the underlying token
         if (underlyingOutputToken != address(outputToken)) {

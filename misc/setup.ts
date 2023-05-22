@@ -1,8 +1,6 @@
 import { waffle, ethers } from "hardhat";
-console.log("start");
 import { impersonateAccounts } from "./helpers";
 import { Framework, SuperToken } from "@superfluid-finance/sdk-core";
-console.log("start");
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Constants } from "./Constants";
 import * as dotenv from "dotenv";
