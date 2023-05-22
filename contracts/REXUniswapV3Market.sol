@@ -77,6 +77,7 @@ contract REXUniswapV3Market is
     ISuperToken public maticx;
     uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
     uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
+    uint128 public constant BASIS_POINT_SCALER = 1e4; // The scaler for basis points
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
@@ -265,14 +266,7 @@ contract REXUniswapV3Market is
             return 0;
         }  
 
-        // prettier-ignore
-        (
-            /* uint80 roundID */,
-            int price,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        (,int price, , ,) = priceFeed.latestRoundData();
         return price;
     }
 
@@ -391,9 +385,9 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-
-        // Reduce the amount by the gelatoFeeShare, save some inputTokens to pay gas
-        amount = (amount * (1e4 - gelatoFeeShare)) / 1e4;
+        amount =
+            (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) /
+            BASIS_POINT_SCALER;
 
         // Calculate minOutput based on oracle
         latestPrice = uint(int(getLatestPrice()));
@@ -409,7 +403,9 @@ contract REXUniswapV3Market is
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput = (minOutput * (1e4 - rateTolerance)) / 1e4;
+        minOutput =
+            (minOutput * (BASIS_POINT_SCALER - rateTolerance)) /
+            BASIS_POINT_SCALER;
 
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
@@ -882,6 +878,23 @@ contract REXUniswapV3Market is
             _shareholder,
             address(this)
         );
+    }
+
+    /**
+     * @dev Calculates the time for the next distribution based on the given input parameters in wei.
+     *
+     * @param gasPrice The gas price in wei per gas unit for the transaction.
+     * @param gasLimit The maximum amount of gas to be used for the transaction.
+     * @param tokenToMaticRate The conversion rate from tokens to Matic.
+     *
+     * @return The timestamp for the next token distribution.
+     */
+    function getNextDistributionTime(uint256 gasPrice, uint256 gasLimit, uint256 tokenToMaticRate) public view returns (uint256) {
+        uint256 inflowRate = uint256(int256(cfa.getNetFlow(inputToken, address(this)))) / (10 ** 9); // Safe conversion - Netflow rate will always we positive or zero
+        
+        uint256 tokenAmount = gasPrice * gasLimit * tokenToMaticRate;
+        uint256 timeToDistribute = (tokenAmount / inflowRate) / (10 ** 9);
+        return lastDistributedAt + timeToDistribute;
     }
 
     /// @dev Get `_streamer` IDA subscription info for token with index `_index`
