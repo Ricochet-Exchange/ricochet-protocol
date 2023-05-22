@@ -261,6 +261,10 @@ contract REXUniswapV3Market is
     /// @return price is the latest price
     /// @notice From https://docs.chain.link/data-feeds/using-data-feeds
     function getLatestPrice() public view returns (int) {
+        if (address(priceFeed) == address(0)) {
+            return 0;
+        }  
+
         // prettier-ignore
         (
             /* uint80 roundID */,
@@ -393,13 +397,15 @@ contract REXUniswapV3Market is
 
         // Calculate minOutput based on oracle
         latestPrice = uint(int(getLatestPrice()));
-        if (!invertPrice) {
-            minOutput =
-                ((amount * 1e8) / latestPrice) *
-                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
+        // If there's no oracle address setup, don't protect against slippage
+        if (latestPrice == 0) {
+            minOutput = 0; 
+        } else if (!invertPrice) {
+            // This is the common case, e.g. USDC >> ETH
+            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
         } else {
-            // Invert the price, e.g. for OP>USDC market
-            minOutput = (amount * latestPrice) / 1e8 / 1e12;
+            // Invert the price provided by the oracle, e.g. ETH >> USDC
+            minOutput = amount * latestPrice / 1e8 / 1e12;
         }
 
         // Apply the rate tolerance to allow for some slippage
@@ -444,6 +450,12 @@ contract REXUniswapV3Market is
         return address(_superToken) == address(inputToken);
     }
 
+    function _isOutputToken(
+        ISuperToken _superToken
+    ) internal view returns (bool) {
+        return address(_superToken) == address(outputToken);
+    }
+
     function _shouldDistribute() internal view returns (bool) {
         // TODO: Might no longer be required
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
@@ -485,8 +497,16 @@ contract REXUniswapV3Market is
         bytes calldata _ctx
     ) external view virtual override returns (bytes memory _cbdata) {
         _onlyHost();
-        if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
+
+        // Make sure the agreement is either:
+        // - inputToken and CFAv1
+        // - outputToken and IDAv1
+        require((_isInputToken(_superToken) && _isCFAv1(_agreementClass)) || (_isOutputToken(_superToken) && _isIDAv1(_agreementClass)), "!token");
+        
+        // If this isn't a CFA Agreement class, return the context and be done
+        if (!_isCFAv1(_agreementClass))
             return _ctx;
+
     }
 
     function afterAgreementCreated(
@@ -555,7 +575,6 @@ contract REXUniswapV3Market is
     /// @param _superToken The agreement SuperToken for this update
     /// @param _agreementClass The agreement class for this update
     /// @param _agreementData Agreement data associated with this update
-    /// @param _cbdata Callback data associated with this update
     /// @param _ctx SuperFluid context data
     /// @return _newCtx updated SuperFluid context data
     function afterAgreementUpdated(
@@ -563,7 +582,7 @@ contract REXUniswapV3Market is
         address _agreementClass,
         bytes32, //_agreementId,
         bytes calldata _agreementData,
-        bytes calldata _cbdata,
+        bytes calldata, // _cbdata,
         bytes calldata _ctx
     ) external virtual override returns (bytes memory _newCtx) {
         _onlyHost();
@@ -580,9 +599,6 @@ contract REXUniswapV3Market is
             _agreementData,
             _superToken
         );
-
-        // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementUpdated
-        int96 _beforeFlowRate = abi.decode(_cbdata, (int96));
 
         // Before updating the shares, check if the distribution should be triggered
         // Trigger the distribution flushes the system before changing share allocations
@@ -625,7 +641,7 @@ contract REXUniswapV3Market is
             // Select the correct lastDistributedAt for this _superToken
             lastDistributedAt
         );
-        _cbdata = abi.encode(_uinvestAmount, int256(_flowRateMain));
+        _cbdata = abi.encode(_uinvestAmount);
     }
 
     /// @dev Called after an agreement is terminated
@@ -659,9 +675,9 @@ contract REXUniswapV3Market is
         );
 
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
-        (uint256 _uninvestAmount, int96 _beforeFlowRate) = abi.decode(
+        (uint256 _uninvestAmount) = abi.decode(
             _cbdata,
-            (uint256, int96)
+            (uint256)
         );
 
         // Build the shareholder update parameters and update the shareholder
@@ -791,6 +807,16 @@ contract REXUniswapV3Market is
             ISuperAgreement(_agreementClass).agreementType() ==
             keccak256(
                 "org.superfluid-finance.agreements.ConstantFlowAgreement.v1"
+            );
+    }
+        /// @dev Checks if the agreementClass is a CFAv1 agreement
+    /// @param _agreementClass Agreement class address
+    /// @return _isIDAv1 is the agreement class a CFAv1 agreement
+    function _isIDAv1(address _agreementClass) internal view returns (bool) {
+        return
+            ISuperAgreement(_agreementClass).agreementType() ==
+            keccak256(
+                "org.superfluid-finance.agreements.InstantDistributionAgreement.v1"
             );
     }
 
