@@ -27,7 +27,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./ISETHCustom.sol";
 import "./matic/IWMATIC.sol";
 import "./superswap/interfaces/ISwapRouter02.sol";
-import "./referral/IREXReferral.sol";
 
 // Hardhat console
 import "hardhat/console.sol";
@@ -45,8 +44,6 @@ contract REXUniswapV3Market is
     // Parameters needed to perform a shareholder update (i.e. a flow rate update)
     struct ShareholderUpdate {
         address shareholder; // The shareholder to update
-        address affiliate; // The affiliate to update
-        int96 previousFlowRate; // The previous flow rate of the shareholder
         int96 currentFlowRate; // The current flow rate of the shareholder
         ISuperToken token; // The token to update the flow rate for
     }
@@ -54,7 +51,6 @@ contract REXUniswapV3Market is
     // The struct for the output pools (i.e. Superfluid IDA pools)
     struct OutputPool {
         ISuperToken token; // The token to distribute
-        uint128 feeRate; // Fee taken by the DAO on each output distribution
         uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
     }
 
@@ -69,27 +65,17 @@ contract REXUniswapV3Market is
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
 
-    // REX Referral System
-    IREXReferral internal referrals;
-
     // REX Market Variables
-    mapping(uint32 => OutputPool) public outputPools; // Maps IDA indexes to their distributed Supertokens
-    mapping(ISuperToken => uint32) public outputPoolIndicies; // Maps tokens to their IDA indexes in OutputPools
-    uint32 public numOutputPools; // The number of output pools
     uint public lastDistributedAt; // The timestamp of the last distribution
     uint public rateTolerance; // The percentage to deviate from the oracle (basis points)
-    uint128 public feeRate; // Fee taken by the protocol on each distribution (basis points)
-    uint128 public affiliateFee; // Fee taken by the affilaite on each distribution (basis points)
     uint128 public shareScaler; // The scaler to apply to the share of the outputToken pool
     ISuperToken public inputToken; // e.g. USDCx
     ISuperToken public outputToken; // e.g. ETHx
-    ISuperToken public subsidyToken; // e.g. RICx
     address public underlyingInputToken; // e.g. USDC
     address public underlyingOutputToken; // e.g. WETH
     IWMATIC public wmatic;
     ISuperToken public maticx;
     uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
-    uint32 public constant SUBSIDY_INDEX = 1; // Superfluid IDA Index for subsidyToken's output pool
     uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
 
     // Uniswap Variables
@@ -122,14 +108,12 @@ contract REXUniswapV3Market is
         IConstantFlowAgreementV1 _cfa,
         IInstantDistributionAgreementV1 _ida,
         string memory _registrationKey,
-        IREXReferral _rexReferral,
         address payable _ops,
         address _taskCreator
     ) OpsTaskCreator(_ops, _taskCreator) {
         host = _host;
         cfa = _cfa;
         ida = _ida;
-        referrals = _rexReferral;
 
         transferOwnership(_owner);
 
@@ -174,34 +158,18 @@ contract REXUniswapV3Market is
     /// @dev Initilalize the REX Market contract
     /// @param _inputToken is the input supertoken for the market
     /// @param _outputToken is the output supertoken for the market
-    /// @param _subsidyToken is the subsidy supertoken for the market
     /// @param _shareScaler is the scaler for the output (IDA) pool shares
-    /// @param _feeRate is the protocol dev share rate
     /// @param _rateTolerance is the rate tolerance for the market
     function initializeMarket(
         ISuperToken _inputToken,
         ISuperToken _outputToken,
-        ISuperToken _subsidyToken,
         uint128 _shareScaler,
-        uint128 _feeRate,
-        uint128 _affiliateFee,
         uint256 _rateTolerance
     ) public onlyOwner initializer {
         inputToken = _inputToken;
         outputToken = _outputToken;
-        subsidyToken = _subsidyToken;
         shareScaler = _shareScaler;
         rateTolerance = _rateTolerance;
-        feeRate = _feeRate;
-        affiliateFee = _affiliateFee;
-
-        // Create a OutputPool for the outputToken
-        addOutputPool(outputToken, _feeRate, 0);
-        // Create a OutputPool for the subsidyToken
-        addOutputPool(subsidyToken, _feeRate, 0);
-
-        outputPoolIndicies[outputToken] = OUTPUT_INDEX;
-        outputPoolIndicies[subsidyToken] = SUBSIDY_INDEX;
 
         underlyingOutputToken = _getUnderlyingToken(outputToken);
         underlyingInputToken = _getUnderlyingToken(inputToken);
@@ -272,12 +240,6 @@ contract REXUniswapV3Market is
             address(router),
             2 ** 256 - 1
         );
-
-        // Approve Uniswap Router to spend subsidyToken
-        ERC20(_getUnderlyingToken(subsidyToken)).safeIncreaseAllowance(
-            address(router),
-            2 ** 256 - 1
-        );
     }
 
     /// @dev Initialize the Chainlink Aggregator
@@ -307,27 +269,6 @@ contract REXUniswapV3Market is
         return price;
     }
 
-    /// @dev Add a new output pool to the market
-    /// @param _token is the output token for the pool
-    /// @param _feeRate is the protocol dev share rate
-    /// @param _emissionRate is the emission rate for the pool
-    function addOutputPool(
-        ISuperToken _token,
-        uint128 _feeRate,
-        uint256 _emissionRate
-    ) public onlyOwner {
-        OutputPool memory _newPool = OutputPool(
-            _token,
-            _feeRate,
-            _emissionRate
-        );
-        outputPools[numOutputPools] = _newPool;
-        outputPoolIndicies[_token] = numOutputPools;
-        // Create a Superfluid IDA index for the output pool
-        _createIndex(numOutputPools, _token);
-        numOutputPools++;
-    }
-
     /// @dev Distribute tokens to streamers
     /// @param ctx is the context for the distribution
     /// @param ignoreGasReimbursement is whether to ignore gas reimbursements (i.e. Gelato)
@@ -345,11 +286,14 @@ contract REXUniswapV3Market is
             return newCtx;
         }
 
-        // Swap inputToken for outputToken
-        _swap(inputTokenAmount);
+        // Swap inputToken for outputToken, capture the latest price and output amount
+        (uint256 outputTokenAmount, uint256 latestPrice) = _swap(inputTokenAmount);
 
-        // At this point, we've got enough of tokenA and tokenB to perform the distribution
-        uint256 outputTokenAmount = outputToken.balanceOf(address(this));
+        // Emit swap event for performance tracking purposes
+        emit RexSwap(inputTokenAmount, outputTokenAmount, latestPrice);
+
+        // Set outputTokenAmount to the balanceOf to account for any spare change from last round
+        outputTokenAmount = outputToken.balanceOf(address(this));
 
         // If there is no outputToken to distribute, then return
         if (outputTokenAmount == 0) {
@@ -370,23 +314,6 @@ contract REXUniswapV3Market is
             outputToken,
             newCtx
         );
-
-        // TODO: Emit Distribution event
-
-        // Distribute subsidyToken
-        uint distAmount = (block.timestamp - lastDistributedAt) *
-            outputPools[SUBSIDY_INDEX].emissionRate;
-        if (
-            distAmount > 0 && distAmount < subsidyToken.balanceOf(address(this))
-        ) {
-            newCtx = _idaDistribute(
-                SUBSIDY_INDEX,
-                uint128(distAmount),
-                subsidyToken,
-                newCtx
-            );
-            // TODO: Emit SubsidyDistribution event
-        }
 
         // Record when the last distribution happened for other calculations
         lastDistributedAt = block.timestamp;
@@ -447,7 +374,7 @@ contract REXUniswapV3Market is
     // @param amount Amount of inputToken to swap
     // @return outAmount Amount of outputToken received
     // @dev This function has grown to do far more than just swap, this needs to be refactored
-    function _swap(uint256 amount) internal returns (uint256 outAmount) {
+    function _swap(uint256 amount) internal returns (uint256 outAmount, uint256 latestPrice) {
         uint256 minOutput; // The minimum amount of output tokens based on oracle
 
         // Downgrade if this is not a supertoken
@@ -457,13 +384,12 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
+
+        // Reduce the amount by the gelatoFeeShare, save some inputTokens to pay gas
         amount = (amount * (1e4 - gelatoFeeShare)) / 1e4;
 
-        // @dev Calculate minOutput based on oracle
-        // @dev This should be its own method
-        uint latestPrice = uint(int(getLatestPrice()));
-
-        // Compute the minimumOutput based on latestPrice
+        // Calculate minOutput based on oracle
+        latestPrice = uint(int(getLatestPrice()));
         if (!invertPrice) {
             minOutput =
                 ((amount * 1e8) / latestPrice) *
@@ -489,9 +415,6 @@ contract REXUniswapV3Market is
                 amountOutMinimum: minOutput
             });
         outAmount = router.exactInput(params);
-
-        // Emit swap event for performance tracking
-        emit RexSwap(amount, outAmount, latestPrice);
 
         // Upgrade if this is not a supertoken
         // TODO: This should be its own method
@@ -522,7 +445,7 @@ contract REXUniswapV3Market is
         // TODO: Might no longer be required
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
             .getIndex(
-                outputPools[OUTPUT_INDEX].token,
+                outputToken,
                 address(this),
                 OUTPUT_INDEX
             );
@@ -580,18 +503,15 @@ contract REXUniswapV3Market is
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx, true);
         }
+        
 
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData,
             _superToken
         );
 
-        _registerReferral(_ctx, _shareholder);
-
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
             _shareholder,
-            referrals.getAffiliateAddress(_shareholder),
-            0,
             _flowRate,
             _superToken
         );
@@ -671,8 +591,6 @@ contract REXUniswapV3Market is
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
             _shareholder,
-            referrals.getAffiliateAddress(_shareholder),
-            _beforeFlowRate,
             _flowRate,
             _superToken
         );
@@ -746,8 +664,6 @@ contract REXUniswapV3Market is
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
             _shareholder,
-            referrals.getAffiliateAddress(_shareholder),
-            _beforeFlowRate,
             0,
             _superToken
         );
@@ -755,6 +671,7 @@ contract REXUniswapV3Market is
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
 
         // Refund the unswapped amount back to the person who started the stream
+        // Methods in the terminate callback can not revert, hence the try-catch
         try
             _superToken.transferFrom(
                 address(this),
@@ -765,7 +682,7 @@ contract REXUniswapV3Market is
         {
 
         } catch {
-            // In case of any problems here, just log the error for record keeping and continue
+            // In case of any problems here, log the error for record keeping and continue
             console.log(
                 "Error refunding uninvested amount to shareholder:",
                 _shareholder
@@ -861,26 +778,6 @@ contract REXUniswapV3Market is
         );
     }
 
-    // REX Referral Methods
-    function _registerReferral(
-        bytes memory _ctx,
-        address _shareholder
-    ) internal {
-        require(
-            referrals.addressToAffiliate(_shareholder) == 0,
-            "noAffiliates"
-        );
-        ISuperfluid.Context memory decompiledContext = host.decodeCtx(_ctx);
-        string memory affiliateId;
-        if (decompiledContext.userData.length > 0) {
-            (affiliateId) = abi.decode(decompiledContext.userData, (string));
-        } else {
-            affiliateId = "";
-        }
-
-        referrals.safeRegisterCustomer(_shareholder, affiliateId);
-    }
-
     // Helper Methods
 
     /// @dev Checks if the agreementClass is a CFAv1 agreement
@@ -925,24 +822,12 @@ contract REXUniswapV3Market is
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
     ) internal returns (bytes memory _newCtx) {
-        // Check the input supertoken used and figure out the output Index
-        // inputToken maps the OUTPUT_INDEX
-        // maybe a better way to do this
+        
+        _newCtx = _ctx;
 
-        uint32 outputIndex;
-        uint32 subsidyIndex;
-
-        outputIndex = OUTPUT_INDEX;
-        subsidyIndex = SUBSIDY_INDEX;
         _shareholderUpdate.token = outputToken;
 
-        (
-            uint128 userShares,
-            uint128 daoShares,
-            uint128 affiliateShares
-        ) = _getShareAllocations(_shareholderUpdate);
-
-        _newCtx = _ctx;
+        uint128 userShares = _getShareAllocations(_shareholderUpdate);
 
         // TODO: Update the fee taken by the DAO, Affiliate
         _newCtx = _updateSubscriptionWithContext(
@@ -952,41 +837,6 @@ contract REXUniswapV3Market is
             userShares,
             outputToken
         );
-        _newCtx = _updateSubscriptionWithContext(
-            _newCtx,
-            SUBSIDY_INDEX,
-            _shareholderUpdate.shareholder,
-            userShares,
-            subsidyToken
-        );
-        _newCtx = _updateSubscriptionWithContext(
-            _newCtx,
-            OUTPUT_INDEX,
-            owner(),
-            daoShares,
-            outputToken
-        );
-        // Owner is not added to subsidy pool
-
-        address affiliate = referrals.getAffiliateAddress(
-            _shareholderUpdate.shareholder
-        );
-        if (affiliate != address(0)) {
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                OUTPUT_INDEX,
-                affiliate,
-                affiliateShares,
-                outputToken
-            );
-            _newCtx = _updateSubscriptionWithContext(
-                _newCtx,
-                SUBSIDY_INDEX,
-                affiliate,
-                affiliateShares,
-                subsidyToken
-            );
-        }
     }
 
     function _getShareholderInfo(
@@ -1006,14 +856,12 @@ contract REXUniswapV3Market is
     }
 
     /// @dev Get `_streamer` IDA subscription info for token with index `_index`
-    /// @param _index is token index in IDA
     /// @param _streamer is streamer address
     /// @return _exist Does the subscription exist?
     /// @return _approved Is the subscription approved?
     /// @return _units Units of the suscription.
     /// @return _pendingDistribution Pending amount of tokens to be distributed for unapproved subscription.
     function getIDAShares(
-        uint32 _index,
         address _streamer
     )
         public
@@ -1026,9 +874,9 @@ contract REXUniswapV3Market is
         )
     {
         (_exist, _approved, _units, _pendingDistribution) = ida.getSubscription(
-            outputPools[_index].token,
+            outputToken,
             address(this),
-            _index,
+            OUTPUT_INDEX,
             _streamer
         );
     }
@@ -1038,61 +886,13 @@ contract REXUniswapV3Market is
     )
         internal
         view
-        returns (uint128 userShares, uint128 daoShares, uint128 affiliateShares)
+        returns (uint128 userShares)
     {
-        (, , daoShares, ) = getIDAShares(
-            outputPoolIndicies[_shareholderUpdate.token],
-            owner()
-        );
-        daoShares *= shareScaler;
 
-        if (address(0) != _shareholderUpdate.affiliate) {
-            (, , affiliateShares, ) = getIDAShares(
-                outputPoolIndicies[_shareholderUpdate.token],
-                _shareholderUpdate.affiliate
-            );
-            affiliateShares *= shareScaler;
-        }
+        // The user's shares will always be their current flow rate
+        userShares = (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))));
 
-        // Compute the change in flow rate, will be negative is slowing the flow rate
-        int96 changeInFlowRate = _shareholderUpdate.currentFlowRate -
-            _shareholderUpdate.previousFlowRate;
-        uint128 feeShares;
-        // if the change is positive value then DAO has some new shares,
-        // which would be 2% of the increase in shares
-        if (changeInFlowRate > 0) {
-            // Add new shares to the DAO
-            feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
-            );
-            if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares += (feeShares * affiliateFee) / 1e6;
-                feeShares -= (feeShares * affiliateFee) / 1e6;
-            }
-            daoShares += feeShares;
-        } else {
-            // Make the rate positive
-            changeInFlowRate = -1 * changeInFlowRate;
-            feeShares = uint128(
-                (uint256(int256(changeInFlowRate)) * feeRate) / 1e6
-            );
-            if (address(0) != _shareholderUpdate.affiliate) {
-                affiliateShares -= ((feeShares * affiliateFee) / 1e6 >
-                    affiliateShares)
-                    ? affiliateShares
-                    : (feeShares * affiliateFee) / 1e6;
-                feeShares -= (feeShares * affiliateFee) / 1e6;
-            }
-            daoShares -= (feeShares > daoShares) ? daoShares : feeShares;
-        }
-        userShares =
-            (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))) *
-                (1e6 - feeRate)) /
-            1e6;
-
-        // Scale back shares
-        affiliateShares /= shareScaler;
-        daoShares /= shareScaler;
+        // The flow rate is scaled to account for the fact you can't by any ETH with just 1 wei of USDC
         userShares /= shareScaler;
     }
 
@@ -1124,17 +924,6 @@ contract REXUniswapV3Market is
             ),
             "0x"
         );
-    }
-
-    /// @dev Withdraw subsidy token from the contract
-    function withdrawSubsidyToken(uint _amount) external onlyOwner {
-        require(subsidyToken.transfer(owner(), _amount), "WST");
-    }
-
-    /// @dev Sets emission rate for a output pool/token
-    /// @param _emissionRate Emission rate for the output pool/token
-    function setEmissionRate(uint128 _emissionRate) external onlyOwner {
-        outputPools[SUBSIDY_INDEX].emissionRate = _emissionRate;
     }
 
     /// @dev sets the rateTolerance for the swap

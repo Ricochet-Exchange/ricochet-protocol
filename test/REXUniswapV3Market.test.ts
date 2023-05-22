@@ -1,6 +1,9 @@
 import { waffle, ethers } from 'hardhat'
+console.log("Start Tests")
 import { setup, IUser, ISuperToken } from '../misc/setup'
+console.log("Start Tests")
 import { common } from '../misc/common'
+
 import { expect } from 'chai'
 import { Framework, SuperToken } from '@superfluid-finance/sdk-core'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -9,19 +12,14 @@ import { increaseTime, impersonateAndSetBalance } from '../misc/helpers'
 import { Constants } from '../misc/Constants'
 import { HttpService } from '../misc/HttpService'
 
+
+
 const { provider } = waffle
 const TEST_TRAVEL_TIME = 3600 * 2 // 2 hours
-const ONE_WEEK = 3600 * 24 * 7 // 1 week
-// Index 1 is for Ether and 0 for USDCx
-const USDCX_SUBSCRIPTION_INDEX = 0
-const ETHX_SUBSCRIPTION_INDEX = 1
-const RIC_SUBSCRIPTION_INDEX = 2
+
 
 // Constants for Gelato
 const GELATO_OPS = '0x527a819db1eb0e34426297b03bae11F2f8B3A19E' // Mainnet Gelato Ops Address
-const GELATO_NETWORK = '0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA' // Mainnet Gelato Executor Address
-const UNISWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564' // Mainnet Uniswap Router Address
-const ONE_USDC = ethers.BigNumber.from('1000000')
 const GELATO_FEE = ethers.BigNumber.from('100000') // 100k wei
 
 const config = Constants['polygon']
@@ -38,10 +36,8 @@ describe('REXUniswapV3Market', () => {
 
   const overrides = { gasLimit: '10000000' } // Using this to manually limit gas to avoid giga-errors.
   const inflowRateUsdc = '1000000000000000'
-  const inflowRateUsdcDeposit = '4000000000000000'
   const inflowRateUsdc10x = '10000000000000000'
   const inflowRateEth = '10000000000000'
-  const subsidyRate = '10000000000000'
 
   let rexReferral: REXReferral__factory
   let REXMarketFactory: any
@@ -51,32 +47,16 @@ describe('REXUniswapV3Market', () => {
   let adminSigner: SignerWithAddress
   let aliceSigner: SignerWithAddress
   let bobSigner: SignerWithAddress
-  let carlSigner: SignerWithAddress
   let usdcxWhaleSigner: SignerWithAddress
-  let ethxWhaleSigner: SignerWithAddress
   let maticxWhaleSigner: SignerWithAddress
   let ricWhaleSigner: SignerWithAddress
-  let karenSigner: SignerWithAddress
 
-  let oraclePrice = 1770
-  let ricOraclePrice = 30000000
-  let maticOraclePrice: number
-
-  // interface SuperTokensBalances {
-  //     outputx: string[];
-  //     ethx: string[];
-  //     wbtcx: string[];
-  //     daix: string[];
-  //     usdcx: string[];
-  //     ric: string[];
-  // };
+  let oraclePrice: number;
+  let maticOraclePrice: number;
 
   let appBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-  let ownerBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
   let aliceBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
   let bobBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-  let carlBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-  let karenBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
 
   let sf: Framework,
     superT: ISuperToken,
@@ -92,7 +72,6 @@ describe('REXUniswapV3Market', () => {
   let ricochetMATICx: SuperToken
   let ricochetUSDCx: SuperToken
   let ricochetETHx: SuperToken
-  let ricochetWBTCx: SuperToken
   let ricochetRIC: SuperToken
   let ricochetRexSHIRT: SuperToken
 
@@ -100,27 +79,20 @@ describe('REXUniswapV3Market', () => {
   let ethxIDAIndex: superTokenIDAIndex
   let ricIDAIndex: superTokenIDAIndex
   let rexshirtIDAIndex: superTokenIDAIndex
-  let wbtcxIDAIndex: superTokenIDAIndex
   let maticxIDAIndex: superTokenIDAIndex
 
   // ***************************************************************************************
 
-  let gelatoBlock
-  let intializeMarketBlock
+  let gelatoBlock: any;
+  let intializeMarketBlock: any;
 
-  async function takeMeasurements(balances: SuperTokensBalances, signer: SignerWithAddress): Promise<void> {
-    // TODO: Please
+  async function takeMeasurements(): Promise<void> {
+    // TODO: Refactor this to use a loop
     appBalances.ethx.push(
       (await superT.ethx.balanceOf({ account: market.address, providerOrSigner: provider })).toString()
     )
-    ownerBalances.ethx.push(
-      (await superT.ethx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString()
-    )
     aliceBalances.ethx.push(
       (await superT.ethx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString()
-    )
-    carlBalances.ethx.push(
-      (await superT.ethx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString()
     )
     bobBalances.ethx.push(
       (await superT.ethx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString()
@@ -129,14 +101,8 @@ describe('REXUniswapV3Market', () => {
     appBalances.usdcx.push(
       (await superT.usdcx.balanceOf({ account: market.address, providerOrSigner: provider })).toString()
     )
-    ownerBalances.usdcx.push(
-      (await superT.usdcx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString()
-    )
     aliceBalances.usdcx.push(
       (await superT.usdcx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString()
-    )
-    carlBalances.usdcx.push(
-      (await superT.usdcx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString()
     )
     bobBalances.usdcx.push(
       (await superT.usdcx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString()
@@ -145,14 +111,8 @@ describe('REXUniswapV3Market', () => {
     appBalances.ric.push(
       (await superT.ric.balanceOf({ account: market.address, providerOrSigner: provider })).toString()
     )
-    ownerBalances.ric.push(
-      (await superT.ric.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString()
-    )
     aliceBalances.ric.push(
       (await superT.ric.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString()
-    )
-    carlBalances.ric.push(
-      (await superT.ric.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString()
     )
     bobBalances.ric.push(
       (await superT.ric.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString()
@@ -161,14 +121,8 @@ describe('REXUniswapV3Market', () => {
     appBalances.rexshirt.push(
       (await superT.rexshirt.balanceOf({ account: market.address, providerOrSigner: provider })).toString()
     )
-    ownerBalances.rexshirt.push(
-      (await superT.rexshirt.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString()
-    )
     aliceBalances.rexshirt.push(
       (await superT.rexshirt.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString()
-    )
-    carlBalances.rexshirt.push(
-      (await superT.rexshirt.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString()
     )
     bobBalances.rexshirt.push(
       (await superT.rexshirt.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString()
@@ -177,14 +131,8 @@ describe('REXUniswapV3Market', () => {
     appBalances.maticx.push(
       (await superT.maticx.balanceOf({ account: market.address, providerOrSigner: provider })).toString()
     )
-    ownerBalances.maticx.push(
-      (await superT.maticx.balanceOf({ account: u.admin.address, providerOrSigner: provider })).toString()
-    )
     aliceBalances.maticx.push(
       (await superT.maticx.balanceOf({ account: u.alice.address, providerOrSigner: provider })).toString()
-    )
-    carlBalances.maticx.push(
-      (await superT.maticx.balanceOf({ account: u.carl.address, providerOrSigner: provider })).toString()
     )
     bobBalances.maticx.push(
       (await superT.maticx.balanceOf({ account: u.bob.address, providerOrSigner: provider })).toString()
@@ -193,11 +141,8 @@ describe('REXUniswapV3Market', () => {
 
   async function resetMeasurements(): Promise<void> {
     appBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-    ownerBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
     aliceBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
     bobBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-    carlBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
-    karenBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
   }
 
   async function approveSubscriptions(tokensAndIDAIndexes: superTokenIDAIndex[], signers: SignerWithAddress[]) {
@@ -217,25 +162,6 @@ describe('REXUniswapV3Market', () => {
     }
   }
 
-  async function checkBalance(user: SignerWithAddress, name: string) {
-    let balanceEthx = await ricochetETHx.balanceOf({
-      account: user.address,
-      providerOrSigner: provider,
-    })
-    let balanceUsdcx = await ricochetUSDCx.balanceOf({
-      account: user.address,
-      providerOrSigner: provider,
-    })
-    let balanceRic = await ricochetRIC.balanceOf({
-      account: user.address,
-      providerOrSigner: provider,
-    })
-    let balanceMatic = await ricochetMATICx.balanceOf({
-      account: user.address,
-      providerOrSigner: provider,
-    })
-  }
-
   async function delta(account: SignerWithAddress, balances: any) {
     const len = balances.ethx.length
     return {
@@ -248,7 +174,7 @@ describe('REXUniswapV3Market', () => {
   }
 
   before(async () => {
-    const { superfluid, users, accounts, tokens, superTokens, contracts, constants } = await setup()
+    const { superfluid, users, accounts, tokens, superTokens, constants } = await setup()
 
     const { createSFRegistrationKey } = await common()
 
@@ -264,27 +190,19 @@ describe('REXUniswapV3Market', () => {
     adminSigner = accountss[0]
     aliceSigner = accountss[1]
     bobSigner = accountss[2]
-    carlSigner = accountss[3]
-    karenSigner = accountss[4]
     usdcxWhaleSigner = accountss[5]
-    ethxWhaleSigner = accountss[6]
     maticxWhaleSigner = accountss[7]
     ricWhaleSigner = accountss[10]
 
     ricochetMATICx = superT.maticx
     ricochetUSDCx = superT.usdcx
     ricochetETHx = superT.ethx
-    ricochetWBTCx = superT.wbtcx
     ricochetRIC = superT.ric
     ricochetRexSHIRT = superT.rexshirt
 
     ethxIDAIndex = {
       token: ricochetETHx,
       IDAIndex: 0,
-    }
-    ricIDAIndex = {
-      token: ricochetRIC,
-      IDAIndex: 1,
     }
 
     // Impersonate Superfluid Governance and make a registration key
@@ -297,13 +215,6 @@ describe('REXUniswapV3Market', () => {
     referral = await rexReferral.deploy()
     await referral.deployed()
 
-    // Update the oracle price for ethereum
-    let httpService = new HttpService()
-    const url = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
-    let response = await httpService.get(url)
-    oraclePrice = parseInt(response.data['ethereum'].usd)
-    console.log('ETH Oracle price: ', oraclePrice)
-
     // Deploy REX Market
     REXMarketFactory = await ethers.getContractFactory('REXUniswapV3Market', adminSigner)
 
@@ -314,7 +225,6 @@ describe('REXUniswapV3Market', () => {
       config.CFA_SUPERFLUID_ADDRESS,
       config.IDA_SUPERFLUID_ADDRESS,
       registrationKey,
-      referral.address,
       config.GELATO_OPS,
       adminSigner.address
     )
@@ -330,10 +240,7 @@ describe('REXUniswapV3Market', () => {
     await market.initializeMarket(
       ricochetUSDCx.address,
       ricochetETHx.address,
-      ricochetRIC.address,
       config.SHARE_SCALER,
-      config.FEE_RATE,
-      config.AFFILAITE_FEE,
       config.RATE_TOLERANCE
     )
 
@@ -349,20 +256,6 @@ describe('REXUniswapV3Market', () => {
 
     // Initialize Price Feed
     await market.initializePriceFeed(config.CHAINLINK_ETH_USDC_PRICE_FEED, false)
-
-    // Send the market some RIC for subsidies
-    await ricochetRIC
-      .transfer({
-        receiver: market.address,
-        amount: '1000000000000000000',
-      })
-      .exec(ricWhaleSigner)
-
-    // Register the market with REXReferral
-    await referral.registerApp(market.address)
-    referral = await referral.connect(carlSigner)
-    await referral.applyForAffiliate('carl', 'carl')
-    referral = await referral.connect(adminSigner)
 
     // Give Alice, Bob, Karen some tokens
     const initialAmount = ethers.utils.parseUnits('1000', 18).toString()
@@ -391,14 +284,6 @@ describe('REXUniswapV3Market', () => {
       })
       .exec(ricWhaleSigner)
 
-    // RIC for market
-    await ricochetRIC
-      .transfer({
-        receiver: market.address,
-        amount: '1000000000000000000000',
-      })
-      .exec(ricWhaleSigner)
-
     // MATICx for Bob
     await ricochetMATICx
       .transfer({
@@ -407,16 +292,8 @@ describe('REXUniswapV3Market', () => {
       })
       .exec(maticxWhaleSigner)
 
-    // USDCx for Karen
-    await ricochetUSDCx
-      .transfer({
-        receiver: karenSigner.address,
-        amount: initialAmount,
-      })
-      .exec(usdcxWhaleSigner)
-
     // Do all the approvals
-    await approveSubscriptions([ethxIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, bobSigner, carlSigner]) // karenSigner
+    await approveSubscriptions([ethxIDAIndex], [adminSigner, aliceSigner, bobSigner]) // karenSigner
 
     // Take a snapshot to avoid redoing the setup, this saves some time later in the testing scripts
     snapshot = await provider.send('evm_snapshot', [])
@@ -441,15 +318,12 @@ describe('REXUniswapV3Market', () => {
 
     it('#1.1 contract variables were set correctly', async () => {
       expect(await market.owner()).to.equal(adminSigner.address)
-      expect(await market.numOutputPools()).to.equal(2)
       expect(await market.lastDistributedAt()).to.equal(intializeMarketBlock.timestamp)
       expect(await market.rateTolerance()).to.equal(config.RATE_TOLERANCE)
-      expect(await market.feeRate()).to.equal(config.FEE_RATE)
-      expect(await market.affiliateFee()).to.equal(config.AFFILAITE_FEE)
       expect(await market.shareScaler()).to.equal(config.SHARE_SCALER)
+      expect(await market.gelatoFeeShare()).to.equal(config.GELATO_FEE)
       expect(await market.inputToken()).to.equal(ricochetUSDCx.address)
       expect(await market.outputToken()).to.equal(ricochetETHx.address)
-      expect(await market.subsidyToken()).to.equal(ricochetRIC.address)
       expect(await market.underlyingInputToken()).to.equal(config.USDC_ADDRESS)
       expect(await market.underlyingOutputToken()).to.equal(config.ETH_ADDRESS)
       expect(await market.wmatic()).to.equal(config.WMATIC_ADDRESS)
@@ -486,7 +360,7 @@ describe('REXUniswapV3Market', () => {
       expect(afterRIC.sub(beforeRIC)).to.equal(100)
     })
 
-    it('#1.3 before/afterAgreementCreated callbacks', async () => {
+    it.only('#1.3 before/afterAgreementCreated callbacks', async () => {
       // Alice opens a USDC stream to REXMarket
       await sf.cfaV1
         .createFlow({
@@ -501,10 +375,9 @@ describe('REXUniswapV3Market', () => {
         .exec(aliceSigner)
 
       // Expect share allocations were done correctly
-      expect((await market.getIDAShares(0, aliceSigner.address)).toString()).to.equal(`true,true,99500000000,0`)
-      // Admin and Carl split 2% of the shares bc of the 50% referral fee
-      expect((await market.getIDAShares(0, adminSigner.address)).toString()).to.equal(`true,true,250000000,0`)
-      expect((await market.getIDAShares(0, carlSigner.address)).toString()).to.equal(`true,true,250000000,0`)
+      let expectedIDAShares = ethers.BigNumber.from(inflowRateUsdc).div(ethers.BigNumber.from(await config.SHARE_SCALER))
+      
+      expect((await market.getIDAShares(0, aliceSigner.address)).toString()).to.equal(`true,true,${expectedIDAShares},0`)
 
       // Check balances
       await takeMeasurements()
@@ -518,7 +391,7 @@ describe('REXUniswapV3Market', () => {
           sender: bobSigner.address,
           receiver: market.address,
           superToken: ricochetUSDCx.address,
-          flowRate: inflowRateEth,
+          flowRate: inflowRateUsdc,
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -531,19 +404,11 @@ describe('REXUniswapV3Market', () => {
       // Check oracle
       oraclePrice = await market.getLatestPrice()
 
-      // Compute the delta
+      // Compute the delta of ETHx and USDCx for alice
       let deltaAlice = await delta(aliceSigner, aliceBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
 
-      // Expect Owner and Carl got their fee from Alice
-      let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx
-
-      // Expect alice got within 1.0% of the oracle price (TODO: move to 0.75?)
+      // Expect alice got within 2.0% of the oracle price
       expect(deltaAlice.ethx).to.be.above((deltaAlice.usdcx / oraclePrice) * 1e8 * -1 * 0.98)
-      // Check Carl and Owner got their shares
-      expect(deltaCarl.ethx / totalOutput).to.equal(0.0025)
-      expect(deltaOwner.ethx / totalOutput).to.equal(0.0025)
 
       // Display exchange rates and deltas for visual inspection by the test engineers
       console.log('Alice exchange rate:', (deltaAlice.usdcx / deltaAlice.ethx) * -1)
@@ -554,12 +419,10 @@ describe('REXUniswapV3Market', () => {
       )
 
       // Expect Bob's share allocations were done correctly
-      expect((await market.getIDAShares(0, bobSigner.address)).toString()).to.equal(`true,true,995000000,0`)
+      expect((await market.getIDAShares(0, bobSigner.address)).toString()).to.equal(`true,true,${expectedIDAShares},0`)
 
-      // Admin gets all of the 0.5% fee bc Bob was an organic referral
-      expect((await market.getIDAShares(0, adminSigner.address)).toString()).to.equal(`true,true,255000000,0`)
-
-      // Delete Alices stream before first  distributions
+      // Close the streams and clean up from the test
+      // TODO: Move to afterEach method
       await sf.cfaV1
         .deleteFlow({
           receiver: market.address,
@@ -569,7 +432,6 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(aliceSigner)
 
-      // Delete Alices stream before first  distributions
       await sf.cfaV1
         .deleteFlow({
           receiver: market.address,

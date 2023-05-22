@@ -13,10 +13,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 // import { names } from "../misc/setup";
 import { Framework } from "@superfluid-finance/sdk-core";
 
-import SuperfluidGovernanceBase from "../test/artifacts/superfluid/SuperfluidGovernanceII.json";
-import { ISuperToken } from "../typechain";
 // import Operation = require("@superfluid-finance/sdk-core/dist/module/Operation");
-import { PopulatedTransaction } from "ethers";
 import { Constants } from "./Constants";
 // import Operation from "@superfluid-finance/sdk-core/dist/module/Operation";
 const { provider, loadFixture } = waffle;
