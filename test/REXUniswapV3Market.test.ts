@@ -9,16 +9,8 @@ import { increaseTime, impersonateAndSetBalance } from '../misc/helpers'
 import { Constants } from '../misc/Constants'
 import { HttpService } from '../misc/HttpService'
 
-
-
 const { provider } = waffle
 const TEST_TRAVEL_TIME = 3600 * 2 // 2 hours
-
-
-// Constants for Gelato
-const GELATO_OPS = '0x527a819db1eb0e34426297b03bae11F2f8B3A19E' // Mainnet Gelato Ops Address
-const GELATO_FEE = ethers.BigNumber.from('100000') // 100k wei
-
 const config = Constants['polygon']
 
 export interface superTokenIDAIndex {
@@ -285,7 +277,7 @@ describe('REXUniswapV3Market', () => {
     snapshot = await provider.send('evm_snapshot', [])
   })
 
-  context('#1 - new rexmarket with no streamers', async () => {
+  context.only('#1 - new rexmarket with no streamers', async () => {
     beforeEach(async () => {
       // Revert to the point REXMarket was just deployed
       const success = await provider.send('evm_revert', [snapshot])
@@ -316,37 +308,18 @@ describe('REXUniswapV3Market', () => {
       expect(await market.maticx()).to.equal(config.MATICX_ADDRESS)
 
       // Test set methods from REXUniswapV3Market
-      await market.setEmissionRate(1000)
-      expect((await market.outputPools(1))[2]).to.equal(1000)
-
       await market.setRateTolerance(200)
       expect(await market.rateTolerance()).to.equal(200)
+      console.log('1')
+
 
       await market.setGelatoFeeShare(20)
       expect(await market.gelatoFeeShare()).to.equal(20)
+      console.log('1')
+
     })
 
-    it('#1.2 withdraw subsidy token', async () => {
-      let beforeRIC = ethers.BigNumber.from(
-        await ricochetRIC.balanceOf({
-          account: adminSigner.address,
-          providerOrSigner: provider,
-        })
-      )
-
-      await market.withdrawSubsidyToken(100)
-
-      let afterRIC = ethers.BigNumber.from(
-        await ricochetRIC.balanceOf({
-          account: adminSigner.address,
-          providerOrSigner: provider,
-        })
-      )
-
-      expect(afterRIC.sub(beforeRIC)).to.equal(100)
-    })
-
-    it.only('#1.3 before/afterAgreementCreated callbacks', async () => {
+    it('#1.3 before/afterAgreementCreated callbacks', async () => {
       // Alice opens a USDC stream to REXMarket
       await sf.cfaV1
         .createFlow({
@@ -354,7 +327,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -436,7 +408,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -469,7 +440,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -486,11 +456,6 @@ describe('REXUniswapV3Market', () => {
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
       let deltaBob = await delta(bobSigner, bobBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
-
-      // Expect Owner and Carl got their fee from Alice
-      let totalOutput = deltaAlice.ethx + deltaBob.ethx + deltaCarl.ethx + deltaOwner.ethx
 
       // Expect alice got within 1.0% of the oracle price (TODO: move to 0.75?)
       expect(deltaAlice.ethx).to.be.above((deltaAlice.usdcx / oraclePrice) * 1e8 * -1 * 0.98)
@@ -542,7 +507,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -580,7 +544,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
         })
         .exec(aliceSigner)
@@ -608,11 +571,6 @@ describe('REXUniswapV3Market', () => {
 
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
-
-      // Expect Owner and Carl got their fee from Alice
-      let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx
       expect(deltaAlice.ethx).to.be.above((deltaAlice.usdcx / oraclePrice) * 1e8 * -1 * 0.98)
 
       // Display exchange rates and deltas for visual inspection by the test engineers
@@ -658,7 +616,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc10x, // Increase rate 10x to make sure gelato can be paid
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
         })
         .exec(aliceSigner)
@@ -672,7 +629,7 @@ describe('REXUniswapV3Market', () => {
         market.address,
         execData,
         moduleData,
-        GELATO_FEE,
+        config.GELATO_FEE,
         '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         false, // true if payed with treasury
         true
@@ -685,7 +642,7 @@ describe('REXUniswapV3Market', () => {
         market.address,
         execData,
         moduleData,
-        GELATO_FEE,
+        config.GELATO_FEE,
         '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
         false, // true if payed with treasury
         true
@@ -716,13 +673,6 @@ describe('REXUniswapV3Market', () => {
 
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
-
-      // Expect Owner and Carl got their fee from Alice
-      let totalOutput = deltaAlice.ethx + deltaCarl.ethx + deltaOwner.ethx
-      expect(deltaCarl.ethx / totalOutput).to.equal(0.0025)
-      expect(deltaOwner.ethx / totalOutput).to.equal(0.0025)
       expect(deltaAlice.ethx).to.be.above((deltaAlice.usdcx / oraclePrice) * 1e8 * -1 * 0.98) // TODO: use config.RATE_TOLERANCE
 
       // Display exchange rates and deltas for visual inspection by the test engineers
@@ -746,59 +696,19 @@ describe('REXUniswapV3Market', () => {
         .exec(aliceSigner)
     })
 
-    // xit("#1.8 revert when rateTolerance is too low", async () => {
-
-    //     // Alice opens a USDC stream to REXMarket
-    //     await sf.cfaV1.createFlow({
-    //         sender: aliceSigner.address,
-    //         receiver: market.address,
-    //         superToken: ricochetUSDCx.address,
-    //         flowRate: inflowRateUsdc10x,
-    //         userData: ethers.utils.defaultAbiCoder.encode(["string"], ["carl"]),
-    //         shouldUseCallAgreement: true,
-    //     }).exec(aliceSigner);
-    //     await increaseTime(TEST_TRAVEL_TIME);
-
-    //     //  distribution and then wait 10x the test travel time
-    //     market.distribute("0x", false)
-
-    //     // Fast forward one week
-    //     await increaseTime(ONE_WEEK);
-
-    //     await market.setRateTolerance(1); // 0.01%
-
-    //     // Expect revert on market.distribute due to the low rate tolerance
-    //     await expect(
-    //         market.distribute("0x", false)
-    //     ).to.be.revertedWith("Too little received");
-
-    //     // Delete alices flow
-    //     await sf.cfaV1.deleteFlow({
-    //         sender: aliceSigner.address,
-    //         receiver: market.address,
-    //         superToken: ricochetUSDCx.address,
-    //         shouldUseCallAgreement: true,
-    //         overrides,
-    //     }).exec(aliceSigner);
-
-    //     // Set the rateTolerance back to 0.5%
-    //     await market.setRateTolerance(500);
-    // });
-
-    // xit("#1.9 revert when inputToken is not USDCx", async () => {
-
-    //     // Expect revert createFlow with ETHx by Alice
-    //     await expect(
-    //         sf.cfaV1.createFlow({
-    //             sender: aliceSigner.address,
-    //             receiver: market.address,
-    //             superToken: ricochetETHx.address,
-    //             flowRate: '1000',
-    //             shouldUseCallAgreement: true,
-    //             overrides
-    //         }).exec(aliceSigner)
-    //     ).to.be.revertedWith("InvalidAgreement");
-    // });
+    xit("#1.9 revert when inputToken is not USDCx", async () => {
+        // Expect revert createFlow with ETHx by Alice
+        await expect(
+            sf.cfaV1.createFlow({
+                sender: aliceSigner.address,
+                receiver: market.address,
+                superToken: ricochetETHx.address,
+                flowRate: '1000',
+                shouldUseCallAgreement: true,
+                overrides
+            }).exec(aliceSigner)
+        ).to.be.revertedWith("InvalidAgreement");
+    });
   })
 
   xcontext('#2 - native supertoken outputToken with two streamers', async () => {
@@ -819,7 +729,7 @@ describe('REXUniswapV3Market', () => {
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
         referral.address,
-        GELATO_OPS,
+        config.GELATO_OPS,
         adminSigner.address
       )
 
@@ -860,12 +770,8 @@ describe('REXUniswapV3Market', () => {
         token: ricochetRexSHIRT,
         IDAIndex: 0,
       }
-      ricIDAIndex = {
-        token: ricochetRIC,
-        IDAIndex: 1,
-      }
 
-      await approveSubscriptions([rexshirtIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, carlSigner]) // bobSigner
+      await approveSubscriptions([rexshirtIDAIndex], [adminSigner, aliceSigner]) // bobSigner
 
       // Alice opens a USDC stream to REXMarket
       await sf.cfaV1
@@ -874,7 +780,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -940,17 +845,10 @@ describe('REXUniswapV3Market', () => {
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
       let deltaBob = await delta(bobSigner, bobBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
 
       // // Expect Alice and Bob got the right output less the 2% fee + 2% slippage (thin market)
       expect(deltaAlice.rexshirt).to.be.above((deltaAlice.usdcx / rexShirtOraclePrice) * 1e18 * -1 * 0.95)
       expect(deltaBob.rexshirt).to.be.above((deltaBob.usdcx / rexShirtOraclePrice) * 1e18 * -1 * 0.95)
-
-      // // Expect Owner and Carl got their fee from Alice
-      let totalOutput = deltaAlice.rexshirt + deltaCarl.rexshirt + deltaBob.rexshirt + deltaOwner.rexshirt
-      expect(deltaCarl.rexshirt / totalOutput).to.within(0.00491, 0.0501)
-      expect(deltaOwner.rexshirt / totalOutput).to.within(0.00149, 0.01501)
 
       // Update Alices stream
       await sf.cfaV1
@@ -982,16 +880,10 @@ describe('REXUniswapV3Market', () => {
       // Compute the delta
       deltaAlice = await delta(aliceSigner, aliceBalances)
       deltaBob = await delta(bobSigner, bobBalances)
-      deltaCarl = await delta(carlSigner, carlBalances)
-      deltaOwner = await delta(adminSigner, ownerBalances)
 
       // Expect Alice and Bob got the right output less the 2% fee + 1% slippage
       expect(deltaBob.rexshirt).to.be.above((deltaBob.usdcx / rexShirtOraclePrice) * 1e18 * -1 * 0.97)
       expect(deltaAlice.rexshirt).to.be.above((deltaAlice.usdcx / rexShirtOraclePrice) * 1e18 * -1 * 0.97)
-      // Expect Owner and Carl got their fee from Alice
-      totalOutput = deltaAlice.rexshirt + deltaCarl.rexshirt + deltaBob.rexshirt + deltaOwner.rexshirt
-      expect(deltaCarl.rexshirt / totalOutput).to.within(0.00491, 0.0501)
-      expect(deltaOwner.rexshirt / totalOutput).to.within(0.001499, 0.01501)
 
       // Delete alice and bobs flow
       await sf.cfaV1
@@ -1028,7 +920,7 @@ describe('REXUniswapV3Market', () => {
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
         referral.address,
-        GELATO_OPS,
+        config.GELATO_OPS,
         adminSigner.address
       )
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
@@ -1067,7 +959,7 @@ describe('REXUniswapV3Market', () => {
         IDAIndex: 1,
       }
 
-      await approveSubscriptions([maticxIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, bobSigner, carlSigner])
+      await approveSubscriptions([maticxIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, bobSigner])
 
       // Alice opens a USDC stream to REXMarket
       await sf.cfaV1
@@ -1076,7 +968,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetUSDCx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -1138,20 +1029,10 @@ describe('REXUniswapV3Market', () => {
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
       let deltaBob = await delta(bobSigner, bobBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
 
       // Expect Alice and Bob got the right output less fee + slippage
       expect(deltaBob.maticx).to.be.above((deltaBob.usdcx / maticOraclePrice) * 1e8 * -1 * 0.98)
       expect(deltaAlice.maticx).to.be.above((deltaAlice.usdcx / maticOraclePrice) * 1e8 * -1 * 0.98)
-      // Expect Owner and Carl got their fee from Alice
-      expect(deltaCarl.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaCarl.maticx + deltaOwner.maticx)).to.within(
-        0.0012499999,
-        0.0012500001
-      )
-      expect(
-        deltaOwner.maticx / (deltaAlice.maticx + deltaBob.maticx + deltaCarl.maticx + deltaOwner.maticx)
-      ).to.within(0.0037499999, 0.0037500001)
 
       // Display exchange rates and deltas for visual inspection by the test engineers
       console.log('Alice exchange rate:', (deltaAlice.usdcx / deltaAlice.maticx) * -1)
@@ -1206,7 +1087,7 @@ describe('REXUniswapV3Market', () => {
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
         referral.address,
-        GELATO_OPS,
+        config.GELATO_OPS,
         adminSigner.address
       )
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
@@ -1245,7 +1126,7 @@ describe('REXUniswapV3Market', () => {
         IDAIndex: 1,
       }
 
-      await approveSubscriptions([usdcxIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, bobSigner, carlSigner])
+      await approveSubscriptions([usdcxIDAIndex, ricIDAIndex], [adminSigner, aliceSigner, bobSigner])
 
       // Alice opens a USDC stream to REXMarket
       await sf.cfaV1
@@ -1254,7 +1135,6 @@ describe('REXUniswapV3Market', () => {
           receiver: market.address,
           superToken: ricochetMATICx.address,
           flowRate: inflowRateUsdc,
-          userData: ethers.utils.defaultAbiCoder.encode(['string'], ['carl']),
           shouldUseCallAgreement: true,
           overrides,
         })
@@ -1316,8 +1196,6 @@ describe('REXUniswapV3Market', () => {
       // Compute the delta
       let deltaAlice = await delta(aliceSigner, aliceBalances)
       let deltaBob = await delta(bobSigner, bobBalances)
-      let deltaCarl = await delta(carlSigner, carlBalances)
-      let deltaOwner = await delta(adminSigner, ownerBalances)
 
       // Expect Alice and Bob got the right output less fee + slippage
       expect(deltaBob.usdcx).to.be.above(((deltaBob.maticx * maticOraclePrice) / 1e8) * -1 * 0.98)

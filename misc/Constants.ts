@@ -109,6 +109,7 @@ export const Constants : {[key: string]: any} = {
         // Gelato
         GELATO_OPS: "0x527a819db1eb0e34426297b03bae11F2f8B3A19E",
         GELATO_NETWORK: "0x7598e84B2E114AB62CAB288CE5f7d5f6bad35BbA",
+        GELATO_FEE: '100',
 
         // Polygon DAO Gnosis
         DAO_ADDRESS: "0x9C6B5FdC145912dfe6eE13A667aF3C5Eb07CbB89",
@@ -161,6 +162,7 @@ export const Constants : {[key: string]: any} = {
         // Gelato
         GELATO_OPS: "0xB3f5503f93d5Ef84b06993a1975B9D21B962892F",
         GELATO_NETWORK: "0x25aD59adbe00C2d80c86d01e2E05e1294DA84823",
+        GELATO_FEE: '100',
  
         // Polygon DAO Gnosis
         DAO_ADDRESS: "0x9d7254F07b4De4643B409B5971eE2888E279417F", // Metamask Wallet, no Gnosis on Mumbai
