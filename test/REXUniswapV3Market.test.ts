@@ -40,8 +40,8 @@ describe('REXUniswapV3Market', () => {
   let maticxWhaleSigner: SignerWithAddress
   let ricWhaleSigner: SignerWithAddress
 
-  let oraclePrice: number;
-  let maticOraclePrice: number;
+  let oraclePrice: number
+  let maticOraclePrice: number
 
   let appBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
   let aliceBalances = { ethx: [], usdcx: [], ric: [], maticx: [], rexshirt: [] }
@@ -72,8 +72,8 @@ describe('REXUniswapV3Market', () => {
 
   // ***************************************************************************************
 
-  let gelatoBlock: any;
-  let intializeMarketBlock: any;
+  let gelatoBlock: any
+  let intializeMarketBlock: any
 
   async function takeMeasurements(): Promise<void> {
     // TODO: Refactor this to use a loop
@@ -210,16 +210,16 @@ describe('REXUniswapV3Market', () => {
       config.GELATO_OPS,
       adminSigner.address
     )
-    console.log('REXUniswapV3Market deployed to:', market.address);
+    console.log('REXUniswapV3Market deployed to:', market.address)
 
     // Initialize MATIC
     await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
-    console.log('MATIC initialized');
+    console.log('MATIC initialized')
 
     // Create the task for Gelato
     await market.createTask()
     gelatoBlock = await ethers.provider.getBlock('latest')
-    console.log('Gelato task created');
+    console.log('Gelato task created')
 
     // Initialize the market
     await market.initializeMarket(
@@ -228,7 +228,7 @@ describe('REXUniswapV3Market', () => {
       config.SHARE_SCALER,
       config.RATE_TOLERANCE
     )
-    console.log('Market initialized');
+    console.log('Market initialized')
 
     // Save this block number for expectations below
     intializeMarketBlock = await ethers.provider.getBlock('latest')
@@ -239,11 +239,11 @@ describe('REXUniswapV3Market', () => {
       [config.USDC_ADDRESS, config.ETH_ADDRESS],
       500
     )
-    console.log('Uniswap initialized');
+    console.log('Uniswap initialized')
 
     // Initialize Price Feed
     await market.initializePriceFeed(config.CHAINLINK_ETH_USDC_PRICE_FEED, false)
-    console.log('Price feed initialized');
+    console.log('Price feed initialized')
 
     // Give Alice, Bob, Karen some tokens
     const initialAmount = ethers.utils.parseUnits('1000', 18).toString()
@@ -255,7 +255,7 @@ describe('REXUniswapV3Market', () => {
         amount: initialAmount,
       })
       .exec(usdcxWhaleSigner)
-    console.log('Alice USDCx transfer');
+    console.log('Alice USDCx transfer')
 
     // USDCx for Bob
     await ricochetUSDCx
@@ -264,25 +264,25 @@ describe('REXUniswapV3Market', () => {
         amount: initialAmount,
       })
       .exec(usdcxWhaleSigner)
-    console.log('Bob USDCx transfer');
+    console.log('Bob USDCx transfer')
 
     // MATICx for Alice
     await ricochetMATICx
-    .transfer({
-      receiver: aliceSigner.address,
-      amount: '10000000000000000000',
-    })
-    .exec(maticxWhaleSigner)
-    console.log('Alice MATICx transfer');
+      .transfer({
+        receiver: aliceSigner.address,
+        amount: '10000000000000000000',
+      })
+      .exec(maticxWhaleSigner)
+    console.log('Alice MATICx transfer')
 
     // MATICx for Bob
     await ricochetMATICx
-    .transfer({
-      receiver: bobSigner.address,
-      amount: '10000000000000000000',
-    })
-    .exec(maticxWhaleSigner)
-    console.log('Bob MATICx transfer');
+      .transfer({
+        receiver: bobSigner.address,
+        amount: '10000000000000000000',
+      })
+      .exec(maticxWhaleSigner)
+    console.log('Bob MATICx transfer')
 
     // Do all the approvals
     await approveSubscriptions([ethxIDAIndex], [adminSigner, aliceSigner, bobSigner]) // karenSigner
@@ -327,7 +327,6 @@ describe('REXUniswapV3Market', () => {
 
       await market.setGelatoFeeShare(20)
       expect(await market.gelatoFeeShare()).to.equal(20)
-
     })
 
     it('#1.3 before/afterAgreementCreated callbacks', async () => {
@@ -344,8 +343,10 @@ describe('REXUniswapV3Market', () => {
         .exec(aliceSigner)
 
       // Expect share allocations were done correctly
-      let expectedIDAShares = ethers.BigNumber.from(inflowRateUsdc).div(ethers.BigNumber.from(await config.SHARE_SCALER))
-      
+      let expectedIDAShares = ethers.BigNumber.from(inflowRateUsdc).div(
+        ethers.BigNumber.from(await config.SHARE_SCALER)
+      )
+
       expect((await market.getIDAShares(aliceSigner.address)).toString()).to.equal(`true,true,${expectedIDAShares},0`)
 
       // Check balances
@@ -707,20 +708,21 @@ describe('REXUniswapV3Market', () => {
         .exec(aliceSigner)
     })
 
-    it("#1.9 revert when inputToken is not USDCx", async () => {
-        // Expect revert createFlow with ETHx by Alice
-        await expect(
-            sf.cfaV1.createFlow({
-                sender: aliceSigner.address,
-                receiver: market.address,
-                superToken: ricochetMATICx.address,
-                flowRate: '1000',
-                shouldUseCallAgreement: true,
-                overrides
-            }).exec(aliceSigner)
-        ).to.be.revertedWith("!token");
-    });
-
+    it('#1.9 revert when inputToken is not USDCx', async () => {
+      // Expect revert createFlow with ETHx by Alice
+      await expect(
+        sf.cfaV1
+          .createFlow({
+            sender: aliceSigner.address,
+            receiver: market.address,
+            superToken: ricochetMATICx.address,
+            flowRate: '1000',
+            shouldUseCallAgreement: true,
+            overrides,
+          })
+          .exec(aliceSigner)
+      ).to.be.revertedWith('!token')
+    })
   })
 
   context('#2 - native supertoken outputToken with two streamers', async () => {
@@ -747,12 +749,7 @@ describe('REXUniswapV3Market', () => {
       // Initialize MATIC
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
 
-      await market.initializeMarket(
-        ricochetUSDCx.address,
-        ricochetRexSHIRT.address,
-        config.SHARE_SCALER,
-        500
-      )
+      await market.initializeMarket(ricochetUSDCx.address, ricochetRexSHIRT.address, config.SHARE_SCALER, 500)
       await market.createTask()
       gelatoBlock = await ethers.provider.getBlock('latest')
 
@@ -790,7 +787,7 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(aliceSigner)
 
-      console.log('Alice USDCx stream created');
+      console.log('Alice USDCx stream created')
 
       // Advance time to allow for some tokens to accumulate in the market
       await increaseTime(TEST_TRAVEL_TIME)
@@ -807,7 +804,6 @@ describe('REXUniswapV3Market', () => {
       //   })
       //   .exec(bobSigner)
       // console.log('Bob USDCx stream created');
-
 
       // Take a snapshot
       snapshot = await provider.send('evm_snapshot', [])
@@ -857,7 +853,6 @@ describe('REXUniswapV3Market', () => {
 
       // Log the exchange rate and delta for visual inspection by the test engineers
       console.log('Alice exchange rate:', (deltaAlice.usdcx / deltaAlice.rexshirt) * -1)
-
 
       // Update Alices stream
       await sf.cfaV1
@@ -1002,7 +997,6 @@ describe('REXUniswapV3Market', () => {
     after(async () => {})
 
     it('#3.1 distribution', async () => {
-
       // Check balance
       await takeMeasurements()
 
@@ -1244,5 +1238,4 @@ describe('REXUniswapV3Market', () => {
       expect(actualDistributionTime).to.equal(calculatedDistributionTime)
     })
   })
-
 })
