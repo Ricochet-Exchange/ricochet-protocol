@@ -81,9 +81,9 @@ contract REXUniswapV3Market is
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
-    IUniswapV3Pool public uniswapPool; // The Uniswap V3 pool for inputToken and outputToken
     address[] public uniswapPath; // The path between inputToken and outputToken
-    uint24 public poolFee; // The pool fee to use in the path between inputToken and outputToken
+    uint24[] public poolFees; // The pool fee to use in the path between inputToken and outputToken
+    uint24 public gasPoolFee; // The pool fee to use for gas reimbursements to Gelato
 
     // Chainlink Variables
     AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
@@ -194,29 +194,37 @@ contract REXUniswapV3Market is
     /// @param _uniswapRouter is the Uniswap V3 Router
     /// @param _uniswapFactory is the Uniswap V3 Factory
     /// @param _uniswapPath is the Uniswap V3 path
-    /// @param _poolFee is the Uniswap V3 pool fee
+    /// @param _poolFees is the Uniswap V3 pool fees
+    /// @param _gasPoolFee is the Uniswap V3 pool fee for gas reimbursements
     function initializeUniswap(
         ISwapRouter02 _uniswapRouter,
         IUniswapV3Factory _uniswapFactory,
         address[] memory _uniswapPath,
-        uint24 _poolFee
+        uint24[] memory _poolFees,
+        uint24 _gasPoolFee
     ) external onlyOwner {
+
+        require(address(router) == address(0), "IU"); // Blocks if already initialized
+
+        // Set contract variables
         router = _uniswapRouter;
-        poolFee = _poolFee;
+        poolFees = _poolFees;
         uniswapPath = _uniswapPath;
+        gasPoolFee = _gasPoolFee;
 
         // Get the pool from the Uniswap V3 Factory
         IUniswapV3Factory factory = IUniswapV3Factory(_uniswapFactory);
 
         // Require that the pool for input/output swaps exists
-        require(
-            factory.getPool(
-                address(underlyingInputToken),
-                address(underlyingOutputToken),
-                poolFee
-            ) != address(0),
-            "PDNE1"
-        );
+        for(uint i = 0; i < _uniswapPath.length - 1; i++)
+            require(
+                factory.getPool(
+                    address(_uniswapPath[i]),
+                    address(_uniswapPath[i+1]),
+                    poolFees[i]
+                ) != address(0),
+                "PDNE"
+            );
 
         // Require that the pool for gas reimbursements exists
         if (address(underlyingInputToken) != address(wmatic)) {
@@ -224,20 +232,11 @@ contract REXUniswapV3Market is
                 factory.getPool(
                     address(wmatic),
                     address(underlyingInputToken),
-                    poolFee
+                    _gasPoolFee
                 ) != address(0),
-                "PDNE2"
+                "PDNE"
             );
         }
-
-        // Use the pool for the underlying tokens for the input/output supertokens
-        uniswapPool = IUniswapV3Pool(
-            factory.getPool(
-                address(underlyingInputToken),
-                address(underlyingOutputToken),
-                poolFee
-            )
-        );
 
         // Approve Uniswap Router to spend
         ERC20(underlyingInputToken).safeIncreaseAllowance(
@@ -325,7 +324,6 @@ contract REXUniswapV3Market is
             return newCtx;
         }
         // Otherwise, calculate the gas reimbursement for Gelato or for the msg.sender
-
         // Get the fee details from Gelato Ops
         (uint256 fee, address feeToken) = _getFeeDetails();
 
@@ -359,7 +357,7 @@ contract REXUniswapV3Market is
             .ExactOutputParams({
                 path: abi.encodePacked(
                     address(wmatic),
-                    poolFee,
+                    gasPoolFee,
                     underlyingInputToken
                 ),
                 recipient: address(this),
@@ -407,14 +405,24 @@ contract REXUniswapV3Market is
             (minOutput * (BASIS_POINT_SCALER - rateTolerance)) /
             BASIS_POINT_SCALER;
 
+        // Encode the path for swap
+        bytes memory encodedPath;
+        for (uint256 i = 0; i < uniswapPath.length; i++) {
+            if (i == uniswapPath.length - 1) {
+                encodedPath = abi.encodePacked(encodedPath, uniswapPath[i]);
+            } else {
+                encodedPath = abi.encodePacked(
+                    encodedPath,
+                    uniswapPath[i],
+                    poolFees[i]
+                );
+            }
+        }
+
         // This is the code for the uniswap
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter
             .ExactInputParams({
-                path: abi.encodePacked(
-                    underlyingInputToken,
-                    poolFee,
-                    underlyingOutputToken
-                ),
+                path: encodedPath,
                 recipient: address(this),
                 amountIn: amount,
                 amountOutMinimum: minOutput

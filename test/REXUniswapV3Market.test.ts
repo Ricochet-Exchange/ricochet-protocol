@@ -236,7 +236,8 @@ describe('REXUniswapV3Market', () => {
     await market.initializeUniswap(
       config.UNISWAP_V3_ROUTER_ADDRESS,
       config.UNISWAP_V3_FACTORY_ADDRESS,
-      [config.USDC_ADDRESS, config.ETH_ADDRESS],
+      [config.USDC_ADDRESS, config.DAI_ADDRESS, config.ETH_ADDRESS],
+      [100, 3000],
       500
     )
     console.log('Uniswap initialized');
@@ -632,7 +633,7 @@ describe('REXUniswapV3Market', () => {
         .exec(aliceSigner)
 
       await takeMeasurements()
-      await increaseTime(TEST_TRAVEL_TIME)
+      await increaseTime(TEST_TRAVEL_TIME * 2)
 
       // Submit task to gelato
       await ops.connect(gelatoNetwork).exec(
@@ -645,7 +646,7 @@ describe('REXUniswapV3Market', () => {
         false, // true if payed with treasury
         true
       )
-      await increaseTime(TEST_TRAVEL_TIME)
+      await increaseTime(TEST_TRAVEL_TIME * 2)
 
       // Submit task to gelato
       await ops.connect(gelatoNetwork).exec(
@@ -761,8 +762,9 @@ describe('REXUniswapV3Market', () => {
       await market.initializeUniswap(
         config.UNISWAP_V3_ROUTER_ADDRESS,
         config.UNISWAP_V3_FACTORY_ADDRESS,
-        [config.USDC_ADDRESS, config.REXSHIRT_ADDRESS],
-        10000
+        [config.USDC_ADDRESS, config.RIC_ADDRESS, config.REXSHIRT_ADDRESS],
+        [500,10000],
+        500
       )
 
       // Initialize Price Feed
@@ -916,7 +918,7 @@ describe('REXUniswapV3Market', () => {
     })
   })
 
-  context('#3 - matic supertoken market with two', async () => {
+  context('#3 - matic supertoken market with two streamers', async () => {
     before(async () => {
       // Deploy RIC-USDC Rex Market
       const registrationKey = await sfRegistrationKey(sf, adminSigner.address)
@@ -943,7 +945,8 @@ describe('REXUniswapV3Market', () => {
       await market.initializeUniswap(
         config.UNISWAP_V3_ROUTER_ADDRESS,
         config.UNISWAP_V3_FACTORY_ADDRESS,
-        [config.USDC_ADDRESS, config.WMATIC_ADDRESS],
+        [config.USDC_ADDRESS, config.DAI_ADDRESS, config.WMATIC_ADDRESS],
+        [500, 3000],
         500
       )
 
@@ -1096,8 +1099,9 @@ describe('REXUniswapV3Market', () => {
       await market.initializeUniswap(
         config.UNISWAP_V3_ROUTER_ADDRESS,
         config.UNISWAP_V3_FACTORY_ADDRESS,
-        [config.WMATIC_ADDRESS, config.USDC_ADDRESS],
-        3000
+        [config.WMATIC_ADDRESS, config.DAI_ADDRESS, config.USDC_ADDRESS],
+        [3000, 100],
+        500
       )
 
       // Initialize Price Feed
