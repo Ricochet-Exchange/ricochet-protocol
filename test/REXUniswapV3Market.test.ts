@@ -660,23 +660,6 @@ describe('REXUniswapV3Market', () => {
         true
       )
 
-      // TODO: Not sure why the 3rd gelato execute fails
-      // await increaseTime(TEST_TRAVEL_TIME);
-      // // Submit task to gelato
-      // await ops
-      // .connect(gelatoNetwork)
-      // .exec(
-      //     market.address,
-      //     market.address,
-      //     execData,
-      //     moduleData,
-      //     GELATO_FEE,
-      //     "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-      //     false, // true if payed with treasury
-      //     true,
-      //     {gasLimit: 1000000}
-      // );
-
       // Check balances again
       await takeMeasurements()
 
@@ -721,6 +704,64 @@ describe('REXUniswapV3Market', () => {
             }).exec(aliceSigner)
         ).to.be.revertedWith("!token");
     });
+
+    it("#1.10 decrease/increase the gelato fee share correctly", async () => {
+
+      // Alice opens a USDC stream to REXMarket
+      await sf.cfaV1
+        .createFlow({
+          sender: aliceSigner.address,
+          receiver: market.address,
+          superToken: ricochetUSDCx.address,
+          flowRate: inflowRateUsdc10x, // Increase rate 10x to make sure gelato can be paid
+          shouldUseCallAgreement: true,
+        })
+        .exec(aliceSigner)
+
+      // Trigger a market distribution
+      await market.distribute('0x', true);
+
+      // Check the initial gelatoFeeShare
+      let gelatoFeeShare = await market.gelatoFeeShare();
+
+      // Wait 2 hours
+      await increaseTime(TEST_TRAVEL_TIME);
+
+      // Trigger another distribution
+      await market.distribute('0x', true);
+
+      // Check the final gelatoFeeShare
+      let gelatoFeeShare2 = await market.gelatoFeeShare();
+
+      // Expect the gelatoFeeShare has decreased by 1 
+      expect(gelatoFeeShare2).to.equal(gelatoFeeShare.sub(1));
+
+      // Wait 6 hours
+      await increaseTime(TEST_TRAVEL_TIME * 3);
+
+      // Trigger another distribution
+      await market.distribute('0x', false);
+
+      // Check the final gelatoFeeShare
+      let gelatoFeeShare3 = await market.gelatoFeeShare();
+
+      // Expect the gelatoFeeShare has increased by 1
+      console.log("gelatoFeeShare2", gelatoFeeShare2.toString());
+      console.log("gelatoFeeShare3", gelatoFeeShare3.toString());
+      expect(gelatoFeeShare3).to.equal(gelatoFeeShare2.add(1));
+
+      // Alice closes a stream to rex market
+      await sf.cfaV1
+        .deleteFlow({
+          sender: aliceSigner.address,
+          receiver: market.address,
+          superToken: ricochetUSDCx.address,
+          shouldUseCallAgreement: true,
+          overrides,
+        })
+        .exec(aliceSigner)
+
+    }); 
 
   })
 
@@ -796,20 +837,6 @@ describe('REXUniswapV3Market', () => {
 
       // Advance time to allow for some tokens to accumulate in the market
       await increaseTime(TEST_TRAVEL_TIME)
-
-      // // Bob opens a USDC stream to REXMarket, triggers a distribute
-      // await sf.cfaV1
-      //   .createFlow({
-      //     sender: bobSigner.address,
-      //     receiver: market.address,
-      //     superToken: ricochetUSDCx.address,
-      //     flowRate: '100',
-      //     shouldUseCallAgreement: true,
-      //     overrides,
-      //   })
-      //   .exec(bobSigner)
-      // console.log('Bob USDCx stream created');
-
 
       // Take a snapshot
       snapshot = await provider.send('evm_snapshot', [])
@@ -905,16 +932,6 @@ describe('REXUniswapV3Market', () => {
           overrides,
         })
         .exec(aliceSigner)
-      // // Delete Bob's flow
-      // await sf.cfaV1
-      //   .deleteFlow({
-      //     sender: bobSigner.address,
-      //     receiver: market.address,
-      //     superToken: ricochetUSDCx.address,
-      //     shouldUseCallAgreement: true,
-      //     overrides,
-      //   })
-      //   .exec(bobSigner)
     })
   })
 

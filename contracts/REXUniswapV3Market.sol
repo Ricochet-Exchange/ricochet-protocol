@@ -92,6 +92,7 @@ contract REXUniswapV3Market is
     // Gelato task variables
     bytes32 public taskId;
     uint256 public gelatoFeeShare = 100; // number of basis points gelato takes for executing the task
+    uint256 public distributionInterval = 4 hours; // the interval between distributions
 
     /// @dev Swap data for performance tracking overtime
     /// @param inputAmount The amount of inputToken swapped
@@ -314,6 +315,15 @@ contract REXUniswapV3Market is
             outputToken,
             newCtx
         );
+
+        // If the last distribution is less than the desired interval
+        if (block.timestamp - lastDistributedAt <= distributionInterval && gelatoFeeShare > 1) {
+            // Reduce the gelatoFeeShare by 1-basis point
+            gelatoFeeShare = gelatoFeeShare - 1;
+        } else if (gelatoFeeShare < 100) {
+            // Otherwise raise the gelatoFeeShare by 1-basis point
+            gelatoFeeShare = gelatoFeeShare + 1;
+        }
 
         // Record when the last distribution happened for other calculations
         lastDistributedAt = block.timestamp;
