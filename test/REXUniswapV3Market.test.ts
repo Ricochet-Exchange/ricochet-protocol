@@ -911,7 +911,6 @@ describe('REXUniswapV3Market', () => {
 
       // Compute the delta
       deltaAlice = await delta(aliceSigner, aliceBalances)
-      // deltaBob = await delta(bobSigner, bobBalances)
 
       // Log the exchange rate and delta for visual inspection by the test engineers
       console.log('Alice exchange rate:', (deltaAlice.usdcx / deltaAlice.rexshirt) * -1)
