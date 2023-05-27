@@ -83,7 +83,7 @@ contract REXUniswapV3Market is
     ISwapRouter02 public router; // UniswapV3 Router
     address[] public uniswapPath; // The path between inputToken and outputToken
     uint24[] public poolFees; // The pool fee to use in the path between inputToken and outputToken
-    uint24 public gasPoolFee; // The pool fee to use for gas reimbursements to Gelato
+    uint24 public gasPoolFee; // The pool fee to be used in the path between inputToken and gasToken. Gas token is utilized for gas reimbursements to Gelato.
 
     // Chainlink Variables
     AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
