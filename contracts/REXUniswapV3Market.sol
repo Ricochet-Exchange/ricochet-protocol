@@ -83,7 +83,7 @@ contract REXUniswapV3Market is
     ISwapRouter02 public router; // UniswapV3 Router
     address[] public uniswapPath; // The path between inputToken and outputToken
     uint24[] public poolFees; // The pool fee to use in the path between inputToken and outputToken
-    uint24 public gasPoolFee; // The pool fee to use for gas reimbursements to Gelato
+    uint24 public gelatoGasPoolFee; // The pool fee to use for gas reimbursements to Gelato
 
     // Chainlink Variables
     AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
@@ -196,32 +196,31 @@ contract REXUniswapV3Market is
     /// @param _uniswapFactory is the Uniswap V3 Factory
     /// @param _uniswapPath is the Uniswap V3 path
     /// @param _poolFees is the Uniswap V3 pool fees
-    /// @param _gasPoolFee is the Uniswap V3 pool fee for gas reimbursements
+    /// @param _gelatoGasPoolFee is the Uniswap V3 pool fee for gas reimbursements to Gelato
     function initializeUniswap(
         ISwapRouter02 _uniswapRouter,
         IUniswapV3Factory _uniswapFactory,
         address[] memory _uniswapPath,
         uint24[] memory _poolFees,
-        uint24 _gasPoolFee
+        uint24 _gelatoGasPoolFee
     ) external onlyOwner {
-
         require(address(router) == address(0), "IU"); // Blocks if already initialized
 
         // Set contract variables
         router = _uniswapRouter;
         poolFees = _poolFees;
         uniswapPath = _uniswapPath;
-        gasPoolFee = _gasPoolFee;
+        gelatoGasPoolFee = _gelatoGasPoolFee;
 
         // Get the pool from the Uniswap V3 Factory
         IUniswapV3Factory factory = IUniswapV3Factory(_uniswapFactory);
 
         // Require that the pool for input/output swaps exists
-        for(uint i = 0; i < _uniswapPath.length - 1; i++)
+        for (uint i = 0; i < uniswapPath.length - 1; i++)
             require(
                 factory.getPool(
-                    address(_uniswapPath[i]),
-                    address(_uniswapPath[i+1]),
+                    address(uniswapPath[i]),
+                    address(uniswapPath[i + 1]),
                     poolFees[i]
                 ) != address(0),
                 "PDNE"
@@ -233,7 +232,7 @@ contract REXUniswapV3Market is
                 factory.getPool(
                     address(wmatic),
                     address(underlyingInputToken),
-                    _gasPoolFee
+                    gelatoGasPoolFee
                 ) != address(0),
                 "PDNE"
             );
@@ -264,9 +263,9 @@ contract REXUniswapV3Market is
     function getLatestPrice() public view returns (int) {
         if (address(priceFeed) == address(0)) {
             return 0;
-        }  
+        }
 
-        (,int price, , ,) = priceFeed.latestRoundData();
+        (, int price, , , ) = priceFeed.latestRoundData();
         return price;
     }
 
@@ -288,7 +287,9 @@ contract REXUniswapV3Market is
         }
 
         // Swap inputToken for outputToken, capture the latest price and output amount
-        (uint256 outputTokenAmount, uint256 latestPrice) = _swap(inputTokenAmount);
+        (uint256 outputTokenAmount, uint256 latestPrice) = _swap(
+            inputTokenAmount
+        );
 
         // Emit swap event for performance tracking purposes
         emit RexSwap(inputTokenAmount, outputTokenAmount, latestPrice);
@@ -317,7 +318,10 @@ contract REXUniswapV3Market is
         );
 
         // If the last distribution is less than the desired interval
-        if (block.timestamp - lastDistributedAt <= distributionInterval && gelatoFeeShare > 1) {
+        if (
+            block.timestamp - lastDistributedAt <= distributionInterval &&
+            gelatoFeeShare > 1
+        ) {
             // Reduce the gelatoFeeShare by 1-basis point
             gelatoFeeShare = gelatoFeeShare - 1;
         } else if (gelatoFeeShare < 100) {
@@ -367,7 +371,7 @@ contract REXUniswapV3Market is
             .ExactOutputParams({
                 path: abi.encodePacked(
                     address(wmatic),
-                    gasPoolFee,
+                    gelatoGasPoolFee,
                     underlyingInputToken
                 ),
                 recipient: address(this),
@@ -383,7 +387,9 @@ contract REXUniswapV3Market is
     // @param amount Amount of inputToken to swap
     // @return outAmount Amount of outputToken received
     // @dev This function has grown to do far more than just swap, this needs to be refactored
-    function _swap(uint256 amount) internal returns (uint256 outAmount, uint256 latestPrice) {
+    function _swap(
+        uint256 amount
+    ) internal returns (uint256 outAmount, uint256 latestPrice) {
         uint256 minOutput; // The minimum amount of output tokens based on oracle
 
         // Downgrade if this is not a supertoken
@@ -401,13 +407,15 @@ contract REXUniswapV3Market is
         latestPrice = uint(int(getLatestPrice()));
         // If there's no oracle address setup, don't protect against slippage
         if (latestPrice == 0) {
-            minOutput = 0; 
+            minOutput = 0;
         } else if (!invertPrice) {
             // This is the common case, e.g. USDC >> ETH
-            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+            minOutput =
+                ((amount * 1e8) / latestPrice) *
+                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
         } else {
             // Invert the price provided by the oracle, e.g. ETH >> USDC
-            minOutput = amount * latestPrice / 1e8 / 1e12;
+            minOutput = (amount * latestPrice) / 1e8 / 1e12;
         }
 
         // Apply the rate tolerance to allow for some slippage
@@ -473,11 +481,7 @@ contract REXUniswapV3Market is
     function _shouldDistribute() internal view returns (bool) {
         // TODO: Might no longer be required
         (, , uint128 _totalUnitsApproved, uint128 _totalUnitsPending) = ida
-            .getIndex(
-                outputToken,
-                address(this),
-                OUTPUT_INDEX
-            );
+            .getIndex(outputToken, address(this), OUTPUT_INDEX);
         return _totalUnitsApproved + _totalUnitsPending > 0;
     }
 
@@ -515,12 +519,14 @@ contract REXUniswapV3Market is
         // Make sure the agreement is either:
         // - inputToken and CFAv1
         // - outputToken and IDAv1
-        require((_isInputToken(_superToken) && _isCFAv1(_agreementClass)) || (_isOutputToken(_superToken) && _isIDAv1(_agreementClass)), "!token");
-        
-        // If this isn't a CFA Agreement class, return the context and be done
-        if (!_isCFAv1(_agreementClass))
-            return _ctx;
+        require(
+            (_isInputToken(_superToken) && _isCFAv1(_agreementClass)) ||
+                (_isOutputToken(_superToken) && _isIDAv1(_agreementClass)),
+            "!token"
+        );
 
+        // If this isn't a CFA Agreement class, return the context and be done
+        if (!_isCFAv1(_agreementClass)) return _ctx;
     }
 
     function afterAgreementCreated(
@@ -540,7 +546,6 @@ contract REXUniswapV3Market is
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx, true);
         }
-        
 
         (address _shareholder, int96 _flowRate, ) = _getShareholderInfo(
             _agreementData,
@@ -689,10 +694,7 @@ contract REXUniswapV3Market is
         );
 
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
-        (uint256 _uninvestAmount) = abi.decode(
-            _cbdata,
-            (uint256)
-        );
+        uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
 
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
@@ -823,7 +825,8 @@ contract REXUniswapV3Market is
                 "org.superfluid-finance.agreements.ConstantFlowAgreement.v1"
             );
     }
-        /// @dev Checks if the agreementClass is a CFAv1 agreement
+
+    /// @dev Checks if the agreementClass is a CFAv1 agreement
     /// @param _agreementClass Agreement class address
     /// @return _isIDAv1 is the agreement class a CFAv1 agreement
     function _isIDAv1(address _agreementClass) internal view returns (bool) {
@@ -865,7 +868,6 @@ contract REXUniswapV3Market is
         bytes memory _ctx,
         ShareholderUpdate memory _shareholderUpdate
     ) internal returns (bytes memory _newCtx) {
-        
         _newCtx = _ctx;
 
         _shareholderUpdate.token = outputToken;
@@ -907,9 +909,15 @@ contract REXUniswapV3Market is
      *
      * @return The timestamp for the next token distribution.
      */
-    function getNextDistributionTime(uint256 gasPrice, uint256 gasLimit, uint256 tokenToMaticRate) public view returns (uint256) {
-        uint256 inflowRate = uint256(int256(cfa.getNetFlow(inputToken, address(this)))) / (10 ** 9); // Safe conversion - Netflow rate will always we positive or zero
-        
+    function getNextDistributionTime(
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 tokenToMaticRate
+    ) public view returns (uint256) {
+        uint256 inflowRate = uint256(
+            int256(cfa.getNetFlow(inputToken, address(this)))
+        ) / (10 ** 9); // Safe conversion - Netflow rate will always we positive or zero
+
         uint256 tokenAmount = gasPrice * gasLimit * tokenToMaticRate;
         uint256 timeToDistribute = (tokenAmount / inflowRate) / (10 ** 9);
         return lastDistributedAt + timeToDistribute;
@@ -943,14 +951,11 @@ contract REXUniswapV3Market is
 
     function _getShareAllocations(
         ShareholderUpdate memory _shareholderUpdate
-    )
-        internal
-        view
-        returns (uint128 userShares)
-    {
-
+    ) internal view returns (uint128 userShares) {
         // The user's shares will always be their current flow rate
-        userShares = (uint128(uint256(int256(_shareholderUpdate.currentFlowRate))));
+        userShares = (
+            uint128(uint256(int256(_shareholderUpdate.currentFlowRate)))
+        );
 
         // The flow rate is scaled to account for the fact you can't by any ETH with just 1 wei of USDC
         userShares /= shareScaler;
