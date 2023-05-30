@@ -10,6 +10,8 @@ import "./gelato/AutomateTaskCreator.sol";
 
 import "./IREXUniswapV3Market.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title Ricochet's Limit Order Manager
  *
@@ -67,8 +69,10 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
         ISuperToken token = ISuperToken(market.inputToken());
 
+        (bool allowCreate, , bool allowDelete, ) = token.getFlowPermissions(msg.sender, address(this));
+
         // check if address(this) is an operator for the user
-        require(token.isOperatorFor(address(this), msg.sender), "ACL");
+        require(allowCreate && allowDelete, "ACL");
 
         bytes32 taskId = createGelatoTask(msg.sender, _market);
 
@@ -97,6 +101,7 @@ contract REXLimitOrderManager is AutomateTaskCreator {
      */
     function cancelLimitOrder(address _market) public {
         LimitOrder memory order = limitOrders[msg.sender][_market];
+        delete limitOrders[msg.sender][_market];
         _cancelTask(order.taskId);
     }
 
@@ -132,10 +137,15 @@ contract REXLimitOrderManager is AutomateTaskCreator {
      * @param _market The address of the REX market where the order is placed for.
      */
     function updateUserStream(address _user, address _market) external {
-        LimitOrder memory order = limitOrders[_user][_market];
+        LimitOrder storage order = limitOrders[_user][_market];
 
         if (order.ttl < block.timestamp && order.executed == false) {
             _cancelTask(order.taskId);
+            console.log("Order cancelled");
+            console.log("Order TTL: %s", order.ttl);
+            console.log("Current time: %s", block.timestamp);
+            delete limitOrders[_user][_market];
+            return;
         }
 
         IREXUniswapV3Market market = IREXUniswapV3Market(_market);
@@ -143,9 +153,14 @@ contract REXLimitOrderManager is AutomateTaskCreator {
         uint256 price = uint256(uint(market.getLatestPrice()));
         int96 curRate = token.getFlowRate(_user, _market);
 
-        order.executed = true;
+        if (order.executed == false) {
+            order.executed = true;
+            limitOrders[_user][_market] = order;
+        }
+
         if (price < order.price && curRate == 0) {
             token.createFlowFrom(_user, _market, order.streamRate);
+            console.log("Stream created");
         } else {
             if (curRate > 0) {
                 token.deleteFlowFrom(_user, _market);

@@ -12,122 +12,151 @@ const { deployMockContract, provider } = waffle
 const config = Constants['polygon']
 
 describe('REXLimitOrderManager', function () {
-  let adminSigner: SignerWithAddress
-  let aliceSigner: SignerWithAddress
-  let bobSigner: SignerWithAddress
-  let usdcxWhaleSigner: SignerWithAddress
-  let ethxWhaleSigner: SignerWithAddress
-  let rexLimitOrderManager: any
+    let adminSigner: SignerWithAddress
+    let aliceSigner: SignerWithAddress
+    let bobSigner: SignerWithAddress
+    let usdcxWhaleSigner: SignerWithAddress
+    let ethxWhaleSigner: SignerWithAddress
+    let rexLimitOrderManager: any
 
-  let ricochetUSDCx: SuperToken
-  let ricochetETHx: SuperToken
-  let ricochetWBTCx: SuperToken
-  let ricochetRIC: SuperToken
-  let ricochetRexSHIRT: SuperToken
+    let ricochetUSDCx: SuperToken
+    let ricochetETHx: SuperToken
+    let ricochetWBTCx: SuperToken
+    let ricochetRIC: SuperToken
+    let ricochetRexSHIRT: SuperToken
 
-  let sf: Framework,
-    superT: ISuperToken,
-    u: { [key: string]: IUser },
-    market: REXUniswapV3Market,
-    tokenss: { [key: string]: any },
-    sfRegistrationKey: any,
-    accountss: SignerWithAddress[],
-    constant: { [key: string]: string },
-    ERC20: any
+    let sf: Framework,
+        superT: ISuperToken,
+        u: { [key: string]: IUser },
+        market: REXUniswapV3Market,
+        tokenss: { [key: string]: any },
+        sfRegistrationKey: any,
+        accountss: SignerWithAddress[],
+        constant: { [key: string]: string },
+        ERC20: any
 
-  beforeEach(async function () {
-    const { superfluid, users, accounts, tokens, superTokens, contracts, constants } = await setup()
-    accountss = accounts
+    beforeEach(async function () {
+        const { superfluid, users, accounts, tokens, superTokens, contracts, constants } = await setup()
+        accountss = accounts
 
-    u = users
-    sf = superfluid
-    superT = superTokens
-    tokenss = tokens
-    accountss = accounts
-    constant = constants
+        u = users
+        sf = superfluid
+        superT = superTokens
+        tokenss = tokens
+        accountss = accounts
+        constant = constants
 
-    adminSigner = accountss[0]
-    aliceSigner = accountss[1]
-    bobSigner = accountss[2]
-    usdcxWhaleSigner = accountss[5]
-    ethxWhaleSigner = accountss[6]
+        adminSigner = accountss[0]
+        aliceSigner = accountss[1]
+        bobSigner = accountss[2]
+        usdcxWhaleSigner = accountss[5]
+        ethxWhaleSigner = accountss[6]
 
-    ricochetUSDCx = superT.usdcx
-    ricochetETHx = superT.ethx
-    ricochetWBTCx = superT.wbtcx
-    ricochetRIC = superT.ric
+        ricochetUSDCx = superT.usdcx
+        ricochetETHx = superT.ethx
+        ricochetWBTCx = superT.wbtcx
+        ricochetRIC = superT.ric
 
-    const REXLimitOrderManager = await ethers.getContractFactory('REXLimitOrderManager')
-    rexLimitOrderManager = await REXLimitOrderManager.deploy(config.GELATO_OPS, adminSigner.address)
+        const REXLimitOrderManager = await ethers.getContractFactory('REXLimitOrderManager')
+        rexLimitOrderManager = await REXLimitOrderManager.deploy(config.GELATO_OPS, adminSigner.address)
 
-    await rexLimitOrderManager.deployed()
-  })
+        await rexLimitOrderManager.deployed()
+    })
 
-  describe('createLimitOrder', function () {
-    it('should create a new limit order', async function () {
-      const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
-      await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
+    describe('createLimitOrder', function () {
+        it('should create a new limit order', async function () {
+            const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
+            await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
 
-      await ricochetUSDCx
-        .authorizeFlowOperatorWithFullControl({
-          flowOperator: rexLimitOrderManager.address,
+            await ricochetUSDCx
+                .authorizeFlowOperatorWithFullControl({
+                    flowOperator: rexLimitOrderManager.address,
+                })
+                .exec(aliceSigner)
+
+            await rexLimitOrderManager
+                .connect(aliceSigner)
+                .createLimitOrder(mockedREXMarket.address, false, 1000, 2000, 1795170912)
+            const limitOrder = await rexLimitOrderManager.limitOrders(aliceSigner.address, mockedREXMarket.address)
+
+            expect(limitOrder.isInverted).to.be.false
+            expect(limitOrder.streamRate).to.equal(1000)
+            expect(limitOrder.price).to.equal(2000)
+            expect(limitOrder.executed).to.be.false
+            expect(limitOrder.ttl).to.equal(1795170912)
         })
-        .exec(aliceSigner)
 
-      const data = await ricochetUSDCx.getFlowOperatorData({
-        sender: aliceSigner.address,
-        flowOperator: rexLimitOrderManager.address,
-        providerOrSigner: aliceSigner,
-      })
+        it('should revert if not operator for the user', async function () {
+            const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
+            await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
 
-      console.log('Data :', data)
-
-      await rexLimitOrderManager
-        .connect(aliceSigner)
-        .createLimitOrder(mockedREXMarket.address, false, 1000, 2000, 1795170912)
-      const limitOrder = await rexLimitOrderManager.limitOrders(aliceSigner.address, mockedREXMarket.address)
-
-      expect(limitOrder.isInverted).to.be.false
-      expect(limitOrder.streamRate).to.equal(1000)
-      expect(limitOrder.price).to.equal(2000)
-      expect(limitOrder.executed).to.be.false
-      expect(limitOrder.ttl).to.equal(1795170912)
+            await expect(
+                rexLimitOrderManager.connect(aliceSigner).createLimitOrder(mockedREXMarket.address, true, 1000, 2000, 3600)
+            ).to.be.revertedWith('ACL')
+        })
     })
 
-    it('should revert if not operator for the user', async function () {
-      const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
-      await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
+    describe("cancelLimitOrder", function () {
+        it("should cancel a limit order", async function () {
 
-      await expect(
-        rexLimitOrderManager.connect(aliceSigner).createLimitOrder(mockedREXMarket.address, true, 1000, 2000, 3600)
-      ).to.be.revertedWith('ACL')
-    })
-  })
+            const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
+            await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
 
-  // describe("cancelLimitOrder", function () {
-  //     it("should cancel a limit order", async function () {
+            await ricochetUSDCx
+                .authorizeFlowOperatorWithFullControl({
+                    flowOperator: rexLimitOrderManager.address,
+                })
+                .exec(aliceSigner)
 
-  //         await rexLimitOrderManager.createLimitOrder(marketAddress, true, 1000, 2000, 3600);
+            await rexLimitOrderManager
+                .connect(aliceSigner)
+                .createLimitOrder(mockedREXMarket.address, false, 1000, 2000, 1795170912)
+            const limitOrder = await rexLimitOrderManager.limitOrders(aliceSigner.address, mockedREXMarket.address)
 
-  //         await rexLimitOrderManager.cancelLimitOrder(marketAddress);
 
-  //         const limitOrder = await rexLimitOrderManager.limitOrders(user1.address, marketAddress);
+            await rexLimitOrderManager.connect(aliceSigner).cancelLimitOrder(mockedREXMarket.address);
 
-  //         expect(limitOrder.taskId).to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
-  //     });
-  // });
+            const limitOrderCancelled = await rexLimitOrderManager.limitOrders(aliceSigner.address, mockedREXMarket.address);
 
-  // describe("updateUserStream", function () {
-  //     it("should update the user's stream", async function () {
-  //         const marketAddress = await getMarketAddress(); // Replace with your own logic to get the market address
+            expect(limitOrder.streamRate).to.equal(1000)
+            expect(limitOrder.price).to.equal(2000)
+            expect(limitOrderCancelled.streamRate).to.equal("0");
+            expect(limitOrderCancelled.price).to.equal("0");
+            expect(limitOrderCancelled.taskId).to.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
+        });
+    });
 
-  //         await rexLimitOrderManager.createLimitOrder(marketAddress, true, 1000, 2000, 3600);
+      describe("updateUserStream", function () {
+          it("should start the user's stream", async function () {
+            const mockedREXMarket = await deployMockContract(adminSigner, REXUniswapV3Market__factory.abi)
+            await mockedREXMarket.mock.inputToken.returns(ricochetUSDCx.address)
+            await mockedREXMarket.mock.getLatestPrice.returns(180078594776) // 1800.78594776 USDC / ETH
 
-  //         await rexLimitOrderManager.updateUserStream(user1.address, marketAddress);
+            await ricochetUSDCx.transfer({ receiver: aliceSigner.address, amount: "1000000000000000000" }).exec(usdcxWhaleSigner);
 
-  //         const limitOrder = await rexLimitOrderManager.limitOrders(user1.address, marketAddress);
+            await ricochetUSDCx
+                .authorizeFlowOperatorWithFullControl({
+                    flowOperator: rexLimitOrderManager.address,
+                })
+                .exec(aliceSigner)
 
-  //         expect(limitOrder.executed).to.be.true;
-  //     });
-  // });
+            let timeStamp = 1785460337; // time in 2026
+
+            await rexLimitOrderManager
+                .connect(aliceSigner)
+                .createLimitOrder(mockedREXMarket.address, false, 10000, 190078594776, timeStamp)
+            
+            const checker = await rexLimitOrderManager.connect(aliceSigner).checker(aliceSigner.address, mockedREXMarket.address);
+            await rexLimitOrderManager.connect(adminSigner).updateUserStream(aliceSigner.address, mockedREXMarket.address); 
+            const limitOrder = await rexLimitOrderManager.limitOrders(aliceSigner.address, mockedREXMarket.address)
+
+            const aliceNetFlow = await ricochetUSDCx.cfaV1.getFlow({ superToken: ricochetUSDCx.address, sender: aliceSigner.address, receiver: mockedREXMarket.address, providerOrSigner: aliceSigner });
+
+            expect(limitOrder.streamRate).to.equal(10000)
+            expect(checker[0]).to.equal(true)
+            expect(limitOrder.executed).to.equal(true)
+            expect(aliceNetFlow.flowRate).to.equal("10000")
+
+          });
+      });
 })
