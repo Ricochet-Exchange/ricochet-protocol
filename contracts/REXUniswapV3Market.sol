@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Uniswap Imports
 import "./uniswap/IUniswapV3Pool.sol";
@@ -24,15 +25,16 @@ import "./gelato/OpsTaskCreator.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 // REX Imports
-import "./ISETHCustom.sol";
+import "./superfluid/ISETHCustom.sol";
 import "./matic/IWMATIC.sol";
-import "./superswap/interfaces/ISwapRouter02.sol";
+import "./uniswap/interfaces/ISwapRouter02.sol";
 
 // Hardhat console
 import "hardhat/console.sol";
 
 contract REXUniswapV3Market is
     Ownable,
+    ReentrancyGuard,
     SuperAppBase,
     Initializable,
     OpsTaskCreator
@@ -141,8 +143,7 @@ contract REXUniswapV3Market is
         });
         moduleData.modules[0] = Module.TIME;
         moduleData.args[0] = _timeModuleArg(block.timestamp, INTERVAL);
-        bytes32 id = _createTask(address(this), execData, moduleData, ETH);
-        taskId = id;
+        taskId = _createTask(address(this), execData, moduleData, ETH);
     }
 
     /// @dev Initializer for wmatic and maticx
@@ -172,7 +173,7 @@ contract REXUniswapV3Market is
         outputToken = _outputToken;
         shareScaler = _shareScaler;
         rateTolerance = _rateTolerance;
-
+        lastDistributedAt = block.timestamp;
         underlyingOutputToken = _getUnderlyingToken(outputToken);
         underlyingInputToken = _getUnderlyingToken(inputToken);
 
@@ -187,8 +188,6 @@ contract REXUniswapV3Market is
                 2 ** 256 - 1
             );
         }
-
-        lastDistributedAt = block.timestamp;
     }
 
     /// @dev Initialize the Uniswap V3 Router and Factory and do approvals
@@ -275,13 +274,13 @@ contract REXUniswapV3Market is
     function distribute(
         bytes memory ctx,
         bool ignoreGasReimbursement
-    ) public payable returns (bytes memory newCtx) {
-        newCtx = ctx;
+    ) public payable nonReentrant returns (bytes memory newCtx) {
 
         uint gasUsed = gasleft(); // Track gas used in this function
+        newCtx = ctx;
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
 
-        // If there is no inputToken to distribute, then return
+        // If there is no inputToken to distribute, then return immediately
         if (inputTokenAmount == 0) {
             return newCtx;
         }
@@ -352,7 +351,7 @@ contract REXUniswapV3Market is
             gasUsed = gasUsed - gasleft();
             fee = gasUsed * tx.gasprice; // TODO: add a threshold?
             _swapForGas(fee);
-            wmatic.transfer(msg.sender, fee);
+            ERC20(address(wmatic)).safeTransfer(msg.sender, fee);
         }
     }
 
@@ -399,9 +398,7 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount =
-            (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) /
-            BASIS_POINT_SCALER;
+        amount = amount * (BASIS_POINT_SCALER - gelatoFeeShare) / BASIS_POINT_SCALER;
 
         // Calculate minOutput based on oracle
         latestPrice = uint(int(getLatestPrice()));
@@ -409,19 +406,18 @@ contract REXUniswapV3Market is
         if (latestPrice == 0) {
             minOutput = 0;
         } else if (!invertPrice) {
-            // This is the common case, e.g. USDC >> ETH
-            minOutput =
-                ((amount * 1e8) / latestPrice) *
-                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
+            minOutput = amount * 1e8 / latestPrice;
+            // Scale the minOutput to the right percision
+            minOutput *= 10 ** (18 - ERC20(underlyingInputToken).decimals());
         } else {
-            // Invert the price provided by the oracle, e.g. ETH >> USDC
-            minOutput = (amount * latestPrice) / 1e8 / 1e12;
+            // Invert the rate provided by the oracle, e.g. ETH >> USDC
+            minOutput = amount * latestPrice / 1e8;
+            // Scale the minOutput to the right percision
+            minOutput /= 10 ** (18 - ERC20(underlyingOutputToken).decimals()) * 1e8;
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput =
-            (minOutput * (BASIS_POINT_SCALER - rateTolerance)) /
-            BASIS_POINT_SCALER;
+        minOutput = minOutput * (BASIS_POINT_SCALER - rateTolerance) / BASIS_POINT_SCALER;
 
         // Encode the path for swap
         bytes memory encodedPath;
