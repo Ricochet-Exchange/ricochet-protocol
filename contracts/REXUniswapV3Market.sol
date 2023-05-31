@@ -8,8 +8,6 @@ import {IInstantDistributionAgreementV1} from "@superfluid-finance/ethereum-cont
 import {SuperAppBase} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol";
 
 // Open Zeppelin Imports
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -33,10 +31,8 @@ import "./uniswap/interfaces/ISwapRouter02.sol";
 import "hardhat/console.sol";
 
 contract REXUniswapV3Market is
-    Ownable,
     ReentrancyGuard,
     SuperAppBase,
-    Initializable,
     OpsTaskCreator
 {
     using SafeERC20 for ERC20;
@@ -107,7 +103,6 @@ contract REXUniswapV3Market is
     );
 
     constructor(
-        address _owner,
         ISuperfluid _host,
         IConstantFlowAgreementV1 _cfa,
         IInstantDistributionAgreementV1 _ida,
@@ -119,8 +114,6 @@ contract REXUniswapV3Market is
         cfa = _cfa;
         ida = _ida;
 
-        transferOwnership(_owner);
-
         uint256 _configWord = SuperAppDefinitions.APP_LEVEL_FINAL;
 
         if (bytes(_registrationKey).length > 0) {
@@ -131,7 +124,7 @@ contract REXUniswapV3Market is
     }
 
     /// @dev Creates the distribute task on Gelato Network
-    function createTask() external payable onlyOwner {
+    function createTask() external payable  {
         // Check the task wasn't already created
         require(taskId == bytes32(""), "Already started task");
 
@@ -152,7 +145,7 @@ contract REXUniswapV3Market is
     function initializeMATIC(
         IWMATIC _wmatic,
         ISuperToken _maticx
-    ) public onlyOwner {
+    ) external  {
         require(address(wmatic) == address(0), "A");
         wmatic = _wmatic;
         maticx = _maticx;
@@ -168,7 +161,8 @@ contract REXUniswapV3Market is
         ISuperToken _outputToken,
         uint128 _shareScaler,
         uint256 _rateTolerance
-    ) public onlyOwner initializer {
+    ) external {
+        require(address(inputToken) == address(0), "IU"); // Blocks if already initialized
         inputToken = _inputToken;
         outputToken = _outputToken;
         shareScaler = _shareScaler;
@@ -202,7 +196,7 @@ contract REXUniswapV3Market is
         address[] memory _uniswapPath,
         uint24[] memory _poolFees,
         uint24 _gelatoGasPoolFee
-    ) external onlyOwner {
+    ) external  {
         require(address(router) == address(0), "IU"); // Blocks if already initialized
 
         // Set contract variables
@@ -249,9 +243,8 @@ contract REXUniswapV3Market is
     function initializePriceFeed(
         AggregatorV3Interface _priceFeed,
         bool _invertPrice
-    ) external onlyOwner {
-        // Only init priceFeed if not already initialized
-        require(address(priceFeed) == address(0), "A");
+    ) external  {
+        require(address(priceFeed) == address(0), "A"); // Blocks if already initialized
         priceFeed = _priceFeed;
         invertPrice = _invertPrice;
     }
@@ -990,7 +983,7 @@ contract REXUniswapV3Market is
     /// @dev sets the rateTolerance for the swap
     /// @param _rateTolerance is the rateTolerance for the swap in basis points
     /// @notice this needs a min and max
-    function setRateTolerance(uint256 _rateTolerance) external onlyOwner {
+    function setRateTolerance(uint256 _rateTolerance) external  {
         require(rateTolerance <= 1e4, "RT");
         rateTolerance = _rateTolerance;
     }
@@ -998,7 +991,7 @@ contract REXUniswapV3Market is
     /// @dev sets the gelatoFeeShare for the swap
     /// @param _gelatoFeeShare is the gelatoFeeShare for the swap in basis points
     /// @notice this needs a min and max
-    function setGelatoFeeShare(uint256 _gelatoFeeShare) external onlyOwner {
+    function setGelatoFeeShare(uint256 _gelatoFeeShare) external  {
         require(_gelatoFeeShare <= 1e4, "GFS");
         gelatoFeeShare = _gelatoFeeShare;
     }

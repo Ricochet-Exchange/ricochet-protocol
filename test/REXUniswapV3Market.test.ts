@@ -202,7 +202,6 @@ describe('REXUniswapV3Market', () => {
 
     // Deploy the REXUniswapV3Market
     market = await REXMarketFactory.deploy(
-      adminSigner.address,
       config.HOST_SUPERFLUID_ADDRESS,
       config.CFA_SUPERFLUID_ADDRESS,
       config.IDA_SUPERFLUID_ADDRESS,
@@ -310,7 +309,6 @@ describe('REXUniswapV3Market', () => {
     after(async () => {})
 
     it('#1.1 contract variables were set correctly', async () => {
-      expect(await market.owner()).to.equal(adminSigner.address)
       expect(await market.lastDistributedAt()).to.equal(intializeMarketBlock.timestamp)
       expect(await market.rateTolerance()).to.equal(config.RATE_TOLERANCE)
       expect(await market.shareScaler()).to.equal(config.SHARE_SCALER)
@@ -777,7 +775,6 @@ describe('REXUniswapV3Market', () => {
       const registrationKey = await sfRegistrationKey(sf, adminSigner.address)
 
       market = await REXMarketFactory.deploy(
-        adminSigner.address,
         sf.settings.config.hostAddress,
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
@@ -934,7 +931,6 @@ describe('REXUniswapV3Market', () => {
       const registrationKey = await sfRegistrationKey(sf, adminSigner.address)
 
       market = await REXMarketFactory.deploy(
-        adminSigner.address,
         sf.settings.config.hostAddress,
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
@@ -1087,7 +1083,6 @@ describe('REXUniswapV3Market', () => {
       const registrationKey = await sfRegistrationKey(sf, adminSigner.address)
 
       market = await REXMarketFactory.deploy(
-        adminSigner.address,
         sf.settings.config.hostAddress,
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
