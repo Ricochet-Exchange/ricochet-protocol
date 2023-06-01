@@ -1,0 +1,439 @@
+# Slither Report
+This is a report from an internal audit performed on the Ricochet Protocol.
+
+* Date: 2023-05-30
+* Auditor: Michael Ghen
+* Developer: Michael Ghen
+
+## Vulnerabilities
+
+### IMulticall is re-used:
+        - IMulticall (node_modules/@uniswap/v3-periphery/contracts/interfaces/IMulticall.sol#7-13)
+        - IMulticall (contracts/uniswap/interfaces/IMulticall.sol#7-15)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#name-reused
+#### Mitigation: contracts/uniswap/interfaces/IMulticall.sol
+
+INFO:Detectors:
+### Reentrancy in REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357):
+        External calls:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - inputToken.downgrade(inputToken.balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#397)
+                - outAmount = router.exactInput(params) (contracts/REXUniswapV3Market.sol#448)
+                - wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#454-456)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+                - outputToken.upgrade(ERC20(underlyingOutputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(underlyingOutputToken).decimals()))) (contracts/REXUniswapV3Market.sol#461-464)
+        - newCtx = _idaDistribute(OUTPUT_INDEX,uint128(outputTokenAmount),outputToken,newCtx) (contracts/REXUniswapV3Market.sol#313-318)
+                - host.callAgreement(ida,abi.encodeWithSelector(ida.distribute.selector,_distToken,_index,_distAmount,new bytes(0)),new bytes(0)) (contracts/REXUniswapV3Market.sol#746-756)
+                - (_newCtx,None) = host.callAgreementWithContext(ida,abi.encodeWithSelector(ida.distribute.selector,_distToken,_index,_distAmount,new bytes(0)),new bytes(0),_newCtx) (contracts/REXUniswapV3Market.sol#758-769)
+        External calls sending eth:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+        State variables written after the call(s):
+        - gelatoFeeShare = gelatoFeeShare - 1 (contracts/REXUniswapV3Market.sol#326)
+        REXUniswapV3Market.gelatoFeeShare (contracts/REXUniswapV3Market.sol#94) can be used in cross function reentrancies:
+        - REXUniswapV3Market._swap(uint256) (contracts/REXUniswapV3Market.sol#390-467)
+        - REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357)
+        - REXUniswapV3Market.gelatoFeeShare (contracts/REXUniswapV3Market.sol#94)
+        - REXUniswapV3Market.setGelatoFeeShare(uint256) (contracts/REXUniswapV3Market.sol#1005-1008)
+        - gelatoFeeShare = gelatoFeeShare + 1 (contracts/REXUniswapV3Market.sol#329)
+        REXUniswapV3Market.gelatoFeeShare (contracts/REXUniswapV3Market.sol#94) can be used in cross function reentrancies:
+        - REXUniswapV3Market._swap(uint256) (contracts/REXUniswapV3Market.sol#390-467)
+        - REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357)
+        - REXUniswapV3Market.gelatoFeeShare (contracts/REXUniswapV3Market.sol#94)
+        - REXUniswapV3Market.setGelatoFeeShare(uint256) (contracts/REXUniswapV3Market.sol#1005-1008)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities
+#### Mitigation: Added OpenZeppelin ReentrancyGuard
+
+INFO:Detectors:
+### REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357) ignores return value by wmatic.transfer(msg.sender,fee) (contracts/REXUniswapV3Market.sol#355)
+REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes) (contracts/REXUniswapV3Market.sol#673-727) ignores return value by _superToken.transferFrom(address(this),_shareholder,_uninvestAmount) (contracts/REXUniswapV3Market.sol#710-726)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer
+#### Mitigation: Use SafeERC20's safeTransfer
+
+INFO:Detectors:
+### REXUniswapV3Market._swap(uint256) (contracts/REXUniswapV3Market.sol#390-467) performs a multiplication on the result of a division:
+        - amount = (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) / BASIS_POINT_SCALER (contracts/REXUniswapV3Market.sol#402-404)
+        - minOutput = (amount * latestPrice) / 1e8 / 1e12 (contracts/REXUniswapV3Market.sol#418)
+REXUniswapV3Market._swap(uint256) (contracts/REXUniswapV3Market.sol#390-467) performs a multiplication on the result of a division:
+        - minOutput = ((amount * 1e8) / latestPrice) * (10 ** (18 - ERC20(underlyingInputToken).decimals())) (contracts/REXUniswapV3Market.sol#413-415)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+#### Mitigation: Break the scaling out seperately
+
+
+
+INFO:Detectors:
+REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357) uses a dangerous strict equality:
+        - inputTokenAmount == 0 (contracts/REXUniswapV3Market.sol#285)
+REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357) uses a dangerous strict equality:
+        - outputTokenAmount == 0 (contracts/REXUniswapV3Market.sol#301)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+#### Mitigation: None
+
+INFO:Detectors:
+### Reentrancy in REXUniswapV3Market.createTask() (contracts/REXUniswapV3Market.sol#132-146):
+        External calls:
+        - id = _createTask(address(this),execData,moduleData,ETH) (contracts/REXUniswapV3Market.sol#144)
+                - ops.createTask(_execAddress,_execDataOrSelector,_moduleData,_feeToken) (contracts/gelato/OpsTaskCreator.sol#52-58)
+        State variables written after the call(s):
+        - taskId = id (contracts/REXUniswapV3Market.sol#145)
+        REXUniswapV3Market.taskId (contracts/REXUniswapV3Market.sol#93) can be used in cross function reentrancies:
+        - REXUniswapV3Market.createTask() (contracts/REXUniswapV3Market.sol#132-146)
+        - REXUniswapV3Market.taskId (contracts/REXUniswapV3Market.sol#93)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+#### Mitigation: Remove assignment
+
+INFO:Detectors:
+### REXUniswapV3Market._swap(uint256).encodedPath (contracts/REXUniswapV3Market.sol#427) is a local variable never initialized
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables
+#### Mitigation: False Positive (?)
+
+INFO:Detectors:
+### REXUniswapV3Market._idaDistribute(uint32,uint128,ISuperToken,bytes) (contracts/REXUniswapV3Market.sol#737-771) ignores return value by host.callAgreement(ida,abi.encodeWithSelector(ida.distribute.selector,_distToken,_index,_distAmount,new bytes(0)),new bytes(0)) (contracts/REXUniswapV3Market.sol#746-756)
+REXUniswapV3Market._createIndex(uint256,ISuperToken) (contracts/REXUniswapV3Market.sol#773-784) ignores return value by host.callAgreement(ida,abi.encodeWithSelector(ida.createIndex.selector,distToken,index,new bytes(0)),new bytes(0)) (contracts/REXUniswapV3Market.sol#774-783)
+REXUniswapV3Market.closeStream(address,ISuperToken) (contracts/REXUniswapV3Market.sol#966-992) ignores return value by host.callAgreement(cfa,abi.encodeWithSelector(cfa.deleteFlow.selector,token,streamer,address(this),new bytes(0)),0x) (contracts/REXUniswapV3Market.sol#981-991)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+#### Mitigation: Use SuperTokenV1Library and remove _idaDistribute and _createIndex
+
+
+INFO:Detectors:
+### REXUniswapV3Market.constructor(address,ISuperfluid,IConstantFlowAgreementV1,IInstantDistributionAgreementV1,string,address,address)._owner (contracts/REXUniswapV3Market.sol#108) shadows:
+        - Ownable._owner (node_modules/@openzeppelin/contracts/access/Ownable.sol#21) (state variable)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing
+#### Mitigation: Removed Ownable
+
+INFO:Detectors:
+REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256) (contracts/REXUniswapV3Market.sol#165-192) should emit an event for: 
+        - shareScaler = _shareScaler (contracts/REXUniswapV3Market.sol#173) 
+        - rateTolerance = _rateTolerance (contracts/REXUniswapV3Market.sol#174) 
+REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24) (contracts/REXUniswapV3Market.sol#200-246) should emit an event for: 
+        - gelatoGasPoolFee = _gelatoGasPoolFee (contracts/REXUniswapV3Market.sol#213) 
+REXUniswapV3Market.setRateTolerance(uint256) (contracts/REXUniswapV3Market.sol#997-1000) should emit an event for: 
+        - rateTolerance = _rateTolerance (contracts/REXUniswapV3Market.sol#999) 
+REXUniswapV3Market.setGelatoFeeShare(uint256) (contracts/REXUniswapV3Market.sol#1005-1008) should emit an event for: 
+        - gelatoFeeShare = _gelatoFeeShare (contracts/REXUniswapV3Market.sol#1007) 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic
+#### Mitigation: Event for when gelatoFeeShare changes, make other values constants
+
+
+INFO:Detectors:
+REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24) (contracts/REXUniswapV3Market.sol#200-246) has external calls inside a loop: require(bool,string)(factory.getPool(address(uniswapPath[i]),address(uniswapPath[i + 1]),poolFees[i]) != address(0),PDNE) (contracts/REXUniswapV3Market.sol#220-227)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+INFO:Detectors:
+Reentrancy in REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357):
+        External calls:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - inputToken.downgrade(inputToken.balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#397)
+                - outAmount = router.exactInput(params) (contracts/REXUniswapV3Market.sol#448)
+                - wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#454-456)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+                - outputToken.upgrade(ERC20(underlyingOutputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(underlyingOutputToken).decimals()))) (contracts/REXUniswapV3Market.sol#461-464)
+        - newCtx = _idaDistribute(OUTPUT_INDEX,uint128(outputTokenAmount),outputToken,newCtx) (contracts/REXUniswapV3Market.sol#313-318)
+                - host.callAgreement(ida,abi.encodeWithSelector(ida.distribute.selector,_distToken,_index,_distAmount,new bytes(0)),new bytes(0)) (contracts/REXUniswapV3Market.sol#746-756)
+                - (_newCtx,None) = host.callAgreementWithContext(ida,abi.encodeWithSelector(ida.distribute.selector,_distToken,_index,_distAmount,new bytes(0)),new bytes(0),_newCtx) (contracts/REXUniswapV3Market.sol#758-769)
+        External calls sending eth:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+        State variables written after the call(s):
+        - lastDistributedAt = block.timestamp (contracts/REXUniswapV3Market.sol#333)
+Reentrancy in REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256) (contracts/REXUniswapV3Market.sol#165-192):
+        External calls:
+        - _createIndex(OUTPUT_INDEX,outputToken) (contracts/REXUniswapV3Market.sol#180)
+                - host.callAgreement(ida,abi.encodeWithSelector(ida.createIndex.selector,distToken,index,new bytes(0)),new bytes(0)) (contracts/REXUniswapV3Market.sol#774-783)
+        - ERC20(underlyingOutputToken).safeIncreaseAllowance(address(outputToken),2 ** 256 - 1) (contracts/REXUniswapV3Market.sol#185-188)
+        State variables written after the call(s):
+        - lastDistributedAt = block.timestamp (contracts/REXUniswapV3Market.sol#191)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Reentrancy in REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357):
+        External calls:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - inputToken.downgrade(inputToken.balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#397)
+                - outAmount = router.exactInput(params) (contracts/REXUniswapV3Market.sol#448)
+                - wmatic.withdraw(ERC20(underlyingOutputToken).balanceOf(address(this))) (contracts/REXUniswapV3Market.sol#454-456)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+                - outputToken.upgrade(ERC20(underlyingOutputToken).balanceOf(address(this)) * (10 ** (18 - ERC20(underlyingOutputToken).decimals()))) (contracts/REXUniswapV3Market.sol#461-464)
+        External calls sending eth:
+        - (outputTokenAmount,latestPrice) = _swap(inputTokenAmount) (contracts/REXUniswapV3Market.sol#290-292)
+                - ISETHCustom(address(outputToken)).upgradeByETH{value: address(this).balance}() (contracts/REXUniswapV3Market.sol#457-459)
+        Event emitted after the call(s):
+        - RexSwap(inputTokenAmount,outputTokenAmount,latestPrice) (contracts/REXUniswapV3Market.sol#295)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+REXUniswapV3Market.distribute(bytes,bool) (contracts/REXUniswapV3Market.sol#275-357) uses timestamp for comparisons
+        Dangerous comparisons:
+        - block.timestamp - lastDistributedAt <= distributionInterval && gelatoFeeShare > 1 (contracts/REXUniswapV3Market.sol#322-323)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Address.verifyCallResult(bool,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#201-221) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Address.sol#213-216)
+console._sendLogPayload(bytes) (node_modules/hardhat/console.sol#7-14) uses assembly
+        - INLINE ASM (node_modules/hardhat/console.sol#10-13)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+INFO:Detectors:
+Different versions of Solidity are used:
+        - Version used: ['>=0.4.0', '>=0.4.22<0.9.0', '>=0.5.0', '>=0.7.5', '>=0.8.0', '>=0.8.4', '^0.8.0', '^0.8.1', '^0.8.12', '^0.8.2']
+        - >=0.4.0 (contracts/superfluid/ISETHCustom.sol#1)
+        - >=0.4.22<0.9.0 (node_modules/hardhat/console.sol#2)
+        - >=0.5.0 (contracts/uniswap/IUniswapV3Factory.sol#2)
+        - >=0.5.0 (contracts/uniswap/IUniswapV3Pool.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolActions.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolDerivedState.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolEvents.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolImmutables.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#2)
+        - >=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolState.sol#2)
+        - >=0.7.5 (node_modules/@uniswap/v3-periphery/contracts/interfaces/IMulticall.sol#2)
+        - >=0.8.0 (node_modules/@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluidGovernance.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluidToken.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/ERC20WithTokenInfo.sol#2)
+        - >=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/TokenInfo.sol#2)
+        - ^0.8.0 (node_modules/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol#2)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC777/IERC777.sol#4)
+        - ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+        - ^0.8.0 (contracts/REXUniswapV3Market.sol#2)
+        - ^0.8.0 (contracts/gelato/LibDataTypes.sol#3)
+        - ^0.8.0 (contracts/gelato/Ops.sol#1)
+        - ^0.8.0 (contracts/gelato/OpsReady.sol#2)
+        - ^0.8.0 (contracts/gelato/OpsTaskCreator.sol#2)
+        - ^0.8.0 (contracts/matic/IWMATIC.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IApproveAndCall.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IMulticall.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IMulticallExtended.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/ISelfPermit.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/ISwapRouter02.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IV2SwapRouter.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IV3SwapCallback.sol#2)
+        - ^0.8.0 (contracts/uniswap/interfaces/IV3SwapRouter.sol#2)
+        - ^0.8.1 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+        - ^0.8.12 (contracts/gelato/Types.sol#2)
+        - ^0.8.2 (node_modules/@openzeppelin/contracts/proxy/utils/Initializable.sol#4)
+        - v2 (node_modules/@uniswap/v3-periphery/contracts/interfaces/IMulticall.sol#3)
+        - v2 (contracts/uniswap/interfaces/IApproveAndCall.sol#3)
+        - v2 (contracts/uniswap/interfaces/IMulticall.sol#3)
+        - v2 (contracts/uniswap/interfaces/IMulticallExtended.sol#3)
+        - v2 (contracts/uniswap/interfaces/ISwapRouter02.sol#3)
+        - v2 (contracts/uniswap/interfaces/IV2SwapRouter.sol#3)
+        - v2 (contracts/uniswap/interfaces/IV3SwapRouter.sol#3)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+OpsTaskCreator._cancelTask(bytes32) (contracts/gelato/OpsTaskCreator.sol#61-63) is never used and should be removed
+OpsTaskCreator._depositFunds(uint256,address) (contracts/gelato/OpsTaskCreator.sol#37-44) is never used and should be removed
+OpsTaskCreator._proxyModuleArg() (contracts/gelato/OpsTaskCreator.sol#79-81) is never used and should be removed
+OpsTaskCreator._resolverModuleArg(address,bytes) (contracts/gelato/OpsTaskCreator.sol#65-70) is never used and should be removed
+OpsTaskCreator._singleExecModuleArg() (contracts/gelato/OpsTaskCreator.sol#83-85) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+INFO:Detectors:
+Pragma version^0.8.0 (node_modules/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol#2) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4) allows old versions
+Pragma version^0.8.2 (node_modules/@openzeppelin/contracts/proxy/utils/Initializable.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC777/IERC777.sol#4) allows old versions
+Pragma version^0.8.1 (node_modules/@openzeppelin/contracts/utils/Address.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4) allows old versions
+Pragma version>=0.8.0 (node_modules/@superfluid-finance/ethereum-contracts/contracts/apps/SuperAppBase.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperApp.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperTokenFactory.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluidGovernance.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluidToken.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/ERC20WithTokenInfo.sol#2) allows old versions
+Pragma version>=0.8.4 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/TokenInfo.sol#2) allows old versions
+Pragma version>=0.7.5 (node_modules/@uniswap/v3-periphery/contracts/interfaces/IMulticall.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/REXUniswapV3Market.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/gelato/LibDataTypes.sol#3) allows old versions
+Pragma version^0.8.0 (contracts/gelato/Ops.sol#1) allows old versions
+Pragma version^0.8.0 (contracts/gelato/OpsReady.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/gelato/OpsTaskCreator.sol#2) allows old versions
+Pragma version^0.8.12 (contracts/gelato/Types.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/matic/IWMATIC.sol#2) allows old versions
+Pragma version>=0.4.0 (contracts/superfluid/ISETHCustom.sol#1) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/IUniswapV3Factory.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/IUniswapV3Pool.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IApproveAndCall.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IMulticall.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IMulticallExtended.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/ISelfPermit.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/ISwapRouter02.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IV2SwapRouter.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IV3SwapCallback.sol#2) allows old versions
+Pragma version^0.8.0 (contracts/uniswap/interfaces/IV3SwapRouter.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolActions.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolDerivedState.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolEvents.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolImmutables.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#2) allows old versions
+Pragma version>=0.5.0 (contracts/uniswap/pool/IUniswapV3PoolState.sol#2) allows old versions
+Pragma version>=0.4.22<0.9.0 (node_modules/hardhat/console.sol#2) is too complex
+solc-0.8.13 is not recommended for deployment
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Low level call in Address.sendValue(address,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#60-65):
+        - (success) = recipient.call{value: amount}() (node_modules/@openzeppelin/contracts/utils/Address.sol#63)
+Low level call in Address.functionCallWithValue(address,bytes,uint256,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#128-139):
+        - (success,returndata) = target.call{value: value}(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#137)
+Low level call in Address.functionStaticCall(address,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#157-166):
+        - (success,returndata) = target.staticcall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#164)
+Low level call in Address.functionDelegateCall(address,bytes,string) (node_modules/@openzeppelin/contracts/utils/Address.sol#184-193):
+        - (success,returndata) = target.delegatecall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#191)
+Low level call in OpsReady._transfer(uint256,address) (contracts/gelato/OpsReady.sol#50-57):
+        - (success) = _gelato.call{value: _fee}() (contracts/gelato/OpsReady.sol#52)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Detectors:
+Function IERC20Permit.DOMAIN_SEPARATOR() (node_modules/@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol#59) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMATIC(IWMATIC,ISuperToken)._wmatic (contracts/REXUniswapV3Market.sol#152) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMATIC(IWMATIC,ISuperToken)._maticx (contracts/REXUniswapV3Market.sol#153) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256)._inputToken (contracts/REXUniswapV3Market.sol#166) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256)._outputToken (contracts/REXUniswapV3Market.sol#167) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256)._shareScaler (contracts/REXUniswapV3Market.sol#168) is not in mixedCase
+Parameter REXUniswapV3Market.initializeMarket(ISuperToken,ISuperToken,uint128,uint256)._rateTolerance (contracts/REXUniswapV3Market.sol#169) is not in mixedCase
+Parameter REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24)._uniswapRouter (contracts/REXUniswapV3Market.sol#201) is not in mixedCase
+Parameter REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24)._uniswapFactory (contracts/REXUniswapV3Market.sol#202) is not in mixedCase
+Parameter REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24)._uniswapPath (contracts/REXUniswapV3Market.sol#203) is not in mixedCase
+Parameter REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24)._poolFees (contracts/REXUniswapV3Market.sol#204) is not in mixedCase
+Parameter REXUniswapV3Market.initializeUniswap(ISwapRouter02,IUniswapV3Factory,address[],uint24[],uint24)._gelatoGasPoolFee (contracts/REXUniswapV3Market.sol#205) is not in mixedCase
+Parameter REXUniswapV3Market.initializePriceFeed(AggregatorV3Interface,bool)._priceFeed (contracts/REXUniswapV3Market.sol#251) is not in mixedCase
+Parameter REXUniswapV3Market.initializePriceFeed(AggregatorV3Interface,bool)._invertPrice (contracts/REXUniswapV3Market.sol#252) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementCreated(ISuperToken,address,bytes32,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#511) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementCreated(ISuperToken,address,bytes32,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#512) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementCreated(ISuperToken,address,bytes32,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#515) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementCreated(ISuperToken,address,bytes32,bytes,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#533) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementCreated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#534) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementCreated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementData (contracts/REXUniswapV3Market.sol#536) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementCreated(ISuperToken,address,bytes32,bytes,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#538) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#570) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#571) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes)._agreementData (contracts/REXUniswapV3Market.sol#573) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#574) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#600) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#601) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementData (contracts/REXUniswapV3Market.sol#603) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementUpdated(ISuperToken,address,bytes32,bytes,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#605) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#642) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#643) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes)._agreementData (contracts/REXUniswapV3Market.sol#645) is not in mixedCase
+Parameter REXUniswapV3Market.beforeAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#646) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes)._superToken (contracts/REXUniswapV3Market.sol#674) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementClass (contracts/REXUniswapV3Market.sol#675) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes)._agreementData (contracts/REXUniswapV3Market.sol#677) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes)._cbdata (contracts/REXUniswapV3Market.sol#678) is not in mixedCase
+Parameter REXUniswapV3Market.afterAgreementTerminated(ISuperToken,address,bytes32,bytes,bytes,bytes)._ctx (contracts/REXUniswapV3Market.sol#679) is not in mixedCase
+Parameter REXUniswapV3Market.getIDAShares(address)._streamer (contracts/REXUniswapV3Market.sol#933) is not in mixedCase
+Parameter REXUniswapV3Market.setRateTolerance(uint256)._rateTolerance (contracts/REXUniswapV3Market.sol#997) is not in mixedCase
+Parameter REXUniswapV3Market.setGelatoFeeShare(uint256)._gelatoFeeShare (contracts/REXUniswapV3Market.sol#1005) is not in mixedCase
+Parameter OpsTaskCreator.withdrawFunds(uint256,address)._amount (contracts/gelato/OpsTaskCreator.sol#28) is not in mixedCase
+Parameter OpsTaskCreator.withdrawFunds(uint256,address)._token (contracts/gelato/OpsTaskCreator.sol#28) is not in mixedCase
+Contract console (node_modules/hardhat/console.sol#4-1532) is not in CapWords
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Detectors:
+Variable IUniswapV3PoolActions.collect(address,int24,int24,uint128,uint128).amount0Requested (contracts/uniswap/pool/IUniswapV3PoolActions.sol#47) is too similar to IUniswapV3PoolOwnerActions.collectProtocol(address,uint128,uint128).amount1Requested (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#21)
+Variable IUniswapV3PoolActions.collect(address,int24,int24,uint128,uint128).amount0Requested (contracts/uniswap/pool/IUniswapV3PoolActions.sol#47) is too similar to IUniswapV3PoolActions.collect(address,int24,int24,uint128,uint128).amount1Requested (contracts/uniswap/pool/IUniswapV3PoolActions.sol#48)
+Variable IUniswapV3PoolOwnerActions.collectProtocol(address,uint128,uint128).amount0Requested (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#20) is too similar to IUniswapV3PoolOwnerActions.collectProtocol(address,uint128,uint128).amount1Requested (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#21)
+Variable IUniswapV3PoolOwnerActions.collectProtocol(address,uint128,uint128).amount0Requested (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#20) is too similar to IUniswapV3PoolActions.collect(address,int24,int24,uint128,uint128).amount1Requested (contracts/uniswap/pool/IUniswapV3PoolActions.sol#48)
+Variable IUniswapV3PoolState.positions(bytes32).feeGrowthInside0LastX128 (contracts/uniswap/pool/IUniswapV3PoolState.sol#100) is too similar to IUniswapV3PoolState.positions(bytes32).feeGrowthInside1LastX128 (contracts/uniswap/pool/IUniswapV3PoolState.sol#101)
+Variable IUniswapV3PoolState.ticks(int24).feeGrowthOutside0X128 (contracts/uniswap/pool/IUniswapV3PoolState.sol#75) is too similar to IUniswapV3PoolState.ticks(int24).feeGrowthOutside1X128 (contracts/uniswap/pool/IUniswapV3PoolState.sol#76)
+Variable IUniswapV3PoolOwnerActions.setFeeProtocol(uint8,uint8).feeProtocol0 (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#10) is too similar to IUniswapV3PoolOwnerActions.setFeeProtocol(uint8,uint8).feeProtocol1 (contracts/uniswap/pool/IUniswapV3PoolOwnerActions.sol#10)
+Variable IUniswapV3PoolState.positions(bytes32).tokensOwed0 (contracts/uniswap/pool/IUniswapV3PoolState.sol#102) is too similar to IUniswapV3PoolState.positions(bytes32).tokensOwed1 (contracts/uniswap/pool/IUniswapV3PoolState.sol#103)
+Variable IV3SwapCallback.uniswapV3SwapCallback(int256,int256,bytes).amount0Delta (contracts/uniswap/interfaces/IV3SwapCallback.sol#17) is too similar to IV3SwapCallback.uniswapV3SwapCallback(int256,int256,bytes).amount1Delta (contracts/uniswap/interfaces/IV3SwapCallback.sol#18)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#variable-names-too-similar
+INFO:Detectors:
+IConstantFlowAgreementV1 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#11-441) does not implement functions:
+        - IConstantFlowAgreementV1.authorizeFlowOperatorWithFullControl(ISuperfluidToken,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#120-126)
+        - IConstantFlowAgreementV1.createFlow(ISuperfluidToken,address,int96,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#198-205)
+        - IConstantFlowAgreementV1.createFlowByOperator(ISuperfluidToken,address,address,int96,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#216-224)
+        - IConstantFlowAgreementV1.deleteFlow(ISuperfluidToken,address,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#370-377)
+        - IConstantFlowAgreementV1.deleteFlowByOperator(ISuperfluidToken,address,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#386-393)
+        - IConstantFlowAgreementV1.getAccountFlowInfo(ISuperfluidToken,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#328-337)
+        - IConstantFlowAgreementV1.getDepositRequiredForFlowRate(ISuperfluidToken,int96) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#64-68)
+        - IConstantFlowAgreementV1.getFlow(ISuperfluidToken,address,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#284-295)
+        - IConstantFlowAgreementV1.getFlowByID(ISuperfluidToken,bytes32) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#307-317)
+        - IConstantFlowAgreementV1.getFlowOperatorData(ISuperfluidToken,address,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#152-162)
+        - IConstantFlowAgreementV1.getFlowOperatorDataByID(ISuperfluidToken,bytes32) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#171-179)
+        - IConstantFlowAgreementV1.getMaximumFlowRateFromDeposit(ISuperfluidToken,uint256) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#48-52)
+        - IConstantFlowAgreementV1.getNetFlow(ISuperfluidToken,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#345-350)
+        - IConstantFlowAgreementV1.isPatricianPeriod(ISuperfluidToken,address,uint256) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#88-94)
+        - IConstantFlowAgreementV1.isPatricianPeriodNow(ISuperfluidToken,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#76-80)
+        - ISuperAgreement.realtimeBalanceOf(ISuperfluidToken,address,uint256) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol#25-36)
+        - IConstantFlowAgreementV1.revokeFlowOperatorWithFullControl(ISuperfluidToken,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#135-141)
+        - IConstantFlowAgreementV1.updateFlow(ISuperfluidToken,address,int96,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#246-253)
+        - IConstantFlowAgreementV1.updateFlowByOperator(ISuperfluidToken,address,address,int96,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#264-272)
+        - IConstantFlowAgreementV1.updateFlowOperatorPermissions(ISuperfluidToken,address,uint8,int96,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol#104-112)
+IInstantDistributionAgreementV1 (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#36-515) does not implement functions:
+        - IInstantDistributionAgreementV1.approveSubscription(ISuperfluidToken,address,uint32,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#217-224)
+        - IInstantDistributionAgreementV1.calculateDistribution(ISuperfluidToken,address,uint32,uint256) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#121-130)
+        - IInstantDistributionAgreementV1.claim(ISuperfluidToken,address,uint32,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#475-483)
+        - IInstantDistributionAgreementV1.createIndex(ISuperfluidToken,uint32,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#69-75)
+        - IInstantDistributionAgreementV1.deleteSubscription(ISuperfluidToken,address,uint32,address,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#451-459)
+        - IInstantDistributionAgreementV1.distribute(ISuperfluidToken,uint32,uint256,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#188-195)
+        - IInstantDistributionAgreementV1.getIndex(ISuperfluidToken,address,uint32) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#99-110)
+        - IInstantDistributionAgreementV1.getSubscription(ISuperfluidToken,address,uint32,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#376-389)
+        - IInstantDistributionAgreementV1.getSubscriptionByID(ISuperfluidToken,bytes32) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#402-414)
+        - IInstantDistributionAgreementV1.listSubscriptions(ISuperfluidToken,address) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#424-433)
+        - ISuperAgreement.realtimeBalanceOf(ISuperfluidToken,address,uint256) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperAgreement.sol#25-36)
+        - IInstantDistributionAgreementV1.revokeSubscription(ISuperfluidToken,address,uint32,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#267-274)
+        - IInstantDistributionAgreementV1.updateIndex(ISuperfluidToken,uint32,uint128,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#142-149)
+        - IInstantDistributionAgreementV1.updateSubscription(ISuperfluidToken,uint32,address,uint128,bytes) (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IInstantDistributionAgreementV1.sol#321-329)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unimplemented-functions
+INFO:Detectors:
+SuperAppDefinitions.APP_LEVEL_FINAL (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#23) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_LEVEL_SECOND (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#26) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.BEFORE_AGREEMENT_CREATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#41) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.AFTER_AGREEMENT_CREATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#42) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.BEFORE_AGREEMENT_UPDATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#43) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.AFTER_AGREEMENT_UPDATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#44) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.BEFORE_AGREEMENT_TERMINATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#45) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.AFTER_AGREEMENT_TERMINATED_NOOP (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#46) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_REGISTRATION_ONLY_IN_CONSTRUCTOR (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#52) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_NO_REGISTRATION_FOR_EOA (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#53) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_NO_REVERT_ON_TERMINATION_CALLBACK (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#54) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_NO_CRITICAL_SENDER_ACCOUNT (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#55) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_NO_CRITICAL_RECEIVER_ACCOUNT (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#56) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_CTX_IS_READONLY (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#57) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_CTX_IS_NOT_CLEAN (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#58) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_CTX_IS_MALFORMATED (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#59) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_COMPOSITE_APP_IS_NOT_WHITELISTED (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#60) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_COMPOSITE_APP_IS_JAILED (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#61) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+SuperAppDefinitions.APP_RULE_MAX_APP_LEVEL_REACHED (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#62) is never used in SuperAppDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#8-68)
+ContextDefinitions.CALL_INFO_CALL_TYPE_AGREEMENT (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#86) is never used in ContextDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#74-105)
+ContextDefinitions.CALL_INFO_CALL_TYPE_APP_ACTION (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#87) is never used in ContextDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#74-105)
+ContextDefinitions.CALL_INFO_CALL_TYPE_APP_CALLBACK (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#88) is never used in ContextDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#74-105)
+FlowOperatorDefinitions.AUTHORIZE_FULL_CONTROL (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#115-116) is never used in FlowOperatorDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#111-128)
+FlowOperatorDefinitions.REVOKE_FLOW_OPERATOR_CREATE (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#117) is never used in FlowOperatorDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#111-128)
+FlowOperatorDefinitions.REVOKE_FLOW_OPERATOR_UPDATE (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#118) is never used in FlowOperatorDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#111-128)
+FlowOperatorDefinitions.REVOKE_FLOW_OPERATOR_DELETE (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#119) is never used in FlowOperatorDefinitions (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#111-128)
+SuperfluidGovernanceConfigs.SUPERFLUID_REWARD_ADDRESS_CONFIG_KEY (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#199-200) is never used in SuperfluidGovernanceConfigs (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#197-229)
+SuperfluidGovernanceConfigs.CFAV1_PPP_CONFIG_KEY (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#201-202) is never used in SuperfluidGovernanceConfigs (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#197-229)
+SuperfluidGovernanceConfigs.SUPERTOKEN_MINIMUM_DEPOSIT_KEY (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#203-204) is never used in SuperfluidGovernanceConfigs (node_modules/@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/Definitions.sol#197-229)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-state-variable
+INFO:Detectors:
+REXUniswapV3Market.distributionInterval (contracts/REXUniswapV3Market.sol#95) should be constant 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+INFO:Detectors:
+REXUniswapV3Market.cfa (contracts/REXUniswapV3Market.sol#65) should be immutable 
+REXUniswapV3Market.host (contracts/REXUniswapV3Market.sol#64) should be immutable 
+REXUniswapV3Market.ida (contracts/REXUniswapV3Market.sol#66) should be immutable 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable
+INFO:Slither:. analyzed (56 contracts with 85 detectors), 175 result(s) found

@@ -65,8 +65,6 @@ contract REXUniswapV3Market is
 
     // REX Market Variables
     uint public lastDistributedAt; // The timestamp of the last distribution
-    uint public rateTolerance; // The percentage to deviate from the oracle (basis points)
-    uint128 public shareScaler; // The scaler to apply to the share of the outputToken pool
     ISuperToken public inputToken; // e.g. USDCx
     ISuperToken public outputToken; // e.g. ETHx
     address public underlyingInputToken; // e.g. USDC
@@ -76,12 +74,16 @@ contract REXUniswapV3Market is
     uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
     uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
     uint128 public constant BASIS_POINT_SCALER = 1e4; // The scaler for basis points
+    uint public constant RATE_TOLERANCE = 200; // The percentage to deviate from the oracle (basis points)
+    uint128 public constant SHARE_SCALER = 100000; // The scaler to apply to the share of the outputToken pool
+
+
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
     address[] public uniswapPath; // The path between inputToken and outputToken
     uint24[] public poolFees; // The pool fee to use in the path between inputToken and outputToken
-    uint24 public gelatoGasPoolFee; // The pool fee to use for gas reimbursements to Gelato
+    uint24 public constant GELATO_GAS_POOL_FEE = 500; // The pool fee to use for gas reimbursements to Gelato
 
     // Chainlink Variables
     AggregatorV3Interface public priceFeed; // Chainlink price feed for the inputToken/outputToken pair
@@ -101,6 +103,8 @@ contract REXUniswapV3Market is
         uint256 outputAmount,
         uint256 oraclePrice
     );
+
+    event UpdateGelatoFeeShare(uint256 newGelatoFee);
 
     constructor(
         ISuperfluid _host,
@@ -154,19 +158,13 @@ contract REXUniswapV3Market is
     /// @dev Initilalize the REX Market contract
     /// @param _inputToken is the input supertoken for the market
     /// @param _outputToken is the output supertoken for the market
-    /// @param _shareScaler is the scaler for the output (IDA) pool shares
-    /// @param _rateTolerance is the rate tolerance for the market
     function initializeMarket(
         ISuperToken _inputToken,
-        ISuperToken _outputToken,
-        uint128 _shareScaler,
-        uint256 _rateTolerance
+        ISuperToken _outputToken
     ) external {
         require(address(inputToken) == address(0), "IU"); // Blocks if already initialized
         inputToken = _inputToken;
         outputToken = _outputToken;
-        shareScaler = _shareScaler;
-        rateTolerance = _rateTolerance;
         lastDistributedAt = block.timestamp;
         underlyingOutputToken = _getUnderlyingToken(outputToken);
         underlyingInputToken = _getUnderlyingToken(inputToken);
@@ -189,13 +187,11 @@ contract REXUniswapV3Market is
     /// @param _uniswapFactory is the Uniswap V3 Factory
     /// @param _uniswapPath is the Uniswap V3 path
     /// @param _poolFees is the Uniswap V3 pool fees
-    /// @param _gelatoGasPoolFee is the Uniswap V3 pool fee for gas reimbursements to Gelato
     function initializeUniswap(
         ISwapRouter02 _uniswapRouter,
         IUniswapV3Factory _uniswapFactory,
         address[] memory _uniswapPath,
-        uint24[] memory _poolFees,
-        uint24 _gelatoGasPoolFee
+        uint24[] memory _poolFees
     ) external  {
         require(address(router) == address(0), "IU"); // Blocks if already initialized
 
@@ -203,7 +199,6 @@ contract REXUniswapV3Market is
         router = _uniswapRouter;
         poolFees = _poolFees;
         uniswapPath = _uniswapPath;
-        gelatoGasPoolFee = _gelatoGasPoolFee;
 
         // Get the pool from the Uniswap V3 Factory
         IUniswapV3Factory factory = IUniswapV3Factory(_uniswapFactory);
@@ -225,7 +220,7 @@ contract REXUniswapV3Market is
                 factory.getPool(
                     address(wmatic),
                     address(underlyingInputToken),
-                    gelatoGasPoolFee
+                    GELATO_GAS_POOL_FEE
                 ) != address(0),
                 "PDNE"
             );
@@ -320,6 +315,7 @@ contract REXUniswapV3Market is
             // Otherwise raise the gelatoFeeShare by 1-basis point
             gelatoFeeShare = gelatoFeeShare + 1;
         }
+        emit UpdateGelatoFeeShare(gelatoFeeShare);
 
         // Record when the last distribution happened for other calculations
         lastDistributedAt = block.timestamp;
@@ -363,7 +359,7 @@ contract REXUniswapV3Market is
             .ExactOutputParams({
                 path: abi.encodePacked(
                     address(wmatic),
-                    gelatoGasPoolFee,
+                    GELATO_GAS_POOL_FEE,
                     underlyingInputToken
                 ),
                 recipient: address(this),
@@ -410,7 +406,7 @@ contract REXUniswapV3Market is
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput = minOutput * (BASIS_POINT_SCALER - rateTolerance) / BASIS_POINT_SCALER;
+        minOutput = minOutput * (BASIS_POINT_SCALER - RATE_TOLERANCE) / BASIS_POINT_SCALER;
 
         // Encode the path for swap
         bytes memory encodedPath;
@@ -947,7 +943,7 @@ contract REXUniswapV3Market is
         );
 
         // The flow rate is scaled to account for the fact you can't by any ETH with just 1 wei of USDC
-        userShares /= shareScaler;
+        userShares /= SHARE_SCALER;
     }
 
     /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
@@ -978,22 +974,6 @@ contract REXUniswapV3Market is
             ),
             "0x"
         );
-    }
-
-    /// @dev sets the rateTolerance for the swap
-    /// @param _rateTolerance is the rateTolerance for the swap in basis points
-    /// @notice this needs a min and max
-    function setRateTolerance(uint256 _rateTolerance) external  {
-        require(rateTolerance <= 1e4, "RT");
-        rateTolerance = _rateTolerance;
-    }
-
-    /// @dev sets the gelatoFeeShare for the swap
-    /// @param _gelatoFeeShare is the gelatoFeeShare for the swap in basis points
-    /// @notice this needs a min and max
-    function setGelatoFeeShare(uint256 _gelatoFeeShare) external  {
-        require(_gelatoFeeShare <= 1e4, "GFS");
-        gelatoFeeShare = _gelatoFeeShare;
     }
 
     // Payable for X->MATICx markets to work
