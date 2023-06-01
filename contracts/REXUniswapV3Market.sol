@@ -299,9 +299,9 @@ contract REXUniswapV3Market is
     function getLatestPrice() public view returns (int) {
         if (address(priceFeed) == address(0)) {
             return 0;
-        }  
+        }
 
-        (,int price, , ,) = priceFeed.latestRoundData();
+        (, int price, , , ) = priceFeed.latestRoundData();
         return price;
     }
 
@@ -465,13 +465,15 @@ contract REXUniswapV3Market is
 
         // If there's no oracle address setup, don't protect against slippage
         if (latestPrice == 0) {
-            minOutput = 0; 
+            minOutput = 0;
         } else if (!invertPrice) {
             // This is the common case, e.g. USDC >> ETH
-            minOutput = amount * 1e8 / latestPrice * (10**(18 - ERC20(underlyingInputToken).decimals()));
+            minOutput =
+                ((amount * 1e8) / latestPrice) *
+                (10 ** (18 - ERC20(underlyingInputToken).decimals()));
         } else {
             // Invert the price provided by the oracle, e.g. ETH >> USDC
-            minOutput = amount * latestPrice / 1e8 / 1e12;
+            minOutput = (amount * latestPrice) / 1e8 / 1e12;
         }
 
         // Apply the rate tolerance to allow for some slippage
