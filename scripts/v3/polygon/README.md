@@ -46,7 +46,7 @@ Deployed to Polygon: [0x7ACe300B31b8dDBFDFa63EdA479bC2c2a01E9356](https://polygo
     OUTPUT_TOKEN=0x1305F6B6Df9Dc47159D12Eb7aC2804d4A33173c2 \
     OUTPUT_TOKEN_UNDERLYING=0x8f3cf7ad23cd3cadbd9735aff958023239c6a063 \
     PRICE_FEED=0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7 \
-    UNISWAP_POOL_FEE=100 \
+    UNISWAP_POOL_FEE=500 \
     INVERTED_PRICE_FEED=false \
     npx hardhat run scripts/polygon/deploy_rex_market.ts --network tenderly
 ```

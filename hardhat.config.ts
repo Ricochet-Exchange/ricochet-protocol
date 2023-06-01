@@ -55,8 +55,7 @@ const config: HardhatUserConfig = {
     polygon: {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      blockGasLimit: 20000000,
-      gasPrice: 100000000000 
+      blockGasLimit: 20000000
     },
     optimism: {
       url: process.env.OPTIMISM_NODE_URL,
