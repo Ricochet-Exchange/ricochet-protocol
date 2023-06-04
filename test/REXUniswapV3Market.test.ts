@@ -11,6 +11,7 @@ import { HttpService } from '../misc/HttpService'
 
 const { provider } = waffle
 const TEST_TRAVEL_TIME = 3600 * 2 // 2 hours
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 const config = Constants['polygon']
 
 export interface superTokenIDAIndex {
@@ -223,9 +224,7 @@ describe('REXUniswapV3Market', () => {
     // Initialize the market
     await market.initializeMarket(
       ricochetUSDCx.address,
-      ricochetETHx.address,
-      config.SHARE_SCALER,
-      config.RATE_TOLERANCE
+      ricochetETHx.address
     )
     console.log('Market initialized')
 
@@ -236,8 +235,7 @@ describe('REXUniswapV3Market', () => {
       config.UNISWAP_V3_ROUTER_ADDRESS,
       config.UNISWAP_V3_FACTORY_ADDRESS,
       [config.USDC_ADDRESS, config.DAI_ADDRESS, config.ETH_ADDRESS],
-      [100, 3000],
-      500
+      [100, 3000]
     )
     console.log('Uniswap initialized')
 
@@ -310,8 +308,6 @@ describe('REXUniswapV3Market', () => {
 
     it('#1.1 contract variables were set correctly', async () => {
       expect(await market.lastDistributedAt()).to.equal(intializeMarketBlock.timestamp)
-      expect(await market.rateTolerance()).to.equal(config.RATE_TOLERANCE)
-      expect(await market.shareScaler()).to.equal(config.SHARE_SCALER)
       expect(await market.gelatoFeeShare()).to.equal(config.GELATO_FEE)
       expect(await market.inputToken()).to.equal(ricochetUSDCx.address)
       expect(await market.outputToken()).to.equal(ricochetETHx.address)
@@ -320,12 +316,8 @@ describe('REXUniswapV3Market', () => {
       expect(await market.wmatic()).to.equal(config.WMATIC_ADDRESS)
       expect(await market.maticx()).to.equal(config.MATICX_ADDRESS)
 
-      // Test set methods from REXUniswapV3Market
-      await market.setRateTolerance(200)
-      expect(await market.rateTolerance()).to.equal(200)
-
-      await market.setGelatoFeeShare(20)
-      expect(await market.gelatoFeeShare()).to.equal(20)
+      // Make sure REXTrade was created correctly
+      expect(await market.rexTrade()).to.not.equal(ZERO_ADDRESS)
     })
 
     it('#1.3 before/afterAgreementCreated callbacks', async () => {
@@ -341,12 +333,23 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(aliceSigner)
 
+      // Verify a REXTrade was created for alice
+      let aliceInitialRexTrade = await market.getLatestTrade(aliceSigner.address);
+      let startTime = (await ethers.provider.getBlock('latest')).timestamp;
+      let startIdaIndex = 0;
       // Expect share allocations were done correctly
-      let expectedIDAShares = ethers.BigNumber.from(inflowRateUsdc).div(
+      let units = ethers.BigNumber.from(inflowRateUsdc).div(
         ethers.BigNumber.from(await config.SHARE_SCALER)
       )
+      expect(aliceInitialRexTrade.startTime).to.equal(startTime);
+      expect(aliceInitialRexTrade.endTime).to.equal(0);
+      expect(aliceInitialRexTrade.flowRate).to.equal(inflowRateUsdc);
+      expect(aliceInitialRexTrade.startIdaIndex).to.equal(startIdaIndex); // No distributions on the index have happened yet
+      expect(aliceInitialRexTrade.endIdaIndex).to.equal(0); // No distributions on the index have happened yet
+      expect(aliceInitialRexTrade.units).to.equal(units);
 
-      expect((await market.getIDAShares(aliceSigner.address)).toString()).to.equal(`true,true,${expectedIDAShares},0`)
+      
+      expect((await market.getIDAShares(aliceSigner.address)).toString()).to.equal(`true,true,${units},0`)
 
       // Check balances
       await takeMeasurements()
@@ -366,6 +369,17 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(bobSigner)
 
+      // Verify a REXTrade was created for bob
+      let bobInitialRexTrade = await market.getLatestTrade(bobSigner.address);
+      startTime = (await ethers.provider.getBlock('latest')).timestamp;
+      startIdaIndex = await market.getIDAIndexValue();
+      expect(bobInitialRexTrade.startTime).to.equal(startTime);
+      expect(bobInitialRexTrade.endTime).to.equal(0);
+      expect(bobInitialRexTrade.flowRate).to.equal(inflowRateUsdc);
+      expect(bobInitialRexTrade.startIdaIndex).to.equal(startIdaIndex); // One distribution occured
+      expect(bobInitialRexTrade.endIdaIndex).to.equal(0); // No distributions on the index have happened yet
+      expect(bobInitialRexTrade.units).to.equal(units);
+
       // Expect Alice wait distributed fairly
       // Check balances again
       await takeMeasurements()
@@ -375,6 +389,7 @@ describe('REXUniswapV3Market', () => {
 
       // Compute the delta of ETHx and USDCx for alice
       let deltaAlice = await delta(aliceSigner, aliceBalances)
+      let deltaBob = await delta(bobSigner, bobBalances)
 
       // Expect alice got within 2.0% of the oracle price
       expect(deltaAlice.ethx).to.be.above((deltaAlice.usdcx / oraclePrice) * 1e8 * -1 * 0.98)
@@ -388,7 +403,7 @@ describe('REXUniswapV3Market', () => {
       )
 
       // Expect Bob's share allocations were done correctly
-      expect((await market.getIDAShares(bobSigner.address)).toString()).to.equal(`true,true,${expectedIDAShares},0`)
+      expect((await market.getIDAShares(bobSigner.address)).toString()).to.equal(`true,true,${units},0`)
 
       // Close the streams and clean up from the test
       // TODO: Move to afterEach method
@@ -401,6 +416,23 @@ describe('REXUniswapV3Market', () => {
         })
         .exec(aliceSigner)
 
+      // Verify the REXTrade was updated for alice
+      let aliceFinalRexTrade = await market.getLatestTrade(aliceSigner.address);
+      expect(aliceFinalRexTrade.startTime).to.equal(aliceInitialRexTrade.startTime);
+      expect(aliceFinalRexTrade.endTime).to.equal((await ethers.provider.getBlock('latest')).timestamp);
+      expect(aliceFinalRexTrade.flowRate).to.equal(aliceInitialRexTrade.flowRate);
+      expect(aliceFinalRexTrade.startIdaIndex).to.equal(aliceInitialRexTrade.startIdaIndex);
+      expect(aliceFinalRexTrade.endIdaIndex).to.equal(await market.getIDAIndexValue());
+      expect(aliceFinalRexTrade.units).to.equal(aliceInitialRexTrade.units);
+
+      // Make sure the input amount can be calculate correctly for alice
+      let calculatedInputAmount = (aliceFinalRexTrade.endTime - aliceFinalRexTrade.startTime) * aliceFinalRexTrade.flowRate;
+
+      // Make sure the output amount can be calculate correctly for alice
+      let calculatedOutputAmount = (aliceFinalRexTrade.endIdaIndex - aliceFinalRexTrade.startIdaIndex) * aliceFinalRexTrade.units;
+      expect(deltaAlice.ethx).to.equal(calculatedOutputAmount);
+
+
       await sf.cfaV1
         .deleteFlow({
           receiver: market.address,
@@ -409,6 +441,23 @@ describe('REXUniswapV3Market', () => {
           shouldUseCallAgreement: true,
         })
         .exec(bobSigner)
+      
+      // Verify the REXTrade was updated for bob
+      let bobFinalRexTrade = await market.getLatestTrade(bobSigner.address);
+      expect(bobFinalRexTrade.startTime).to.equal(bobInitialRexTrade.startTime);
+      expect(bobFinalRexTrade.endTime).to.equal((await ethers.provider.getBlock('latest')).timestamp);
+      expect(bobFinalRexTrade.flowRate).to.equal(bobInitialRexTrade.flowRate);
+      expect(bobFinalRexTrade.startIdaIndex).to.equal(bobInitialRexTrade.startIdaIndex);
+      expect(bobFinalRexTrade.endIdaIndex).to.equal(await market.getIDAIndexValue());
+      expect(bobFinalRexTrade.units).to.equal(bobInitialRexTrade.units);
+
+      // Make sure the input amount can be calculate correctly for bob
+      calculatedInputAmount = (bobFinalRexTrade.endTime - bobFinalRexTrade.startTime) * bobFinalRexTrade.flowRate;
+
+      // Make sure the output amount can be calculate correctly for bob
+      calculatedOutputAmount = (bobFinalRexTrade.endIdaIndex - bobFinalRexTrade.startIdaIndex) * bobFinalRexTrade.units;
+      expect(deltaBob.ethx).to.equal(calculatedOutputAmount);
+
     })
 
     it('#1.4 before/afterAgreementUpdated callbacks', async () => {
@@ -786,7 +835,7 @@ describe('REXUniswapV3Market', () => {
       // Initialize MATIC
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
 
-      await market.initializeMarket(ricochetUSDCx.address, ricochetRexSHIRT.address, config.SHARE_SCALER, 500)
+      await market.initializeMarket(ricochetUSDCx.address, ricochetRexSHIRT.address)
       await market.createTask()
       gelatoBlock = await ethers.provider.getBlock('latest')
 
@@ -796,8 +845,7 @@ describe('REXUniswapV3Market', () => {
         config.UNISWAP_V3_ROUTER_ADDRESS,
         config.UNISWAP_V3_FACTORY_ADDRESS,
         [config.USDC_ADDRESS, config.RIC_ADDRESS, config.REXSHIRT_ADDRESS],
-        [500, 10000],
-        500
+        [500, 10000]
       )
 
       // Initialize Price Feed
@@ -942,9 +990,7 @@ describe('REXUniswapV3Market', () => {
       await market.createTask()
       await market.initializeMarket(
         ricochetUSDCx.address,
-        ricochetMATICx.address,
-        config.SHARE_SCALER,
-        config.RATE_TOLERANCE
+        ricochetMATICx.address
       )
       // Initialize the twoway market's uniswap
       // token0 is USDC, token1 is rexSHIRT (supertokens)
@@ -953,7 +999,6 @@ describe('REXUniswapV3Market', () => {
         config.UNISWAP_V3_FACTORY_ADDRESS,
         [config.USDC_ADDRESS, config.DAI_ADDRESS, config.WMATIC_ADDRESS],
         [500, 3000],
-        500
       )
 
       // Initialize Price Feed
@@ -1095,8 +1140,6 @@ describe('REXUniswapV3Market', () => {
       await market.initializeMarket(
         ricochetMATICx.address,
         ricochetUSDCx.address,
-        config.SHARE_SCALER,
-        config.RATE_TOLERANCE
       )
       // Initialize the twoway market's uniswap
       // token0 is USDC, token1 is rexSHIRT (supertokens)
@@ -1105,7 +1148,6 @@ describe('REXUniswapV3Market', () => {
         config.UNISWAP_V3_FACTORY_ADDRESS,
         [config.WMATIC_ADDRESS, config.DAI_ADDRESS, config.USDC_ADDRESS],
         [3000, 100],
-        500
       )
 
       // Initialize Price Feed

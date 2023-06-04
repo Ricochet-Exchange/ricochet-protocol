@@ -1,6 +1,32 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
+// Trade Tracking with NFTS
+//
+// 1. Create a new NFT for each trade, a trade has properties
+//    - start time
+//    - end time
+//    - flow rate
+//    - start ida index
+//    - end ida index
+//    - units
+//
+// 2. A trade starts when an account creates a new stream
+//   - start time is the block timestamp on stream create
+//   - flow rate is the flow rate of the stream
+//   - start ida index is the current ida index (using getIndex)
+//   - units is the number of IDA subscription units allocated to the account
+//   - end time and end ida index are 0
+//
+// 3. A trade ends when an account updates or terminates a stream
+//  - end time is the block timestamp on stream update/terminate
+//  - end ida index is the current ida index (using getIndex)
+//  - when a stream is updated, create a new trade NFT and perform (2)
+//
+// 4. Get the input amount: (end time - start time) * flow rate
+//
+// 5. Get the output amount: (end ida index - start ida index) * units
+
 // Superfluid Imports
 import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
@@ -26,6 +52,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "./superfluid/ISETHCustom.sol";
 import "./matic/IWMATIC.sol";
 import "./uniswap/interfaces/ISwapRouter02.sol";
+import "./REXTrade.sol";
+
 
 // Hardhat console
 import "hardhat/console.sol";
@@ -36,6 +64,7 @@ contract REXUniswapV3Market is
     OpsTaskCreator
 {
     using SafeERC20 for ERC20;
+    using Counters for Counters.Counter;
 
     // REX Market Structures
 
@@ -46,24 +75,13 @@ contract REXUniswapV3Market is
         ISuperToken token; // The token to update the flow rate for
     }
 
-    // The struct for the output pools (i.e. Superfluid IDA pools)
-    struct OutputPool {
-        ISuperToken token; // The token to distribute
-        uint256 emissionRate; // Rate to emit tokens if there's a balance, used for subsidies
-    }
-
-    // Internal Oracle token exchange rates, recorded during swaps
-    struct TokenExchangeRate {
-        uint256 rate; // The exchange rate of the token
-        uint256 timestamp; // The timestamp of the exchange rate
-    }
-
     // Superfluid Variables
     ISuperfluid internal host; // Superfluid host contract
     IConstantFlowAgreementV1 internal cfa; // The stored constant flow agreement class address
     IInstantDistributionAgreementV1 internal ida; // The stored instant dist. agreement class address
 
     // REX Market Variables
+    REXTrade public rexTrade;
     uint public lastDistributedAt; // The timestamp of the last distribution
     ISuperToken public inputToken; // e.g. USDCx
     ISuperToken public outputToken; // e.g. ETHx
@@ -76,8 +94,6 @@ contract REXUniswapV3Market is
     uint128 public constant BASIS_POINT_SCALER = 1e4; // The scaler for basis points
     uint public constant RATE_TOLERANCE = 200; // The percentage to deviate from the oracle (basis points)
     uint128 public constant SHARE_SCALER = 100000; // The scaler to apply to the share of the outputToken pool
-
-
 
     // Uniswap Variables
     ISwapRouter02 public router; // UniswapV3 Router
@@ -125,10 +141,13 @@ contract REXUniswapV3Market is
         } else {
             host.registerApp(_configWord);
         }
+
+        // Deploy RexTrade for trade tracking
+        rexTrade = new REXTrade();
     }
 
     /// @dev Creates the distribute task on Gelato Network
-    function createTask() external payable  {
+    function createTask() external payable {
         // Check the task wasn't already created
         require(taskId == bytes32(""), "Already started task");
 
@@ -146,10 +165,7 @@ contract REXUniswapV3Market is
     /// @dev Initializer for wmatic and maticx
     /// @param _wmatic is the WMATIC token
     /// @param _maticx is the MATICx token
-    function initializeMATIC(
-        IWMATIC _wmatic,
-        ISuperToken _maticx
-    ) external  {
+    function initializeMATIC(IWMATIC _wmatic, ISuperToken _maticx) external {
         require(address(wmatic) == address(0), "A");
         wmatic = _wmatic;
         maticx = _maticx;
@@ -192,7 +208,7 @@ contract REXUniswapV3Market is
         IUniswapV3Factory _uniswapFactory,
         address[] memory _uniswapPath,
         uint24[] memory _poolFees
-    ) external  {
+    ) external {
         require(address(router) == address(0), "IU"); // Blocks if already initialized
 
         // Set contract variables
@@ -238,7 +254,7 @@ contract REXUniswapV3Market is
     function initializePriceFeed(
         AggregatorV3Interface _priceFeed,
         bool _invertPrice
-    ) external  {
+    ) external {
         require(address(priceFeed) == address(0), "A"); // Blocks if already initialized
         priceFeed = _priceFeed;
         invertPrice = _invertPrice;
@@ -263,7 +279,6 @@ contract REXUniswapV3Market is
         bytes memory ctx,
         bool ignoreGasReimbursement
     ) public payable nonReentrant returns (bytes memory newCtx) {
-
         uint gasUsed = gasleft(); // Track gas used in this function
         newCtx = ctx;
         uint256 inputTokenAmount = inputToken.balanceOf(address(this));
@@ -387,7 +402,9 @@ contract REXUniswapV3Market is
 
         // Calculate the amount of tokens
         amount = ERC20(underlyingInputToken).balanceOf(address(this));
-        amount = amount * (BASIS_POINT_SCALER - gelatoFeeShare) / BASIS_POINT_SCALER;
+        amount =
+            (amount * (BASIS_POINT_SCALER - gelatoFeeShare)) /
+            BASIS_POINT_SCALER;
 
         // Calculate minOutput based on oracle
         latestPrice = uint(int(getLatestPrice()));
@@ -395,18 +412,22 @@ contract REXUniswapV3Market is
         if (latestPrice == 0) {
             minOutput = 0;
         } else if (!invertPrice) {
-            minOutput = amount * 1e8 / latestPrice;
+            minOutput = (amount * 1e8) / latestPrice;
             // Scale the minOutput to the right percision
             minOutput *= 10 ** (18 - ERC20(underlyingInputToken).decimals());
         } else {
             // Invert the rate provided by the oracle, e.g. ETH >> USDC
-            minOutput = amount * latestPrice / 1e8;
+            minOutput = (amount * latestPrice) / 1e8;
             // Scale the minOutput to the right percision
-            minOutput /= 10 ** (18 - ERC20(underlyingOutputToken).decimals()) * 1e8;
+            minOutput /=
+                10 ** (18 - ERC20(underlyingOutputToken).decimals()) *
+                1e8;
         }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput = minOutput * (BASIS_POINT_SCALER - RATE_TOLERANCE) / BASIS_POINT_SCALER;
+        minOutput =
+            (minOutput * (BASIS_POINT_SCALER - RATE_TOLERANCE)) /
+            BASIS_POINT_SCALER;
 
         // Encode the path for swap
         bytes memory encodedPath;
@@ -543,6 +564,15 @@ contract REXUniswapV3Market is
             _superToken
         );
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+        // Get the current index value for rextrade tracking
+        uint _indexValue = getIDAIndexValue();
+
+        // Get IDA shares for this user for rextrade tracking
+        (, , uint128 _units, ) = getIDAShares(_shareholder);
+
+        // Mint the shareholder an NFT to track their trade
+        rexTrade.startRexTrade(_shareholder, _flowRate, _indexValue, _units);
     }
 
     /// @dev Called before an agreement is updated
@@ -566,7 +596,7 @@ contract REXUniswapV3Market is
             return _ctx;
 
         // Get the stakeholders current flow rate and save it in cbData
-        (, int96 _flowRate, ) = _getShareholderInfo(
+        ( , int96 _flowRate, ) = _getShareholderInfo(
             _agreementData,
             _superToken
         );
@@ -604,6 +634,12 @@ contract REXUniswapV3Market is
             _superToken
         );
 
+        // Get the current index value for rextrade tracking
+        uint _indexValue = getIDAIndexValue();
+
+        // End the trade for this shareholder
+        rexTrade.endRexTrade(_shareholder, _indexValue);
+
         // Before updating the shares, check if the distribution should be triggered
         // Trigger the distribution flushes the system before changing share allocations
         // This may no longer be needed
@@ -619,6 +655,12 @@ contract REXUniswapV3Market is
         );
 
         _newCtx = _updateShareholder(_newCtx, _shareholderUpdate);
+
+        // Get IDA shares for this user for rextrade tracking
+        (, , uint128 _units, ) = getIDAShares(_shareholder);
+
+        // Mint the shareholder an NFT to track their trade
+        rexTrade.startRexTrade(_shareholder, _flowRate, _indexValue, _units);
     }
 
     // Agreement Terminated
@@ -634,10 +676,11 @@ contract REXUniswapV3Market is
         if (!_isInputToken(_superToken) || !_isCFAv1(_agreementClass))
             return _ctx;
 
-        (, int96 _flowRateMain, uint256 _timestamp) = _getShareholderInfo(
-            _agreementData,
-            _superToken
-        );
+        (
+            ,
+            int96 _flowRateMain,
+            uint256 _timestamp
+        ) = _getShareholderInfo(_agreementData, _superToken);
 
         uint256 _uinvestAmount = _calcUserUninvested(
             _timestamp,
@@ -645,6 +688,7 @@ contract REXUniswapV3Market is
             // Select the correct lastDistributedAt for this _superToken
             lastDistributedAt
         );
+
         _cbdata = abi.encode(_uinvestAmount);
     }
 
@@ -677,6 +721,12 @@ contract REXUniswapV3Market is
             _agreementData,
             (address, address)
         );
+
+        // Get the current index value for rextrade tracking
+        uint _indexValue = getIDAIndexValue();
+
+        // End the trade for this shareholder
+        rexTrade.endRexTrade(_shareholder, _indexValue);
 
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
         uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
@@ -936,7 +986,7 @@ contract REXUniswapV3Market is
 
     function _getShareAllocations(
         ShareholderUpdate memory _shareholderUpdate
-    ) internal view returns (uint128 userShares) {
+    ) internal pure returns (uint128 userShares) {
         // The user's shares will always be their current flow rate
         userShares = (
             uint128(uint256(int256(_shareholderUpdate.currentFlowRate)))
@@ -944,6 +994,15 @@ contract REXUniswapV3Market is
 
         // The flow rate is scaled to account for the fact you can't by any ETH with just 1 wei of USDC
         userShares /= SHARE_SCALER;
+    }
+
+    function getIDAIndexValue() public view returns (uint256) {
+        (, uint256 _indexValue, , ) = ida.getIndex(
+            outputToken,
+            address(this),
+            OUTPUT_INDEX
+        );
+        return _indexValue;
     }
 
     /// @dev Close stream from `streamer` address if balance is less than 8 hours of streaming
@@ -974,6 +1033,18 @@ contract REXUniswapV3Market is
             ),
             "0x"
         );
+    }
+    
+    function getTradeInfo(address _trader, uint _tradeIndex) public view returns (
+        REXTrade.Trade memory trade
+    ){
+        trade = rexTrade.getTradeInfo(_trader, _tradeIndex);
+    }
+
+    function getLatestTrade(address _trader) public view returns (
+        REXTrade.Trade memory trade
+    ){
+        trade = rexTrade.getLatestTrade(_trader);
     }
 
     // Payable for X->MATICx markets to work
