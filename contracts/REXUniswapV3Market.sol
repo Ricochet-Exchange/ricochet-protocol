@@ -1,32 +1,6 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity ^0.8.0;
 
-// Trade Tracking with NFTS
-//
-// 1. Create a new NFT for each trade, a trade has properties
-//    - start time
-//    - end time
-//    - flow rate
-//    - start ida index
-//    - end ida index
-//    - units
-//
-// 2. A trade starts when an account creates a new stream
-//   - start time is the block timestamp on stream create
-//   - flow rate is the flow rate of the stream
-//   - start ida index is the current ida index (using getIndex)
-//   - units is the number of IDA subscription units allocated to the account
-//   - end time and end ida index are 0
-//
-// 3. A trade ends when an account updates or terminates a stream
-//  - end time is the block timestamp on stream update/terminate
-//  - end ida index is the current ida index (using getIndex)
-//  - when a stream is updated, create a new trade NFT and perform (2)
-//
-// 4. Get the input amount: (end time - start time) * flow rate
-//
-// 5. Get the output amount: (end ida index - start ida index) * units
-
 // Superfluid Imports
 import {ISuperfluid, ISuperToken, ISuperApp, ISuperAgreement, SuperAppDefinitions} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {IConstantFlowAgreementV1} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/agreements/IConstantFlowAgreementV1.sol";
