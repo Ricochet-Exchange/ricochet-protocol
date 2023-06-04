@@ -117,7 +117,7 @@ export const Constants : {[key: string]: any} = {
         SF_REG_KEY: "k1",
 
         // Deployment constants for UniswapV3 market
-        SHARE_SCALER: 10000,
+        SHARE_SCALER: 100000,
         FEE_RATE: 50,
         AFFILAITE_FEE: 5000,
         INITIAL_PRICE: '1550000000000000000000',
