@@ -4,7 +4,7 @@ import { common } from '../misc/common'
 import { expect } from 'chai'
 import { Framework, SuperToken } from '@superfluid-finance/sdk-core'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { REXUniswapV3Market, REXReferral__factory } from '../typechain'
+import { REXMarketV4, REXReferral__factory } from '../typechain'
 import { increaseTime, impersonateAndSetBalance } from '../misc/helpers'
 import { Constants } from '../misc/Constants'
 import { HttpService } from '../misc/HttpService'
@@ -19,7 +19,7 @@ export interface superTokenIDAIndex {
   IDAIndex: number
 }
 
-describe('REXUniswapV3Market', () => {
+describe('REXMarketV4', () => {
   const errorHandler = (err: any) => {
     if (err) throw err
   }
@@ -51,7 +51,7 @@ describe('REXUniswapV3Market', () => {
   let sf: Framework,
     superT: ISuperToken,
     u: { [key: string]: IUser },
-    market: REXUniswapV3Market,
+    market: REXMarketV4,
     tokenss: { [key: string]: any },
     sfRegistrationKey: any,
     accountss: SignerWithAddress[],
@@ -199,18 +199,17 @@ describe('REXUniswapV3Market', () => {
     const registrationKey = await sfRegistrationKey(sf, adminSigner.address)
 
     // Deploy REX Market
-    REXMarketFactory = await ethers.getContractFactory('REXUniswapV3Market', adminSigner)
+    REXMarketFactory = await ethers.getContractFactory('REXMarketV4', adminSigner)
 
-    // Deploy the REXUniswapV3Market
+    // Deploy the REXMarketV4
     market = await REXMarketFactory.deploy(
       config.HOST_SUPERFLUID_ADDRESS,
       config.CFA_SUPERFLUID_ADDRESS,
       config.IDA_SUPERFLUID_ADDRESS,
       registrationKey,
-      config.GELATO_OPS,
-      adminSigner.address
+      config.GELATO_OPS
     )
-    console.log('REXUniswapV3Market deployed to:', market.address)
+    console.log('REXMarketV4 deployed to:', market.address)
 
     // Initialize MATIC
     await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
@@ -457,6 +456,14 @@ describe('REXUniswapV3Market', () => {
       // Make sure the output amount can be calculate correctly for bob
       calculatedOutputAmount = (bobFinalRexTrade.endIdaIndex - bobFinalRexTrade.startIdaIndex) * bobFinalRexTrade.units;
       expect(deltaBob.ethx).to.equal(calculatedOutputAmount);
+
+      // Check that the trade count is correct
+      let aliceTradeCount = await market.getTradeCount(aliceSigner.address);
+      expect(aliceTradeCount).to.equal(1);
+
+      // Check that the trade count is correct
+      let bobTradeCount = await market.getTradeCount(bobSigner.address);
+      expect(bobTradeCount).to.equal(1);
 
     })
 
@@ -828,8 +835,7 @@ describe('REXUniswapV3Market', () => {
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
-        config.GELATO_OPS,
-        adminSigner.address
+        config.GELATO_OPS
       )
 
       // Initialize MATIC
@@ -983,8 +989,7 @@ describe('REXUniswapV3Market', () => {
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
-        config.GELATO_OPS,
-        adminSigner.address
+        config.GELATO_OPS
       )
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
       await market.createTask()
@@ -1132,8 +1137,7 @@ describe('REXUniswapV3Market', () => {
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
         registrationKey,
-        config.GELATO_OPS,
-        adminSigner.address
+        config.GELATO_OPS
       )
       await market.initializeMATIC(config.WMATIC_ADDRESS, config.MATICX_ADDRESS)
       await market.createTask()

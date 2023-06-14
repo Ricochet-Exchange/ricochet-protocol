@@ -9,30 +9,28 @@ contract REXTrade is Ownable, ERC721 {
     using Counters for Counters.Counter;
 
     struct Trade {
-        uint256 tradeId;
+        uint256 tradeId; 
         uint256 startTime;
         uint256 endTime;
         int96 flowRate;
         uint256 startIdaIndex;
         uint256 endIdaIndex;
         uint256 units;
+        uint256 refunded;
     }
 
     Counters.Counter private tradeIds;
     mapping(uint256 => Trade) public trades;
     mapping(address => uint256[]) public tradesByUser;
+    mapping(address => uint256) public tradeCountsByUser;
 
     event TradeStarted(
-        address indexed shareholder,
-        uint256 indexed tradeId,
-        uint256 startIndex,
-        int96 flowRate,
-        uint256 units
+        address indexed trader,
+        uint256 indexed tradeId
     );
     event TradeEnded(
-        address indexed shareholder,
-        uint256 indexed tradeId,
-        uint256 endIndex
+        address indexed trader,
+        uint256 indexed tradeId
     );
 
     constructor() ERC721("REX Trade", "REX") {}
@@ -71,24 +69,24 @@ contract REXTrade is Ownable, ERC721 {
             flowRate: _flowRate,
             startIdaIndex: _indexValue,
             endIdaIndex: 0,
-            units: _units
+            units: _units,
+            refunded: 0
         });
         tradesByUser[_shareholder].push(tradeId);
+        tradeCountsByUser[_shareholder] += 1;
         _safeMint(_shareholder, tradeIds.current());
         tradeIds.increment();
 
         emit TradeStarted(
             _shareholder,
-            tradeId,
-            _indexValue,
-            _flowRate,
-            _units
+            tradeId
         );
     }
 
     function endRexTrade(
         address _shareholder,
-        uint _indexValue
+        uint _indexValue,
+        uint _refunded
     ) external onlyOwner {
         // Get the trade for this shareholder, will always be the last one in the list
         Trade storage trade = trades[
@@ -98,7 +96,11 @@ contract REXTrade is Ownable, ERC721 {
         // Update the trade
         trade.endTime = block.timestamp;
         trade.endIdaIndex = _indexValue;
+        trade.refunded = _refunded;
 
-        emit TradeEnded(_shareholder, trade.tradeId, _indexValue);
+        emit TradeEnded(
+            _shareholder,
+            trade.tradeId
+        );
     }
 }

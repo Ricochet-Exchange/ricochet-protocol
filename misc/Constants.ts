@@ -63,6 +63,7 @@ export const Constants : {[key: string]: any} = {
          * Tokens Adresses
          */
         RIC_ADDRESS: "0x263026E7e53DBFDce5ae55Ade22493f828922965",
+        REX_TOKEN_ADDRESS: "0x3812a7aa87e872df0eda9d77de12c0ece11852fa",
         USDCX_ADDRESS: "0xCAa7349CEA390F89641fe306D93591f87595dc1F",
         USDC_ADDRESS: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
         DAI_ADDRESS: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
@@ -134,6 +135,7 @@ export const Constants : {[key: string]: any} = {
 
         // Tokens
         RIC_ADDRESS: "0xDCf9273075A29F0070d5cB4632814367CE4350aE", // Deployed on Mumbai
+        REX_TOKEN_ADDRESS: "0xa8632333c46725a0eee62cb7668b82ad96b9bd98", 
         USDCX_ADDRESS: "0x42bb40bF79730451B11f6De1CbA222F17b87Afd7",
         USDC_ADDRESS: "0xbe49ac1EadAc65dccf204D4Df81d650B50122aB2",
         DAIX_ADDRESS: "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f", // fDAIx on mumbai

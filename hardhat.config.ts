@@ -25,12 +25,13 @@ tdly.setup();
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.13",
+    version: "0.8.19",
     settings: {
       optimizer: {
         enabled: true,
         runs: 200
-      }
+      },
+      viaIR: true,
     }
   },
   // // About the gas reporter options ---> https://github.com/cgewecke/eth-gas-reporter/blob/master/README.md
@@ -55,18 +56,20 @@ const config: HardhatUserConfig = {
     polygon: {
       url: process.env.POLYGON_NODE_URL,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      blockGasLimit: 20000000
+      // blockGasLimit: 20000000,
+      // gasPrice: 300000000000,
+      chainId: 137,
     },
-    optimism: {
-      url: process.env.OPTIMISM_NODE_URL,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      blockGasLimit: 20000000,
-    },
-    maticmum: {
-      url: process.env.MUMBAI_NODE_URL,
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      blockGasLimit: 20000000,
-    },
+    // optimism: {
+    //   url: process.env.OPTIMISM_NODE_URL,
+    //   accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    //   blockGasLimit: 20000000,
+    // },
+    // maticmum: {
+    //   url: process.env.MUMBAI_NODE_URL,
+    //   accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    //   blockGasLimit: 20000000,
+    // },
     localhost: {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       url: 'http://127.0.0.1:8545/'

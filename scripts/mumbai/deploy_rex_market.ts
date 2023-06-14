@@ -30,21 +30,19 @@ async function main() {
     console.log("Verify these parameters. Then press any key to continue the deployment...");
     await new Promise(resolve => process.stdin.once("data", resolve));
 
-    // Deploy REXUniswapV3Market
-    console.log("Deploying REXUniswapV3Market")
-    const REXUniswapV3Market = await ethers.getContractFactory("REXUniswapV3Market");
-    const market = await REXUniswapV3Market.deploy(
-        deployer.address,
+    // Deploy REXMarketV4
+    console.log("Deploying REXMarketV4")
+    const REXMarketV4 = await ethers.getContractFactory("REXMarketV4");
+    const market = await REXMarketV4.deploy(
         config.HOST_SUPERFLUID_ADDRESS,
         config.CFA_SUPERFLUID_ADDRESS,
         config.IDA_SUPERFLUID_ADDRESS,
         config.SF_REG_KEY,
-        config.GELATO_OPS,
-        deployer.address,
+        config.GELATO_OPS
         // { gasLimit: 10000000 } // Force deploy even if estimate gas fails
     );
     await market.deployed();
-    console.log("REXUniswapV3Market deployed to:", market.address);
+    console.log("REXMarketV4 deployed to:", market.address);
 
     // Log the config values for the network we are initializeMATIC
     // TODO: This varies on MATIC network
@@ -69,8 +67,6 @@ async function main() {
     // Log the config values for the network we are initialize on this market
     console.log("INPUT_TOKEN:", INPUT_TOKEN);
     console.log("OUTPUT_TOKEN:", OUTPUT_TOKEN);
-    console.log("SHARE_SCALER:", config.SHARE_SCALER);
-    console.log("RATE_TOLERANCE:", config.RATE_TOLERANCE);
 
     // Prompt the user to continue after checking the config
     console.log("Verify these parameters. Then press any key to continue the deployment...");
@@ -80,8 +76,6 @@ async function main() {
     tx = await market.initializeMarket(
         INPUT_TOKEN,
         OUTPUT_TOKEN,
-        config.SHARE_SCALER,
-        config.RATE_TOLERANCE,
         { gasLimit: 10000000 }
     );
     await tx.wait();
@@ -97,9 +91,8 @@ async function main() {
     await market.initializeUniswap(
         config.UNISWAP_V3_ROUTER_ADDRESS,
         config.UNISWAP_V3_FACTORY_ADDRESS,
-        [INPUT_TOKEN_UNDERLYING, config.RIC_ADDRESS, OUTPUT_TOKEN_UNDERLYING],
+        [INPUT_TOKEN_UNDERLYING, config.REX_TOKEN_ADDRESS, OUTPUT_TOKEN_UNDERLYING],
         [UNISWAP_POOL_FEE,UNISWAP_POOL_FEE],
-        UNISWAP_POOL_FEE,
         { gasLimit: 10000000 }
     );
     await tx.wait();
@@ -110,7 +103,7 @@ async function main() {
 
     // Save the artifacts to tenderly for further inspection, monitoring, and debugging
     await hre.tenderly.persistArtifacts({
-        name: "REXUniswapV3Market",
+        name: "REXMarketV4",
         address: market.address,
     });
 

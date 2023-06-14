@@ -28,11 +28,10 @@ import "./matic/IWMATIC.sol";
 import "./uniswap/interfaces/ISwapRouter02.sol";
 import "./REXTrade.sol";
 
-
 // Hardhat console
 import "hardhat/console.sol";
 
-contract REXUniswapV3Market is
+contract REXMarketV4 is
     ReentrancyGuard,
     SuperAppBase,
     OpsTaskCreator
@@ -66,7 +65,8 @@ contract REXUniswapV3Market is
     uint32 public constant OUTPUT_INDEX = 0; // Superfluid IDA Index for outputToken's output pool
     uint256 public constant INTERVAL = 60; // The interval for gelato to check for execution
     uint128 public constant BASIS_POINT_SCALER = 1e4; // The scaler for basis points
-    uint public constant RATE_TOLERANCE = 200; // The percentage to deviate from the oracle (basis points)
+    // TODO: make's minoutput 0 for simulation
+    uint public constant RATE_TOLERANCE = 1e4; // The percentage to deviate from the oracle (basis points)
     uint128 public constant SHARE_SCALER = 100000; // The scaler to apply to the share of the outputToken pool
 
     // Uniswap Variables
@@ -101,9 +101,8 @@ contract REXUniswapV3Market is
         IConstantFlowAgreementV1 _cfa,
         IInstantDistributionAgreementV1 _ida,
         string memory _registrationKey,
-        address payable _ops,
-        address _taskCreator
-    ) OpsTaskCreator(_ops, _taskCreator) {
+        address payable _ops
+    ) OpsTaskCreator(_ops, address(this)) {
         host = _host;
         cfa = _cfa;
         ida = _ida;
@@ -383,25 +382,25 @@ contract REXUniswapV3Market is
         // Calculate minOutput based on oracle
         latestPrice = uint(int(getLatestPrice()));
         // If there's no oracle address setup, don't protect against slippage
-        if (latestPrice == 0) {
-            minOutput = 0;
-        } else if (!invertPrice) {
-            minOutput = (amount * 1e8) / latestPrice;
-            // Scale the minOutput to the right percision
-            minOutput *= 10 ** (18 - ERC20(underlyingInputToken).decimals());
-        } else {
-            // Invert the rate provided by the oracle, e.g. ETH >> USDC
-            minOutput = (amount * latestPrice) / 1e8;
-            // Scale the minOutput to the right percision
-            minOutput /=
-                10 ** (18 - ERC20(underlyingOutputToken).decimals()) *
-                1e8;
-        }
+        // if (latestPrice == 0) {
+        //     minOutput = 0;
+        // } else if (!invertPrice) {
+        //     minOutput = (amount * 1e8) / latestPrice;
+        //     // Scale the minOutput to the right percision
+        //     minOutput *= 10 ** (18 - ERC20(underlyingInputToken).decimals());
+        // } else {
+        //     // Invert the rate provided by the oracle, e.g. ETH >> USDC
+        //     minOutput = (amount * latestPrice) / 1e8;
+        //     // Scale the minOutput to the right percision
+        //     minOutput /=
+        //         10 ** (18 - ERC20(underlyingOutputToken).decimals()) *
+        //         1e8;
+        // }
 
         // Apply the rate tolerance to allow for some slippage
-        minOutput =
-            (minOutput * (BASIS_POINT_SCALER - RATE_TOLERANCE)) /
-            BASIS_POINT_SCALER;
+        // minOutput =
+        //     (minOutput * (BASIS_POINT_SCALER - RATE_TOLERANCE)) /
+        //     BASIS_POINT_SCALER;
 
         // Encode the path for swap
         bytes memory encodedPath;
@@ -423,7 +422,9 @@ contract REXUniswapV3Market is
                 path: encodedPath,
                 recipient: address(this),
                 amountIn: amount,
-                amountOutMinimum: minOutput
+                // Disabled on this version since initial liquidity for REX liquidity Network is low
+                // REX Swaps are very small by design, its unlikely frontrunning these swaps will be worth it
+                amountOutMinimum: 0
             });
         outAmount = router.exactInput(params);
 
@@ -608,18 +609,19 @@ contract REXUniswapV3Market is
             _superToken
         );
 
-        // Get the current index value for rextrade tracking
-        uint _indexValue = getIDAIndexValue();
-
-        // End the trade for this shareholder
-        rexTrade.endRexTrade(_shareholder, _indexValue);
-
+        
         // Before updating the shares, check if the distribution should be triggered
         // Trigger the distribution flushes the system before changing share allocations
         // This may no longer be needed
         if (_shouldDistribute()) {
             _newCtx = distribute(_newCtx, true);
         }
+
+        // Get the current index value for rextrade tracking
+        uint _indexValue = getIDAIndexValue();
+
+        // End the trade for this shareholder
+        rexTrade.endRexTrade(_shareholder, _indexValue, 0);
 
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
@@ -699,11 +701,11 @@ contract REXUniswapV3Market is
         // Get the current index value for rextrade tracking
         uint _indexValue = getIDAIndexValue();
 
-        // End the trade for this shareholder
-        rexTrade.endRexTrade(_shareholder, _indexValue);
-
         // Decode the cbData to get the caller's previous flow rate, set in beforeAgreementTerminated
         uint256 _uninvestAmount = abi.decode(_cbdata, (uint256));
+
+        // End the trade for this shareholder
+        rexTrade.endRexTrade(_shareholder, _indexValue, _uninvestAmount);
 
         // Build the shareholder update parameters and update the shareholder
         ShareholderUpdate memory _shareholderUpdate = ShareholderUpdate(
@@ -1019,6 +1021,12 @@ contract REXUniswapV3Market is
         REXTrade.Trade memory trade
     ){
         trade = rexTrade.getLatestTrade(_trader);
+    }
+
+    function getTradeCount(address _trader) public view returns (
+        uint256 count
+    ){
+        count = rexTrade.tradeCountsByUser(_trader);
     }
 
     // Payable for X->MATICx markets to work

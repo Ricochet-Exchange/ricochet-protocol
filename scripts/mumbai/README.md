@@ -1,5 +1,5 @@
-# Scripts for Optimism :o2: 
-This is documentation of the Hardhat scripting that was used to do the Optimism Deployment
+# Scripts for Mumbai 
+This is documentation of the Hardhat scripting that was used to do the Mumbai Deployment
 
 ## Hardhat Configuraiton for Deployment
 Confirm that the `hardhat.config.ts` is configured for this network.
